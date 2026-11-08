@@ -270,3 +270,30 @@ fn only_german_takes_a_non_ascii_letter_after_a_sign_as_a_formula() {
     assert!(enter(&mut app, "-Árbol"));
     assert_eq!(app.session.active().unwrap().wb.active().unwrap().value(CellRef::new(0, 0)), Value::text("-Árbol"));
 }
+
+#[test]
+fn german_and_french_numbers_and_dates_follow_the_language_unless_chosen() {
+    let value = |app: &SheetApp| app.session.active().unwrap().wb.active().unwrap().value(CellRef::new(0, 0));
+    let mut app = app();
+    assert_eq!(app.session.locale(), gridcraft_engine::core::Locale::En);
+    app.run("app.language.set", json!({"language":"de"})).unwrap();
+    assert_eq!(app.session.locale(), gridcraft_engine::core::Locale::De);
+    assert!(enter(&mut app, "31.12.2026"));
+    assert_eq!(value(&app), Value::Number(46387.0));
+    app.begin_edit(None, true);
+    assert_eq!(app.editor.as_ref().unwrap().text, "31.12.2026");
+    app.cancel_edit();
+    assert!(enter(&mut app, "1.234,56"));
+    assert_eq!(value(&app), Value::Number(1234.56));
+    // A chosen locale outlasts a language change and is saved with the preferences.
+    app.run("app.locale.set", json!({"locale":"en"})).unwrap();
+    app.run("app.language.set", json!({"language":"fr"})).unwrap();
+    assert_eq!(app.session.locale(), gridcraft_engine::core::Locale::En);
+    let restored: UiState = serde_json::from_str(&serde_json::to_string(&app.ui).unwrap()).unwrap();
+    assert_eq!(restored.number_locale.as_deref(), Some("en"));
+    assert!(app.run("app.locale.set", json!({"locale":"xx"})).is_err());
+    app.run("app.locale.set", json!({"locale":"auto"})).unwrap();
+    assert_eq!(app.session.locale(), gridcraft_engine::core::Locale::Fr);
+    assert!(enter(&mut app, "31/12/2026"));
+    assert_eq!(value(&app), Value::Number(46387.0));
+}

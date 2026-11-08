@@ -227,6 +227,7 @@ impl SheetApp {
                 match i18n::Language::parse(code) {
                     Some(l) => {
                         self.ui.language = l;
+                        self.sync_number_locale();
                         Ok(json!({"language": l}))
                     }
                     None => Err(format!("unknown language {code:?} (use one of {})", i18n::Language::code_list(", "))),
@@ -234,12 +235,15 @@ impl SheetApp {
             }
             "app.language.english" => {
                 self.ui.language = i18n::Language::En;
+                self.sync_number_locale();
                 Ok(json!({"language": i18n::Language::En}))
             }
             "app.language.japanese" => {
                 self.ui.language = i18n::Language::Ja;
+                self.sync_number_locale();
                 Ok(json!({"language": i18n::Language::Ja}))
             }
+            "app.locale.set" => self.set_number_locale(p),
             "ui.backstage" => {
                 // `{"page": "info"}` opens File › Info; `{"page": "close"}` returns to the sheet.
                 match p.get("page").and_then(Json::as_str).map(str::trim) {
@@ -295,6 +299,32 @@ impl SheetApp {
             _ => return None,
         };
         Some(r)
+    }
+
+    /// `app.locale.set` from the interface: `{"locale": "de"}` keeps German number and date
+    /// conventions whatever the language; `"auto"` (or no `locale`) follows the language again.
+    /// Saved with the other preferences.
+    fn set_number_locale(&mut self, p: &Json) -> Result<Json, String> {
+        let tag = p.get("locale").and_then(Json::as_str).unwrap_or("auto");
+        self.ui.number_locale = match tag {
+            "auto" | "" => None,
+            _ => match gridcraft_engine::core::Locale::from_tag(tag) {
+                Some(l) => Some(l.tag().to_string()),
+                None => return Err(format!("unknown locale {tag:?} (use en, de, fr or auto)")),
+            },
+        };
+        self.sync_number_locale();
+        Ok(json!({"locale": self.ui.number_locale().tag(), "auto": self.ui.number_locale.is_none()}))
+    }
+
+    /// Shows the workbooks in the number locale of the preferences ([`crate::UiState::number_locale`]),
+    /// recalculating what depends on it when it changed.
+    pub(super) fn sync_number_locale(&mut self) {
+        let loc = self.ui.number_locale();
+        if self.session.locale() != loc {
+            // Only an unknown tag fails, and this one comes from a `Locale`.
+            let _ = self.session.run("app.locale.set", json!({"locale": loc.tag()}));
+        }
     }
 
     /// Picks up requests commands made (dialogs, edit mode…).

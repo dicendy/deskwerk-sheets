@@ -120,6 +120,7 @@ impl SheetApp {
         }
         self.sync_theme_preference(ctx);
         self.sync_input_options(ctx);
+        self.sync_number_locale();
         // The geometry captures are bound to. Native frames recorded it from their fresh
         // `RawInput` in `raw_input_hook` (including hidden logic-only ticks); the epoch is
         // monotonic, so a resize back to the original values is still a new epoch and old pixels

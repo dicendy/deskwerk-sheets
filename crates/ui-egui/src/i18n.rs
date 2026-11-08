@@ -196,6 +196,17 @@ impl Language {
         }
     }
 
+    /// The number and date conventions that go with the language (decimal comma, `31.12.2026`
+    /// in German and `31/12/2026` in French); en-US for every other language.
+    pub fn number_locale(self) -> gridcraft_engine::core::Locale {
+        use gridcraft_engine::core::Locale;
+        match self {
+            Self::De => Locale::De,
+            Self::Fr => Locale::Fr,
+            _ => Locale::En,
+        }
+    }
+
     /// Translates an interface label; untranslated labels fall back to English.
     ///
     /// A label that needs two translations (Home's text "Orientation" vs Page Layout's print
@@ -448,6 +459,16 @@ mod tests {
         assert_eq!(Language::Es.formula_locale(), FormulaLocale::Es);
         assert_eq!(Language::En.formula_locale(), FormulaLocale::En);
         assert_eq!(Language::Fr.formula_locale(), FormulaLocale::En);
+    }
+
+    #[test]
+    fn numbers_follow_german_and_french_only() {
+        use gridcraft_engine::core::Locale;
+        assert_eq!(Language::De.number_locale(), Locale::De);
+        assert_eq!(Language::Fr.number_locale(), Locale::Fr);
+        for l in Language::ALL.into_iter().filter(|l| !matches!(l, Language::De | Language::Fr)) {
+            assert_eq!(l.number_locale(), Locale::En, "{l:?}");
+        }
     }
 
     #[test]
