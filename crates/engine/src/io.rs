@@ -302,7 +302,8 @@ fn read_plain(name: &str, bytes: &[u8], csv_as_text: bool) -> Result<(Workbook, 
     }
     match kind {
         Some(FileKind::Json) => {
-            let mut wb: Workbook = serde_json::from_slice(bytes).map_err(|e| EngineError::Other(format!("bad Deskwerk Sheets JSON workbook: {e}")))?;
+            let mut wb: Workbook =
+                serde_json::from_slice(bytes).map_err(|e| EngineError::Other(format!("bad Deskwerk Sheets JSON workbook: {e}")))?;
             wb.styles.rebuild_index();
             if wb.sheets.is_empty() {
                 // The file's macros are read after this (`macros::load`), so they come along.
