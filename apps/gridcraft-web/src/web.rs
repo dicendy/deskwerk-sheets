@@ -42,8 +42,12 @@ pub fn start() {
         // there is no parent, so that URL on its own stays the normal app with downloads.
         // `data-host="page"` on the canvas opts a page in instead: it runs GridCraft in its own
         // document and talks over DOM `CustomEvent`s on the canvas.
-        let bridge = crate::host::Bridge::detect(&canvas);
+        // `?src=`: a server's workbook, loaded and saved over HTTP (`remote`); it wins over the
+        // host modes.
+        let remote = crate::remote::Remote::from_query();
+        let bridge = if remote.is_some() { None } else { crate::host::Bridge::detect(&canvas) };
         let app_bridge = bridge.clone();
+        let app_remote = remote.clone();
         let result = eframe::WebRunner::new()
             .start(
                 canvas,
@@ -51,8 +55,8 @@ pub fn start() {
                 Box::new(move |cc| {
                     let inbox: Inbox = Inbox::default();
                     let mut session = Session::new();
-                    // In host mode the host sends the workbook to edit; no sample meanwhile.
-                    let q = if app_bridge.is_some() { String::new() } else { query() };
+                    // In host and remote mode the workbook to edit comes later; no sample meanwhile.
+                    let q = if app_bridge.is_some() || app_remote.is_some() { String::new() } else { query() };
                     if let Some(name) = q.split(['?', '&']).find_map(|kv| kv.strip_prefix("sample=")) {
                         let _ = session.execute("file.new", serde_json::json!({"sample": name}));
                     } else if q.contains("sample") {
@@ -61,6 +65,10 @@ pub fn start() {
                     let mut services = services(inbox.clone(), cc.egui_ctx.clone());
                     if let Some(bridge) = &app_bridge {
                         bridge.connect(&mut services, inbox.clone(), cc.egui_ctx.clone());
+                    }
+                    if let Some(remote) = &app_remote {
+                        remote.connect(&mut services, cc.egui_ctx.clone());
+                        remote.load(inbox.clone(), cc.egui_ctx.clone());
                     }
                     let mut app = SheetApp::new(session, services);
                     app.ui.system_theme = true;
@@ -99,13 +107,20 @@ pub fn start() {
                         }
                         bridge.post_ready();
                     }
-                    crate::api::install(&mut app, cc.egui_ctx.clone());
-                    Ok(Box::new(WebShell { app, inbox, bridge: app_bridge, prefs }))
+                    let control = crate::api::install(&mut app, cc.egui_ctx.clone());
+                    if let Some(remote) = &app_remote {
+                        remote.listen(control, cc.egui_ctx.clone());
+                        guard_unload(remote.clone());
+                    }
+                    Ok(Box::new(WebShell { app, inbox, bridge: app_bridge, remote: app_remote, prefs }))
                 }),
             )
             .await;
         if let (Err(e), Some(bridge)) = (&result, &bridge) {
             bridge.post_failed(&format!("{e:?}"));
+        }
+        if let (Ok(()), Some(remote)) = (&result, &remote) {
+            remote.post_ready();
         }
         if let Some(el) = document.get_element_by_id(LOADING_ID) {
             match result {
@@ -128,7 +143,24 @@ struct WebShell {
     app: SheetApp,
     inbox: Inbox,
     bridge: Option<crate::host::Bridge>,
+    remote: Option<std::rc::Rc<crate::remote::Remote>>,
     prefs: crate::prefs::PrefsSync,
+}
+
+/// Leaving the page with unsaved changes, or a save still on its way to the server, asks first.
+fn guard_unload(remote: std::rc::Rc<crate::remote::Remote>) {
+    let Some(window) = web_sys::window() else { return };
+    let on_unload = wasm_bindgen::closure::Closure::<dyn FnMut(web_sys::BeforeUnloadEvent)>::new(move |e: web_sys::BeforeUnloadEvent| {
+        if remote.unsaved() {
+            e.prevent_default();
+            e.set_return_value("unsaved changes");
+        }
+    });
+    if let Err(e) = window.add_event_listener_with_callback("beforeunload", on_unload.as_ref().unchecked_ref()) {
+        log::warn!("couldn't guard unsaved changes: {e:?}");
+    }
+    // The guard lives as long as the page.
+    on_unload.forget();
 }
 
 fn local_storage() -> Option<web_sys::Storage> {
@@ -158,6 +190,9 @@ impl eframe::App for WebShell {
             });
         }
         self.app.logic(ctx);
+        if let Some(remote) = &self.remote {
+            remote.sync(&mut self.app);
+        }
         // Store changed preferences straight away: a reload or closed tab runs no exit code (#1562).
         let changed = self.prefs.changed(&self.app);
         if !changed.is_empty() {
@@ -183,6 +218,9 @@ impl eframe::App for WebShell {
         self.app.ui(ui);
         if let Some(bridge) = &self.bridge {
             bridge.sync(&mut self.app);
+        }
+        if let Some(remote) = &self.remote {
+            remote.sync(&mut self.app);
         }
     }
 }
@@ -346,7 +384,7 @@ fn print_loaded_pdf(iframe: &web_sys::HtmlIFrameElement, url: &str) -> Result<()
     Ok(())
 }
 
-fn mime_for(name: &str) -> &'static str {
+pub(crate) fn mime_for(name: &str) -> &'static str {
     match name.rsplit('.').next().map(str::to_ascii_lowercase).as_deref() {
         Some("xlsx") => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         Some("xlsm") => "application/vnd.ms-excel.sheet.macroEnabled.12",
@@ -364,7 +402,7 @@ fn mime_for(name: &str) -> &'static str {
 }
 
 /// Trigger a browser save dialog or download of `bytes` named after `name`.
-fn download(name: &str, bytes: &[u8]) -> Result<(), String> {
+pub(crate) fn download(name: &str, bytes: &[u8]) -> Result<(), String> {
     let js = |e: wasm_bindgen::JsValue| format!("{e:?}");
     let window = web_sys::window().ok_or("no window")?;
 

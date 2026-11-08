@@ -16,6 +16,8 @@
 //! `window.gridcraft` (`craft-web-api`) is the page command API in every mode: `request`,
 //! `execute`, `commands`, `docInspect`, `uiInspect` and `screenshot` over the control methods
 //! (`api`).
+//! `?src=<url>&save=<url>&token=…&name=…&origin=…` opens a server's workbook and saves it back
+//! over HTTP, telling the framing page with `postMessage` (`remote`); it wins over the host modes.
 //! `?chrome=none|notitlebar|nofiletab` leaves the title bar and/or the File tab undrawn for a host
 //! that embeds the sheet in its own window (see `Chrome`). Preferences (theme, interface size,
 //! editing options…) are kept in `localStorage` (`prefs`).
@@ -29,6 +31,8 @@ mod host;
 mod hostmode;
 #[cfg(any(target_arch = "wasm32", test))]
 mod prefs;
+#[cfg(any(target_arch = "wasm32", test))]
+mod remote;
 #[cfg(target_arch = "wasm32")]
 mod web;
 

@@ -37,6 +37,11 @@ pub struct Services {
     pub paste_image: Option<Box<dyn FnMut() -> Option<image::RgbaImage>>>,
     /// Web: deliver a file to the user (name, bytes).
     pub download: Option<Download>,
+    /// Web: the format File › Save keeps for the workbook it opened with (`csv`, `xlsm`…), so
+    /// Save writes the file it opened rather than an .xlsx copy. Used while the active workbook's
+    /// title still has that extension and the format is one Save writes (xlsx, xlsm, csv, tsv,
+    /// json); otherwise, and without it, Save downloads an .xlsx.
+    pub save_format: Option<String>,
     /// Web: start an asynchronous file pick; the bytes arrive later in `inbox`.
     pub open_async: Option<Box<dyn Fn()>>,
     /// Files delivered asynchronously (name, bytes), opened on the next frame.
