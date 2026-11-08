@@ -12,6 +12,25 @@ use crate::xml::{El, esc, num};
 
 // ---------------------------------------------------------------- reading
 
+/// The plot-area elements [`read_chart`] reads series from (those [`group_kind`] knows), in
+/// any order; kept chart XML is patched in place through the same list (`chart_patch`).
+pub(crate) const PLOT_GROUPS: [&str; 14] = [
+    "barChart",
+    "bar3DChart",
+    "lineChart",
+    "line3DChart",
+    "pieChart",
+    "pie3DChart",
+    "ofPieChart",
+    "doughnutChart",
+    "areaChart",
+    "area3DChart",
+    "scatterChart",
+    "bubbleChart",
+    "radarChart",
+    "stockChart",
+];
+
 fn group_kind(g: &El) -> Option<ChartKind> {
     let grouping = g.child_val("grouping").unwrap_or("standard");
     let stacked = grouping == "stacked";
@@ -363,7 +382,7 @@ pub(crate) fn ref_values(wb: &Workbook, sheet_idx: usize, f: &str) -> Option<Vec
     Some(range.iter().map(|c| sheet.value(c)).collect())
 }
 
-fn is_ref(f: &str) -> bool {
+pub(crate) fn is_ref(f: &str) -> bool {
     matches!(gridcraft_formula::parse(f), Ok(Expr::Ref(_)))
 }
 
@@ -390,7 +409,7 @@ fn chart_name<'a>(wb: &'a Workbook, si: usize, f: &str) -> Option<(Option<usize>
 /// draws the whole chart blank, with no repair prompt (observed in Excel for Windows,
 /// Microsoft 365). A workbook-scoped name is written `[0]!Name`, as Excel writes it, a
 /// sheet-scoped one `Sheet!Name`; an undefined name gets `[0]!`, as the file it came from had.
-fn chart_ref_to_file(wb: &Workbook, si: usize, f: &str) -> String {
+pub(crate) fn chart_ref_to_file(wb: &Workbook, si: usize, f: &str) -> String {
     let on_sheet = |i: usize, n: &str| wb.sheet(i).map(|sh| format!("{}!{n}", gridcraft_formula::quote_sheet(&sh.name)));
     match chart_name(wb, si, f) {
         Some((Some(i), n, _)) => on_sheet(i, &n).unwrap_or_else(|| crate::fmla::text_to_file(f)),
@@ -400,7 +419,7 @@ fn chart_ref_to_file(wb: &Workbook, si: usize, f: &str) -> String {
 }
 
 /// A series name that refers to a defined name (as opposed to literal text that parses as one).
-fn is_defined_name(wb: &Workbook, si: usize, f: &str) -> bool {
+pub(crate) fn is_defined_name(wb: &Workbook, si: usize, f: &str) -> bool {
     chart_name(wb, si, f).is_some_and(|(_, _, d)| d.is_some())
 }
 

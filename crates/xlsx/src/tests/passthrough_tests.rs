@@ -1135,7 +1135,7 @@ fn an_edited_kept_chart_is_written_from_the_model() {
     let chart = formatted_chart_xml();
     let edits: [(&str, Edit); 4] = [
         ("title", |c| c.title = Some("Renamed".into())),
-        ("series range", |c| c.series[0].values = "Data!$B$2:$B$3".into()),
+        ("literal series", |c| c.series[0].values = "{1,2,3}".into()),
         ("kind", |c| c.kind = ChartKind::Line),
         ("legend", |c| c.legend = gridcraft_model::LegendPos::Bottom),
     ];
@@ -1187,6 +1187,105 @@ fn a_kept_chart_naming_a_renamed_or_deleted_sheet_is_written_from_the_model() {
     wb.sheet_mut(1).unwrap().name = "NOTES".into();
     let u = Unpacked::new(&write_xlsx(&wb).unwrap());
     assert_eq!(u.text(&written_chart(&u)), chart, "sheet names compare as Excel does, ignoring case");
+}
+
+/// Sets cells of the first sheet: (row, column, value), zero-based.
+fn set_cells(wb: &mut gridcraft_model::Workbook, cells: &[(u32, u32, gridcraft_core::Value)]) {
+    let sh = wb.sheet_mut(0).unwrap();
+    for (r, c, v) in cells {
+        sh.set_value(gridcraft_core::CellRef::new(*r, *c), v.clone());
+    }
+}
+
+#[test]
+fn a_kept_chart_follows_moved_series_references() {
+    use gridcraft_core::Value;
+    let chart = formatted_chart_xml();
+    let (mut wb, _) = read_xlsx(&embedded_chart_package(&chart, CHART_RELS)).unwrap();
+    // A row inserted above the table, as the engine leaves it: the cells one row down, the
+    // series references with them, the title (on "Notes") where it was.
+    let text = |s: &str| Value::Text(s.into());
+    set_cells(
+        &mut wb,
+        &[
+            (1, 1, text("Sales")),
+            (2, 0, text("Q1")),
+            (2, 1, Value::Number(10.0)),
+            (3, 0, text("Q2")),
+            (3, 1, Value::Number(25.0)),
+            (4, 0, text("Q3")),
+            (4, 1, Value::Number(30.0)),
+        ],
+    );
+    let s = &mut wb.sheet_mut(0).unwrap().charts[0].series[0];
+    s.name = Some("Data!$B$2".into());
+    s.categories = Some("Data!$A$3:$A$5".into());
+    s.values = "Data!$B$3:$B$5".into();
+    let edited = wb.sheet(0).unwrap().charts[0].clone();
+    let out = write_xlsx(&wb).unwrap();
+    let u = Unpacked::new(&out);
+    u.assert_valid();
+    // The kept XML with the new formulas and the value cache refreshed from the cells; nothing
+    // else changed, and the style, colour and user-shape parts are still there.
+    let expected = chart
+        .replace("<c:f>Data!$B$1</c:f>", "<c:f>Data!$B$2</c:f>")
+        .replace("<c:f>Data!$A$2:$A$4</c:f>", "<c:f>Data!$A$3:$A$5</c:f>")
+        .replace("<c:f>Data!$B$2:$B$4</c:f>", "<c:f>Data!$B$3:$B$5</c:f>")
+        .replace("<c:v>20</c:v>", "<c:v>25</c:v>");
+    assert_ne!(expected, chart);
+    assert_eq!(u.text(&written_chart(&u)), expected);
+    assert!(!u.find(CHART_STYLE.as_bytes()).is_empty() && !u.find(CHART_SHAPES.as_bytes()).is_empty());
+    let (wb2, _) = read_xlsx(&out).unwrap();
+    assert!(same_chart(&wb2.sheet(0).unwrap().charts[0], &edited));
+}
+
+#[test]
+fn a_kept_chart_refreshes_the_cache_of_edited_cells() {
+    let chart = formatted_chart_xml();
+    let (mut wb, _) = read_xlsx(&embedded_chart_package(&chart, CHART_RELS)).unwrap();
+    set_cells(&mut wb, &[(2, 1, gridcraft_core::Value::Number(25.5))]);
+    let u = Unpacked::new(&write_xlsx(&wb).unwrap());
+    u.assert_valid();
+    assert_eq!(u.text(&written_chart(&u)), chart.replace("<c:v>20</c:v>", "<c:v>25.5</c:v>"));
+    // A cell emptied leaves its point out, as Excel does.
+    set_cells(&mut wb, &[(2, 1, gridcraft_core::Value::Empty)]);
+    let u = Unpacked::new(&write_xlsx(&wb).unwrap());
+    assert_eq!(u.text(&written_chart(&u)), chart.replace(r#"<c:pt idx="1"><c:v>20</c:v></c:pt>"#, ""));
+}
+
+#[test]
+fn a_kept_chart_follows_a_renamed_sheet() {
+    let chart = formatted_chart_xml();
+    let (mut wb, _) = read_xlsx(&embedded_chart_package(&chart, CHART_RELS)).unwrap();
+    // The rename as the engine makes it: the sheet and the references to it.
+    wb.sheet_mut(0).unwrap().name = "Sales Data".into();
+    let s = &mut wb.sheet_mut(0).unwrap().charts[0].series[0];
+    s.name = Some("'Sales Data'!$B$1".into());
+    s.categories = Some("'Sales Data'!$A$2:$A$4".into());
+    s.values = "'Sales Data'!$B$2:$B$4".into();
+    let u = Unpacked::new(&write_xlsx(&wb).unwrap());
+    u.assert_valid();
+    let written = u.text(&written_chart(&u));
+    assert!(written.contains("prstDash") && written.contains("<c:f>Notes!$A$1</c:f>"), "{written}");
+    assert!(written.contains("<c:f>'Sales Data'!$B$2:$B$4</c:f>") && !written.contains("<c:f>Data!"), "{written}");
+    assert!(written.contains("<c:v>20</c:v>"), "the cache still matches the cells: {written}");
+    assert!(!u.find(CHART_STYLE.as_bytes()).is_empty());
+}
+
+#[test]
+fn a_kept_chart_whose_title_cell_may_have_moved_is_written_from_the_model() {
+    // The title comes from a cell on the sheet whose rows moved: the model doesn't hold that
+    // reference, so it can't follow, and the model writes the chart.
+    let chart = formatted_chart_xml().replace("<c:f>Notes!$A$1</c:f>", "<c:f>Data!$C$1</c:f>");
+    let (mut wb, _) = read_xlsx(&embedded_chart_package(&chart, CHART_RELS)).unwrap();
+    let u = Unpacked::new(&write_xlsx(&wb).unwrap());
+    assert_eq!(u.text(&written_chart(&u)), chart, "nothing moved: kept");
+    wb.sheet_mut(0).unwrap().charts[0].series[0].values = "Data!$B$3:$B$5".into();
+    let u = Unpacked::new(&write_xlsx(&wb).unwrap());
+    u.assert_valid();
+    let written = u.text(&written_chart(&u));
+    assert!(!written.contains("prstDash") && written.contains("Data!$B$3:$B$5"), "{written}");
+    assert!(u.find(CHART_STYLE.as_bytes()).is_empty());
 }
 
 #[test]

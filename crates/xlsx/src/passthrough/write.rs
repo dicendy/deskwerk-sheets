@@ -221,7 +221,7 @@ fn plotted_sheets(q: &PreservedPart) -> Option<Vec<String>> {
 }
 
 /// Sheet names as Excel compares them: the first 31 characters, ignoring ASCII case.
-fn same_sheet(a: &str, b: &str) -> bool {
+pub(super) fn same_sheet(a: &str, b: &str) -> bool {
     a.chars().take(31).collect::<String>().eq_ignore_ascii_case(&b.chars().take(31).collect::<String>())
 }
 
@@ -295,25 +295,57 @@ fn chart_sheet_usable(wb: &Workbook, p: &Preserved, s: &PreservedSheet) -> bool 
         .all(|n| wb.sheets.iter().any(|w| same_sheet(&w.name, &n)))
 }
 
-/// The kept original of the embedded chart `ch` of `sheet`, when it can be written in place of
-/// GridCraft's chart part: the chart is unchanged since it was read (moving or resizing it only
-/// changes the drawing, which GridCraft writes), every sheet the kept formulas name still exists
-/// under the same name (a rename or delete would leave them pointing at nothing), and the kept
-/// XML still parses. `None` means: write the chart from the model.
-pub fn kept_chart<'a>(wb: &Workbook, sheet: &'a Sheet, ch: &Chart) -> Option<&'a PreservedChart> {
+/// A kept chart that can be written in place of GridCraft's chart part (see [`kept_chart`]).
+pub struct KeptChart<'a> {
+    kept: &'a PreservedChart,
+    /// The kept parts, the chart part brought up to date with the model.
+    parts: Vec<PreservedPart>,
+}
+
+/// A chart with its series data blanked, keeping only whether each is there: what kept chart XML
+/// can follow (see [`super::chart_patch`]).
+fn without_refs(mut ch: Chart) -> Chart {
+    for s in &mut ch.series {
+        s.name = s.name.as_ref().map(|_| String::new());
+        s.categories = s.categories.as_ref().map(|_| String::new());
+        s.values = String::new();
+        s.bubble_sizes = s.bubble_sizes.as_ref().map(|_| String::new());
+    }
+    ch
+}
+
+/// The kept original of the embedded chart `ch` of sheet `si`, when it can be written in place of
+/// GridCraft's chart part: the chart is unchanged since it was read but for its series references
+/// (moving or resizing it only changes the drawing, which GridCraft writes), the kept XML follows
+/// the references and refreshes their caches (#1676, #1677), and every sheet the kept formulas
+/// name still exists under the same name (a formula the model doesn't hold, such as a title from
+/// a cell, would otherwise be left pointing at nothing). `None` means: write the chart from the
+/// model.
+pub fn kept_chart<'a>(wb: &Workbook, si: usize, sheet: &'a Sheet, ch: &Chart) -> Option<KeptChart<'a>> {
     let k = sheet.preserved.as_deref()?.charts.iter().find(|k| k.id == ch.id)?;
-    if unplaced(ch) != k.chart || !k.parts.iter().any(|q| normalize(&q.name) == normalize(&k.part)) {
+    let model = unplaced(ch);
+    if without_refs(model.clone()) != without_refs(k.chart.clone()) {
         return None;
     }
-    let names: Vec<Vec<String>> = k.parts.iter().map(plotted_sheets).collect::<Option<_>>()?;
-    names.iter().flatten().all(|n| wb.sheets.iter().any(|w| same_sheet(&w.name, n))).then_some(k)
+    let is_chart = |q: &PreservedPart| normalize(&q.name) == normalize(&k.part);
+    let part = k.parts.iter().find(|q| is_chart(q))?;
+    let edits = super::chart_patch::patch(wb, si, &part.data, &k.chart, &model)?;
+    let mut parts = k.parts.clone();
+    if !edits.is_empty() {
+        let data = super::chart_patch::apply(&part.data, edits)?;
+        for q in parts.iter_mut().filter(|q| is_chart(q)) {
+            q.data = Arc::from(data.as_slice());
+        }
+    }
+    let names: Vec<Vec<String>> = parts.iter().map(plotted_sheets).collect::<Option<_>>()?;
+    names.iter().flatten().all(|n| wb.sheets.iter().any(|w| same_sheet(&w.name, n))).then_some(KeptChart { kept: k, parts })
 }
 
 /// Writes a kept chart (see [`kept_chart`]): the chart part as `name` (the name GridCraft's writer
 /// gives that chart), the parts behind it under fresh names. Returns the id of the drawing's new
 /// relationship to it.
-pub fn write_kept_chart(k: &PreservedChart, name: &str, drawing_rels: &mut Rels, out: &mut Out) -> String {
-    write_parts_named(out, &k.parts, NameMap::from([(normalize(&k.part), name.to_string())]));
+pub fn write_kept_chart(k: &KeptChart<'_>, name: &str, drawing_rels: &mut Rels, out: &mut Out) -> String {
+    write_parts_named(out, &k.parts, NameMap::from([(normalize(&k.kept.part), name.to_string())]));
     drawing_rels.add("chart", &format!("/{name}"))
 }
 

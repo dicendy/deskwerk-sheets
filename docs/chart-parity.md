@@ -1,6 +1,6 @@
 # Chart parity
 
-> **Last reviewed:** 2026-10-18 · **Last updated:** 2026-11-07 · **Change:** minor (chart-data-table keys pass the series index to the shared combo plot-kind rule, restoring compilation after #1150; earlier: doughnut charts: every series is a concentric ring, the first series innermost; hole size and first slice angle kept; rotated slices cover their own sweep; legend names categories; earlier: charts resize from eight handles, chart data tables, legend keys and borders, native XLSX round-trip and print/PDF; earlier: selected chart source outlines stay beneath floating objects) · **Target:** Microsoft Excel (Microsoft 365), Excel for Mac 16.113.4
+> **Last reviewed:** 2026-10-18 · **Last updated:** 2026-11-08 · **Change:** minor (charts opened from XLSX keep their original chart XML and its style, colour and shape parts on save, following moved series references and refreshing value caches; earlier: chart-data-table keys pass the series index to the shared combo plot-kind rule, restoring compilation after #1150; earlier: doughnut charts: every series is a concentric ring, the first series innermost; hole size and first slice angle kept; rotated slices cover their own sweep; legend names categories; earlier: charts resize from eight handles, chart data tables, legend keys and borders, native XLSX round-trip and print/PDF; earlier: selected chart source outlines stay beneath floating objects) · **Target:** Microsoft Excel (Microsoft 365), Excel for Mac 16.113.4
 
 Excel's chart types and chart elements against GridCraft. Part of
 [target-app-parity.md](target-app-parity.md). **Breadth ~50%, ready ~30%, 40–60 h** (estimated).
@@ -81,11 +81,28 @@ Format reference: [Microsoft's DrawingML data table documentation](https://learn
 
 ## XLSX round-trip
 
-Charts are read from and written to DrawingML chart parts, but only the fields the model holds
-survive: anything else (axis scaling, label options, error bars, per-point formats, chartex
-extensions) is lost when GridCraft saves a workbook it opened. That is the main reason charts are
-**~30% ready**: a user who opens an Excel workbook with charts and saves it gets simpler charts
-back.
+Charts are read from and written to DrawingML chart parts. An embedded chart read from a file
+keeps its original chart part, with the chart style, colour and user-shape parts behind it, and
+that part is written back in place of GridCraft's own while the model's chart is unchanged but
+for its position and series references (#1668). So axis scaling, label options, error bars,
+per-point formats, fonts, layout and extensions survive open → edit cells → save:
+
+- Series references that moved (rows or columns inserted or deleted, a cut and paste, a sheet
+  renamed) are rewritten in the kept `<c:f>` elements (#1676), and the number and text caches of
+  the series are rebuilt from the cells when they no longer match (#1677). Nothing else in the
+  part changes; an untouched chart is written back byte for byte.
+- The chart is written from the model instead (losing what the model doesn't hold) when it was
+  edited (type, title, legend, colours, a series added or removed, a series switched between a
+  reference and a literal), when the kept XML doesn't parse, or when a formula outside the series
+  (a title or data label taken from a cell, error bars) names a sheet whose series references
+  moved, since such a formula isn't in the model and can't follow. A formula outside the series on
+  another sheet is kept as it was, not adjusted.
+- Charts created in GridCraft, chartex charts (treemap, sunburst, histogram, box, waterfall,
+  funnel) and kinds the reader doesn't know (surface; dropped with a warning, #2403) are written
+  from the model.
+
+What the model doesn't hold is still not shown on screen: axis bounds, label options and
+per-point formats are kept in the file but drawn with GridCraft's defaults.
 
 Series data, categories and names may refer to defined names, as dynamic (OFFSET) ranges do:
 Excel writes a workbook-scoped name as `[0]!Name` in `<c:f>`. GridCraft reads it as the bare
@@ -96,7 +113,7 @@ are (#1686). Such series get no `numCache`/`strCache` on save (#1690).
 
 ## Work (40–60 h)
 
-1. Preserve unmodelled chart XML on round-trip (keep the original part, patch only edited fields): 6–10 h.
+1. Patch edited fields (title, type, legend) into kept chart XML instead of writing the chart from the model (#1675); adjust formulas outside the series (titles from cells, error bars): 3–5 h.
 2. Axis options, label options, gridlines per axis, legend formatting: 10–15 h.
 3. Error bars; Format Trendline pane (trendlines landed): 4–6 h.
 4. Per-element Format pane parity, smoothed lines, exploded pie, pie/bar of pie, 100% variants: 8–12 h.
@@ -107,6 +124,7 @@ are (#1686). Such series get no `numCache`/`strCache` on save (#1690).
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-11-08 | minor | Embedded charts read from XLSX keep their chart part and style, colour and user-shape parts on save while unedited (#1668, based on #2404); moved series references are rewritten in the kept XML and stale caches rebuilt (#1676, #1677), so inserting rows or renaming a sheet no longer loses chart formatting. Round-trip work item shrinks from 6–10 h to 3–5 h. |
 | 2026-11-07 | minor | Chart-data-table keys use the shared plot-kind helper with their series index after #1150. A focused regression checks the first combo series uses a column key and later series use line keys. No readiness score change. |
 | 2026-11-02 | minor | Charts move and resize from eight handles, each moving only its own edges (#190); resizing leaves the work list (1–2 h, within the 40–60 h rounding) |
 | 2026-11-01 | minor | Chart data tables for column, bar, line, area and compatible combo charts: command/UI controls, formatted source values, blanks, grouped category headers, legend keys, independent borders, shared print/PDF rendering and native c:dTable import/export. Dense tables show a space notice; no readiness score change. |

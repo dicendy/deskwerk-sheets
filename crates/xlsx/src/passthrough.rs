@@ -24,8 +24,12 @@
 //!   Cell references inside kept parts (a control's linked cell, a query table's range, a cell
 //!   mapped to an XML element) are kept as they were, not adjusted to inserted or deleted rows.
 //! - An embedded chart's original XML is written back only while the model's chart still equals
-//!   what was read from it (its position aside) and every sheet its formulas name still exists;
-//!   otherwise GridCraft writes the chart from the model, as it does for charts it created.
+//!   what was read from it (its position and series references aside) and every sheet its
+//!   formulas name still exists; otherwise GridCraft writes the chart from the model, as it does
+//!   for charts it created. Series references that moved (rows inserted, a sheet renamed) are
+//!   rewritten in the kept XML and the caches of the series refreshed from the cells; a formula
+//!   the model doesn't hold (a title from a cell) on a sheet whose series moved can't follow, so
+//!   the chart is then written from the model.
 //! - Strict Open XML files are not passed through (their namespaces differ from what we write).
 //! - Sizes are bounded: per part and per workbook.
 
@@ -49,6 +53,7 @@ use crate::read::Ctx;
 use crate::write::{NS_REL, Out, Rels, XML_DECL};
 use crate::xml::{self, esc_attr};
 
+mod chart_patch;
 mod read;
 mod rebase;
 mod write;
