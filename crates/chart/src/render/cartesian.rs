@@ -259,7 +259,61 @@ pub(super) fn clips(opts: &ChartAxis) -> bool {
     opts.bounds() != (None, None)
 }
 
-fn axis_scales(data: &ChartData, fams: &[Fam], sec: &[bool], spans: &[Vec<Option<(f64, f64)>>], opts: &ChartAxis) -> Vec<(Scale, Fmt)> {
+/// The base of the primary value axis's logarithmic scale, when the chart sets one and the axis
+/// plots values (not only 100% stacks, whose shares stay linear like the secondary axis).
+fn log_axis(opts: &ChartAxis, fams: &[Fam], sec: &[bool]) -> Option<f64> {
+    let linear = fams.iter().zip(sec).all(|(f, s)| *s || is_100(*f));
+    opts.log().filter(|_| !linear)
+}
+
+/// The exponent of `base` that gives `v` (positive), whole when it is within rounding of a whole
+/// number (`1000f64.log(10.0)` is `2.9999999999999996`).
+fn exponent(v: f64, base: f64) -> f64 {
+    let e = v.log(base);
+    let whole = e.round();
+    if (e - whole).abs() < 1e-9 { whole } else { e }
+}
+
+/// `v` in a logarithmic axis's units (its exponent of the base); zero and below fall off the
+/// axis (−∞). A linear axis (`log` `None`) keeps `v`.
+fn axis_value(v: f64, log: Option<f64>) -> f64 {
+    match log {
+        Some(base) if v > 0.0 => exponent(v, base),
+        Some(_) => f64::NEG_INFINITY,
+        None => v,
+    }
+}
+
+/// The primary series' spans in the units of a logarithmic axis: a point at zero or below has no
+/// place on it and is left out, and a column starting at zero starts below the plot.
+fn log_spans(spans: Vec<Vec<Option<(f64, f64)>>>, sec: &[bool], log: Option<f64>) -> Vec<Vec<Option<(f64, f64)>>> {
+    let Some(base) = log else { return spans };
+    let to_log = |sp: Option<(f64, f64)>| sp.filter(|(_, t)| *t > 0.0).map(|(b, t)| (axis_value(b, log), exponent(t, base)));
+    spans
+        .into_iter()
+        .enumerate()
+        .map(|(i, row)| if sec.get(i).copied().unwrap_or(false) { row } else { row.into_iter().map(&to_log).collect() })
+        .collect()
+}
+
+/// A logarithmic scale in exponents of `base`: whole powers around the data (`lo..=hi`, already
+/// exponents) unless the chart fixes a positive bound, a gridline at every power.
+fn log_scale(lo: f64, hi: f64, base: f64, opts: &ChartAxis) -> Scale {
+    let (min, max) = opts.bounds();
+    let lo = min.filter(|v| *v > 0.0).map_or(lo.floor(), |v| exponent(v, base));
+    let hi = max.filter(|v| *v > 0.0).map_or(hi.ceil(), |v| exponent(v, base));
+    let hi = if hi > lo { hi } else { lo + 1.0 };
+    Scale { min: lo, max: hi, step: ((hi - lo) / 50.0).ceil().max(1.0) }
+}
+
+fn axis_scales(
+    data: &ChartData,
+    fams: &[Fam],
+    sec: &[bool],
+    spans: &[Vec<Option<(f64, f64)>>],
+    opts: &ChartAxis,
+    log: Option<f64>,
+) -> Vec<(Scale, Fmt)> {
     // Axis scales.
     let mut axes: Vec<(Scale, Fmt)> = Vec::new();
     for axis in [false, true] {
@@ -269,11 +323,16 @@ fn axis_scales(data: &ChartData, fams: &[Fam], sec: &[bool], spans: &[Vec<Option
         }
         let force_zero = members.iter().any(|i| fams.get(*i).is_some_and(|f| !is_line(*f)));
         let all100 = members.iter().all(|i| fams.get(*i).is_some_and(|f| is_100(*f)));
-        let range = value_range(members.iter().flat_map(|i| {
-            let line = fams.get(*i).is_some_and(|f| is_line(*f));
-            // Lines contribute only their top value, bars both ends (no per-point `Vec`).
-            spans.get(*i).into_iter().flatten().flatten().flat_map(move |(b, t)| [*b, *t].into_iter().skip(usize::from(line)))
-        }));
+        let range = value_range(
+            members
+                .iter()
+                .flat_map(|i| {
+                    let line = fams.get(*i).is_some_and(|f| is_line(*f));
+                    // Lines contribute only their top value, bars both ends (no per-point `Vec`).
+                    spans.get(*i).into_iter().flatten().flatten().flat_map(move |(b, t)| [*b, *t].into_iter().skip(usize::from(line)))
+                })
+                .filter(|v| v.is_finite()),
+        );
         let (lo, hi) = range.unwrap_or((0.0, 0.0));
         let (scale, fmt) = if all100 {
             (Scale { min: if lo < -1e-9 { -1.0 } else { 0.0 }, max: if hi > 1e-9 || lo >= -1e-9 { 1.0 } else { 0.0 }, step: 0.2 }, Fmt::new("0%"))
@@ -282,7 +341,12 @@ fn axis_scales(data: &ChartData, fams: &[Fam], sec: &[bool], spans: &[Vec<Option
             (nice_scale(lo, hi, force_zero), Fmt::new(code))
         };
         // The chart's own axis options apply to the primary axis.
-        let (scale, fmt) = if axis { (scale, fmt) } else { (fixed_scale(scale, opts), opts.number_format.as_deref().map_or(fmt, Fmt::new)) };
+        let own = |fmt: Fmt| opts.number_format.as_deref().map_or(fmt, Fmt::new);
+        let (scale, fmt) = match (axis, log) {
+            (true, _) => (scale, fmt),
+            (false, Some(base)) => (log_scale(lo, hi, base, opts), own(fmt).log(base)),
+            (false, None) => (fixed_scale(scale, opts), own(fmt)),
+        };
         axes.push((scale, fmt));
         if !axis && sec.iter().all(|s| !s) {
             break;
@@ -325,9 +389,11 @@ pub(super) fn cartesian(ctx: &mut Ctx, chart: &Chart, data: &ChartData, area: Bx
     let any_primary = data.series.iter().any(|s| !s.secondary);
     let sec: Vec<bool> = data.series.iter().map(|s| s.secondary && any_primary && !horizontal).collect();
 
-    let spans = series_spans(data, &fams, &sec, ncat);
+    // A logarithmic primary axis plots its series' exponents.
+    let log = log_axis(&chart.value_axis, &fams, &sec);
+    let spans = log_spans(series_spans(data, &fams, &sec, ncat), &sec, log);
 
-    let axes = axis_scales(data, &fams, &sec, &spans, &chart.value_axis);
+    let axes = axis_scales(data, &fams, &sec, &spans, &chart.value_axis, log);
     let Some((s1, f1)) = axes.first() else { return };
     let y1 = ValAxis { scale: *s1, fmt: f1 };
     let y2 = axes.get(1).map(|(s, f)| ValAxis { scale: *s, fmt: f });
@@ -480,8 +546,9 @@ pub(super) fn cartesian(ctx: &mut Ctx, chart: &Chart, data: &ChartData, area: Bx
             continue;
         }
         let sc = scale_of(i);
+        let lg = log.filter(|_| !sec.get(i).copied().unwrap_or(false));
         let pts: Vec<(f64, f64)> = s.values.iter().take(ncat).enumerate().filter_map(|(j, v)| v.map(|v| ((j + 1) as f64, v))).collect();
-        let frac = |x: f64, y: f64| ((x - 0.5) / ncat_slots as f64, (y - sc.min) / (sc.max - sc.min));
+        let frac = |x: f64, y: f64| ((x - 0.5) / ncat_slots as f64, (axis_value(y, lg) - sc.min) / (sc.max - sc.min));
         let px = |(fx, fy): (f64, f64)| {
             if horizontal {
                 [plot.x + fy as f32 * plot.w, plot.bottom() - fx as f32 * plot.h]

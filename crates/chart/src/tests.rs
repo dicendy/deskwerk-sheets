@@ -52,6 +52,7 @@ fn chart(kind: ChartKind) -> Chart {
         hole_size: 75,
         first_slice_angle: 0,
         value_axis: Default::default(),
+        data_label_percent: false,
         x_title: Some("Quarter".into()),
         y_title: Some("Revenue".into()),
         source: None,
@@ -1689,7 +1690,8 @@ fn fixed_value_axis_sets_the_ticks_their_format_and_clips() {
     for kind in [ChartKind::ColumnClustered, ChartKind::Line, ChartKind::BarClustered, ChartKind::Scatter] {
         let mut c = chart(kind);
         c.data_labels = false;
-        c.value_axis = ChartAxis { min: Some(-10000.0), max: Some(45000.0), major_unit: Some(10000.0), number_format: Some("0.0".into()) };
+        c.value_axis =
+            ChartAxis { min: Some(-10000.0), max: Some(45000.0), major_unit: Some(10000.0), number_format: Some("0.0".into()), log_base: None };
         let prims = render(&c, &sample(kind), w, h, &m);
         assert_sane(&prims, w, h);
         let t = texts(&prims);
@@ -1708,4 +1710,97 @@ fn reversed_value_axis_bounds_fall_back_to_automatic() {
     c.value_axis = ChartAxis { min: Some(5.0), max: Some(1.0), ..ChartAxis::default() };
     let d = sample(ChartKind::ColumnClustered);
     assert_eq!(render(&c, &d, 640.0, 400.0, &m), render(&chart(ChartKind::ColumnClustered), &d, 640.0, 400.0, &m));
+}
+
+fn one_series(kind: ChartKind, values: &[f64]) -> ChartData {
+    ChartData {
+        category_levels: vec![],
+        palette: vec![],
+        categories: (1..=values.len()).map(|i| format!("C{i}")).collect(),
+        series: vec![series("S", values, [20, 96, 130, 255], kind)],
+    }
+}
+
+#[test]
+fn pie_and_doughnut_slices_can_show_their_percentage() {
+    let m = ApproxMeasure;
+    let (w, h) = (640.0, 400.0);
+    for kind in [ChartKind::Pie, ChartKind::Doughnut] {
+        let d = one_series(kind, &[50.0, 25.0, 15.0, 10.0]);
+        let mut c = chart(kind);
+        // An empty title, not `None`: a lone series would title the chart with its name.
+        c.title = Some(String::new());
+        c.legend = LegendPos::None;
+        c.data_labels = false;
+        c.data_label_percent = true;
+        let prims = render(&c, &d, w, h, &m);
+        assert_sane(&prims, w, h);
+        let t = texts(&prims);
+        for label in ["50%", "25%", "15%", "10%"] {
+            assert!(t.contains(&label), "{kind:?}: no {label} in {t:?}");
+        }
+        assert!(!t.iter().any(|s| s.starts_with('$')), "{kind:?}: {t:?}");
+        // Value and percentage together, as Excel joins them.
+        c.data_labels = true;
+        let prims = render(&c, &d, w, h, &m);
+        assert!(texts(&prims).contains(&"$50, 50%"), "{kind:?}: {:?}", texts(&prims));
+        // Neither: no labels at all.
+        c.data_labels = false;
+        c.data_label_percent = false;
+        assert!(texts(&render(&c, &d, w, h, &m)).is_empty(), "{kind:?}");
+    }
+}
+
+#[test]
+fn a_logarithmic_value_axis_ticks_every_power() {
+    let m = ApproxMeasure;
+    let (w, h) = (640.0, 400.0);
+    for kind in [ChartKind::ColumnClustered, ChartKind::Line, ChartKind::BarClustered, ChartKind::AreaStacked, ChartKind::LineMarkers] {
+        // Zero and below have no place on a log axis: they are left out, without upsetting it.
+        let d = one_series(kind, &[5.0, 50.0, 0.0, 500.0, -3.0, 50000.0]);
+        let mut c = chart(kind);
+        c.data_labels = false;
+        c.value_axis = ChartAxis { number_format: Some("General".into()), log_base: Some(10.0), ..ChartAxis::default() };
+        let prims = render(&c, &d, w, h, &m);
+        assert_sane(&prims, w, h);
+        let t = texts(&prims);
+        for label in ["1", "10", "100", "1000", "10000", "100000"] {
+            assert!(t.contains(&label), "{kind:?}: no {label} in {t:?}");
+        }
+        assert!(!t.iter().any(|s| *s == "0" || *s == "20000" || *s == "1000000"), "{kind:?}: {t:?}");
+        // Fixed bounds are powers too; zero can't be one and is left automatic.
+        c.value_axis.min = Some(10.0);
+        c.value_axis.max = Some(1000.0);
+        let t = texts(&render(&c, &d, w, h, &m)).into_iter().map(str::to_string).collect::<Vec<_>>();
+        assert!(t.iter().any(|s| s == "10") && t.iter().any(|s| s == "1000"), "{kind:?}: {t:?}");
+        assert!(!t.iter().any(|s| s == "1" || s == "10000"), "{kind:?}: {t:?}");
+        c.value_axis.min = Some(0.0);
+        let t = texts(&render(&c, &d, w, h, &m)).into_iter().map(str::to_string).collect::<Vec<_>>();
+        assert!(t.iter().any(|s| s == "1") && !t.iter().any(|s| s == "0"), "{kind:?}: {t:?}");
+    }
+    // A base outside Excel's 2–1000 is a linear axis.
+    let d = one_series(ChartKind::ColumnClustered, &[5.0, 50.0, 500.0]);
+    let mut c = chart(ChartKind::ColumnClustered);
+    c.value_axis.log_base = Some(1.0);
+    assert_eq!(render(&c, &d, w, h, &m), render(&chart(ChartKind::ColumnClustered), &d, w, h, &m));
+}
+
+#[test]
+fn a_logarithmic_axis_leaves_the_secondary_axis_linear() {
+    let m = ApproxMeasure;
+    let (w, h) = (640.0, 400.0);
+    let mut d = one_series(ChartKind::ColumnClustered, &[10.0, 1000.0, 100000.0]);
+    let mut s = series("T", &[1.0, 2.0, 3.0], [200, 80, 40, 255], ChartKind::Line);
+    s.secondary = true;
+    s.number_format = "General".into();
+    d.series.push(s);
+    let mut c = chart(ChartKind::Combo);
+    c.data_labels = false;
+    c.value_axis = ChartAxis { number_format: Some("General".into()), log_base: Some(10.0), ..ChartAxis::default() };
+    let prims = render(&c, &d, w, h, &m);
+    assert_sane(&prims, w, h);
+    let t = texts(&prims);
+    for label in ["10", "100", "10000", "100000", "0.5", "2.5"] {
+        assert!(t.contains(&label), "no {label} in {t:?}");
+    }
 }

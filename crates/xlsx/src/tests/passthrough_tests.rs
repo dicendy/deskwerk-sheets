@@ -1129,15 +1129,55 @@ fn a_moved_and_resized_kept_chart_keeps_its_xml() {
 }
 
 #[test]
+fn a_kept_chart_with_a_new_title_legend_or_type_keeps_its_formatting() {
+    use gridcraft_model::{Chart, ChartKind, LegendPos};
+    type Edit = fn(&mut Chart);
+    let chart = formatted_chart_xml();
+    let edits: [(&str, Edit); 5] = [
+        ("title", |c| c.title = Some("Renamed".into())),
+        ("no title", |c| c.title = None),
+        ("kind", |c| c.kind = ChartKind::Line),
+        ("legend", |c| c.legend = LegendPos::Bottom),
+        ("all three", |c| {
+            c.title = Some("Bars".into());
+            c.kind = ChartKind::BarStacked;
+            c.legend = LegendPos::None;
+        }),
+    ];
+    for (what, edit) in edits {
+        let (mut wb, _) = read_xlsx(&embedded_chart_package(&chart, CHART_RELS)).unwrap();
+        edit(&mut wb.sheet_mut(0).unwrap().charts[0]);
+        let edited = wb.sheet(0).unwrap().charts[0].clone();
+        let out = write_xlsx(&wb).unwrap();
+        let u = Unpacked::new(&out);
+        u.assert_valid();
+        let written = u.text(&written_chart(&u));
+        // The series dash, the point colour, the chart-wide font and the style parts stay.
+        for kept in ["prstDash", "C00000", "sz=\"1400\"", "userShapes"] {
+            assert!(written.contains(kept), "{what}: {kept} in {written}");
+        }
+        assert!(!u.find(CHART_STYLE.as_bytes()).is_empty() && !u.find(CHART_SHAPES.as_bytes()).is_empty(), "{what}");
+        // The title from a cell goes only when the title is edited.
+        assert_eq!(written.contains("Notes!"), edited.title.as_deref() == Some("Quarterly"), "{what}");
+        let (wb2, _) = read_xlsx(&out).unwrap();
+        let back = &wb2.sheet(0).unwrap().charts[0];
+        assert_eq!((&back.title, back.kind, back.legend), (&edited.title, edited.kind, edited.legend), "{what}");
+        assert_eq!(back.series[0].values, edited.series[0].values, "{what}");
+        // Saved again, the edited chart is kept as written.
+        let again = Unpacked::new(&write_xlsx(&wb2).unwrap());
+        assert_eq!(again.text(&written_chart(&again)), written, "{what}");
+    }
+}
+
+#[test]
 fn an_edited_kept_chart_is_written_from_the_model() {
     use gridcraft_model::{Chart, ChartKind};
     type Edit = fn(&mut Chart);
     let chart = formatted_chart_xml();
-    let edits: [(&str, Edit); 4] = [
-        ("title", |c| c.title = Some("Renamed".into())),
+    let edits: [(&str, Edit); 3] = [
         ("literal series", |c| c.series[0].values = "{1,2,3}".into()),
-        ("kind", |c| c.kind = ChartKind::Line),
-        ("legend", |c| c.legend = gridcraft_model::LegendPos::Bottom),
+        ("pie", |c| c.kind = ChartKind::Pie),
+        ("data labels", |c| c.data_labels = true),
     ];
     for (what, edit) in edits {
         let (mut wb, _) = read_xlsx(&embedded_chart_package(&chart, CHART_RELS)).unwrap();
@@ -1163,6 +1203,35 @@ fn an_edited_kept_chart_is_written_from_the_model() {
     let u = Unpacked::new(&write_xlsx(&wb).unwrap());
     u.assert_valid();
     assert!(u.find(chart.as_bytes()).is_empty() && u.find(CHART_STYLE.as_bytes()).is_empty());
+}
+
+#[test]
+fn a_surface_chart_is_kept_byte_for_byte() {
+    use gridcraft_model::ChartKind;
+    let chart = format!(
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<c:chartSpace xmlns:c="{NS_C}" xmlns:a="{NS_A}" xmlns:r="{NS_R}"><c:chart><c:autoTitleDeleted val="1"/><c:view3D><c:rotX val="15"/><c:rotY val="20"/><c:rAngAx val="0"/></c:view3D><c:plotArea><c:layout/><c:surface3DChart><c:wireframe val="0"/><c:ser><c:idx val="0"/><c:order val="0"/><c:tx><c:strRef><c:f>Data!$B$1</c:f></c:strRef></c:tx><c:spPr><a:solidFill><a:srgbClr val="70AD47"/></a:solidFill></c:spPr><c:cat><c:strRef><c:f>Data!$A$2:$A$4</c:f></c:strRef></c:cat><c:val><c:numRef><c:f>Data!$B$2:$B$4</c:f></c:numRef></c:val></c:ser><c:bandFmts/><c:axId val="1"/><c:axId val="2"/><c:axId val="3"/></c:surface3DChart><c:catAx><c:axId val="1"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="b"/><c:crossAx val="2"/></c:catAx><c:valAx><c:axId val="2"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="l"/><c:crossAx val="1"/></c:valAx><c:serAx><c:axId val="3"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="b"/><c:crossAx val="2"/></c:serAx></c:plotArea><c:legend><c:legendPos val="r"/><c:overlay val="0"/></c:legend><c:plotVisOnly val="1"/></c:chart></c:chartSpace>"#
+    );
+    let (wb, rep) = read_xlsx(&embedded_chart_package(&chart, CHART_RELS)).unwrap();
+    assert!(!rep.warnings.iter().any(|w| w.contains("chart")), "{:?}", rep.warnings);
+    // Shown as lines over the same data.
+    let ch = &wb.sheet(0).unwrap().charts[0];
+    assert_eq!((ch.kind, ch.series.len(), ch.series[0].values.as_str()), (ChartKind::Line, 1, "Data!$B$2:$B$4"));
+    let u = Unpacked::new(&write_xlsx(&wb).unwrap());
+    u.assert_valid();
+    assert_eq!(u.text(&written_chart(&u)), chart);
+    // A title is added in place; the surface stays.
+    let mut titled = wb.clone();
+    titled.sheet_mut(0).unwrap().charts[0].title = Some("Terrain".into());
+    let u = Unpacked::new(&write_xlsx(&titled).unwrap());
+    let written = u.text(&written_chart(&u));
+    assert!(written.contains("<c:surface3DChart><c:wireframe") && written.contains("<a:t>Terrain</a:t>"), "{written}");
+    // Another type is written from the model.
+    let mut columns = wb.clone();
+    columns.sheet_mut(0).unwrap().charts[0].kind = ChartKind::ColumnClustered;
+    let u = Unpacked::new(&write_xlsx(&columns).unwrap());
+    let written = u.text(&written_chart(&u));
+    assert!(!written.contains("surface") && written.contains("<c:barChart>"), "{written}");
 }
 
 #[test]

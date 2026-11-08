@@ -136,6 +136,7 @@ pub fn read_chartex(root: &El) -> Option<Chart> {
         hole_size: 75,
         first_slice_angle: 0,
         value_axis: Default::default(),
+        data_label_percent: false,
         x_title: axis_title("0"),
         y_title: axis_title("1"),
         source: None,

@@ -70,6 +70,7 @@ pub(super) fn insert_pivot_chart(s: &mut Session, p: &Json) -> Result<Json> {
         hole_size: 75,
         first_slice_angle: 0,
         value_axis: Default::default(),
+        data_label_percent: false,
         style: 1,
         x_title: None,
         y_title: None,

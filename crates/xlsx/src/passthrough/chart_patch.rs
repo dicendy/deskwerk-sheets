@@ -18,23 +18,23 @@ use crate::chart::{PLOT_GROUPS, chart_ref_to_file, is_defined_name, is_ref, ref_
 pub(super) type Edit = (Range<usize>, String);
 
 /// An element of the kept part.
-struct Node {
+pub(super) struct Node {
     /// The qualified name (`c:numCache`), for writing a replacement with the same prefix.
-    qname: String,
-    local: String,
-    attrs: Vec<(String, String)>,
+    pub(super) qname: String,
+    pub(super) local: String,
+    pub(super) attrs: Vec<(String, String)>,
     /// From the `<` of the start tag to the `>` of the end tag.
-    outer: Range<usize>,
+    pub(super) outer: Range<usize>,
     /// Between the tags; empty for an empty element.
-    inner: Range<usize>,
-    empty: bool,
-    kids: Vec<usize>,
+    pub(super) inner: Range<usize>,
+    pub(super) empty: bool,
+    pub(super) kids: Vec<usize>,
 }
 
 /// The elements of a part with their byte ranges, the root first.
-struct Doc<'a> {
-    text: &'a str,
-    nodes: Vec<Node>,
+pub(super) struct Doc<'a> {
+    pub(super) text: &'a str,
+    pub(super) nodes: Vec<Node>,
 }
 
 fn new_node(e: &BytesStart<'_>, outer: Range<usize>, empty: bool) -> Node {
@@ -55,7 +55,7 @@ fn new_node(e: &BytesStart<'_>, outer: Range<usize>, empty: bool) -> Node {
 
 impl<'a> Doc<'a> {
     /// `None` when the part is not well-formed, nests too deeply or holds too many elements.
-    fn parse(text: &'a str) -> Option<Doc<'a>> {
+    pub(super) fn parse(text: &'a str) -> Option<Doc<'a>> {
         let mut reader = Reader::from_str(text);
         let mut nodes: Vec<Node> = vec![];
         let mut stack: Vec<usize> = vec![];
@@ -93,35 +93,35 @@ impl<'a> Doc<'a> {
         (stack.is_empty() && !nodes.is_empty()).then_some(Doc { text, nodes })
     }
 
-    fn node(&self, i: usize) -> Option<&Node> {
+    pub(super) fn node(&self, i: usize) -> Option<&Node> {
         self.nodes.get(i)
     }
 
     /// The first child of `i` with the local name `local`.
-    fn kid(&self, i: usize, local: &str) -> Option<usize> {
+    pub(super) fn kid(&self, i: usize, local: &str) -> Option<usize> {
         self.kids(i, local).next()
     }
 
-    fn kids<'s>(&'s self, i: usize, local: &'s str) -> impl Iterator<Item = usize> + 's {
+    pub(super) fn kids<'s>(&'s self, i: usize, local: &'s str) -> impl Iterator<Item = usize> + 's {
         self.node(i).map(|n| n.kids.as_slice()).unwrap_or_default().iter().copied().filter(move |k| self.node(*k).is_some_and(|n| n.local == local))
     }
 
-    fn attr(&self, i: usize, key: &str) -> Option<&str> {
+    pub(super) fn attr(&self, i: usize, key: &str) -> Option<&str> {
         self.node(i)?.attrs.iter().find(|(k, _)| k == key).map(|(_, v)| v.as_str())
     }
 
     /// The text of an element, entities resolved.
-    fn text_of(&self, i: usize) -> Option<String> {
+    pub(super) fn text_of(&self, i: usize) -> Option<String> {
         self.text.get(self.node(i)?.inner.clone()).map(unescape)
     }
 
     /// The qualified-name prefix of an element with its colon (`c:`), or nothing.
-    fn prefix(&self, i: usize) -> &str {
+    pub(super) fn prefix(&self, i: usize) -> &str {
         self.node(i).and_then(|n| n.qname.rfind(':').and_then(|c| n.qname.get(..=c))).unwrap_or("")
     }
 
     /// The edit that sets the text of element `i` to the escaped `text`.
-    fn set_text(&self, i: usize, text: &str) -> Option<Edit> {
+    pub(super) fn set_text(&self, i: usize, text: &str) -> Option<Edit> {
         let n = self.node(i)?;
         if n.empty {
             let q = &n.qname;
