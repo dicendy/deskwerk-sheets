@@ -1,9 +1,12 @@
 # Releasing Deskwerk Sheets
 
-Every push to the `release` branch runs `.github/workflows/release.yml`. The workflow builds
-signed installers for macOS, Windows, Linux, FreeBSD and the web, then creates or updates a
-**draft** GitHub Release named `Deskwerk Sheets v<version>`. Nobody sees a draft until a maintainer
-publishes it.
+> **This fork's workflow:** a pushed `v<version>` tag (or a manual run) runs
+> `.github/workflows/release.yml`, which builds Linux x86_64, web, Windows x64 and macOS packages
+> with the scripts in `packaging/` and drafts a GitHub Release `Deskwerk Sheets v<version>`.
+> Signing secrets are plain repository secrets and optional. How to cut a release, test runs and
+> the secret list: [`packaging/RELEASING.md`](../packaging/RELEASING.md). The rest of this page
+> describes upstream GridCraft's fuller pipeline (`release` branch and environment, FreeBSD,
+> Flatpak, arm64, riscv64) and is kept as reference for what is not ported yet.
 
 This process comes from upstream GridCraft (by the ArtCraft team) and was renamed. User-facing names say
 **Deskwerk Sheets**. Files, binaries and ids stay lowercase
@@ -83,7 +86,7 @@ and upload their artifacts, the environment refuses macOS and Windows, and no re
 | Linux riscv64 | `deskwerk-sheets-<v>-linux-riscv64.tar.gz` (cross-compiled, glibc >= 2.39; CLI smoke-tested under QEMU) | `ubuntu-24.04` |
 | Flatpak x86_64, aarch64 | `deskwerk-sheets-<v>-linux-<arch>.flatpak` (repackages the Linux tarball) | `ubuntu-24.04`, `ubuntu-24.04-arm` |
 | FreeBSD 14 x86_64 | `deskwerk-sheets-<v>-freebsd-x86_64.tar.gz` | FreeBSD 14.3 VM (`freebsd.yml`, called by `release.yml`) |
-| Web | `gridcraft-web-<v>.zip` (static site; see [`packaging/web/README.md`](../packaging/web/README.md)) | `ubuntu-latest` |
+| Web | `deskwerk-sheets-web-<v>.zip` (static site; see [`packaging/web/README.md`](../packaging/web/README.md)) | `ubuntu-latest` |
 
 ### macOS
 

@@ -1,8 +1,8 @@
 # Hosting GridCraft for the web
 
 
-`gridcraft-web-<version>.zip` (from the GitHub release, or `packaging/web/package.sh`) holds a
-static site in `gridcraft-web-<version>/`:
+`deskwerk-sheets-web-<version>.zip` (from the GitHub release, or `packaging/web/package.sh`) holds a
+static site in `deskwerk-sheets-web-<version>/`:
 
 | File | What it is |
 |---|---|
