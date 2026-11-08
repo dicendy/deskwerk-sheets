@@ -11,10 +11,12 @@ use serde::{Deserialize, Serialize};
 
 mod cs;
 mod de;
+mod de_functions;
 mod el;
 mod es;
 mod es_functions;
 mod fr;
+mod fr_functions;
 mod it;
 mod ja;
 mod ko;
@@ -186,7 +188,12 @@ impl Language {
     }
 
     pub fn formula_locale(self) -> gridcraft_engine::formula::FormulaLocale {
-        if self == Self::Es { gridcraft_engine::formula::FormulaLocale::Es } else { gridcraft_engine::formula::FormulaLocale::En }
+        use gridcraft_engine::formula::FormulaLocale;
+        match self {
+            Self::Es => FormulaLocale::Es,
+            Self::De => FormulaLocale::De,
+            _ => FormulaLocale::En,
+        }
     }
 
     /// Translates an interface label; untranslated labels fall back to English.
@@ -243,6 +250,8 @@ impl Language {
     fn function_help(self) -> Option<(HelpTable, HelpTable)> {
         match self {
             Self::Es => Some((es_functions::DESCRIPTIONS, es_functions::ARGUMENTS)),
+            Self::De => Some((de_functions::DESCRIPTIONS, de_functions::ARGUMENTS)),
+            Self::Fr => Some((fr_functions::DESCRIPTIONS, fr_functions::ARGUMENTS)),
             _ => None,
         }
     }
@@ -430,6 +439,15 @@ mod tests {
         assert_eq!(Language::from_tag("RU_ru"), Some(Language::Ru));
         assert_eq!(Language::from_tag("de-DE"), Some(Language::De));
         assert_eq!(Language::from_tag("de_AT"), Some(Language::De));
+    }
+
+    #[test]
+    fn formula_syntax_follows_the_languages_with_a_table() {
+        use gridcraft_engine::formula::FormulaLocale;
+        assert_eq!(Language::De.formula_locale(), FormulaLocale::De);
+        assert_eq!(Language::Es.formula_locale(), FormulaLocale::Es);
+        assert_eq!(Language::En.formula_locale(), FormulaLocale::En);
+        assert_eq!(Language::Fr.formula_locale(), FormulaLocale::En);
     }
 
     #[test]

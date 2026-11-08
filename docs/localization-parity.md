@@ -1,6 +1,6 @@
 # Localization parity
 
-> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-23 · **Change:** minor (missing translations are listed by `cargo xtask i18n-report` and never fail a check) · **Target:** Microsoft Excel (Microsoft 365), Excel for Mac 16.113.4
+> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-31 · **Change:** minor (German formula entry) · **Target:** Microsoft Excel (Microsoft 365), Excel for Mac 16.113.4
 
 Per-language status against Excel, which ships its UI in dozens of languages (Windows language
 packs cover 100+), with localized function names, argument separators, number and date formats,
@@ -37,10 +37,11 @@ right-to-left sheets and full complex-script support. Part of
 - **About 2,200 user-visible strings** in all (heuristic source scan: ~1,700 UI and command
   strings plus ~500 function descriptions), so the ribbon-only languages cover **~12%** and
   Japanese and Portuguese **~43%** (measured count / estimated total).
-- **en-US only formulas and formats.** Function names, `,` argument separator, `.` decimal
-  separator, en-US number and date formats (`crates/numfmt` says "en-US only"). Users ask for
-  localized function names and `;` separators (#45). German with localized numbers and formulas
-  is in PR #163 (open).
+- **Mostly en-US formulas and formats.** Number and date formats are en-US (`crates/numfmt`
+  says "en-US only"). Formula entry is localized for Spanish (13 function names, #45) and German
+  (all 420 function names German Excel translates, `;` arguments, decimal commas, `.` between
+  array columns, error values in formulas; [formula-input.md](formula-input.md)); error values
+  shown as cell results and table specifiers stay English. German numbers and dates are in PR #1201 (open).
 - **Script support.** System-font fallback for CJK, Thai and Hebrew landed in #38 (closes #32;
   #142 is still open pending confirmation). Native CJK fallback also probes Flatpak's read-only
   `/run/host/fonts`, `/run/host/local-fonts` and `/run/host/user-fonts` layouts, so installed
@@ -73,13 +74,13 @@ separators, number/date formats, machine translation with agent review, and scri
 | Spanish | es | 0 (0%) | no | Latin: yes | no | none | 6–10 h |
 | Hindi | hi | 0 (0%) | no | Devanagari: **no shaping** | no | none | 12–18 h |
 | Arabic | ar | 0 (0%) | no | **no shaping, no RTL UI**; Sheet Right-to-Left mirrors the grid (#146) | no | none | 25–35 h |
-| French | fr | 0 (0%) | no | Latin: yes | no | none | 6–10 h |
+| French | fr | 1,274 (every key the other catalogs have) | dialogs, messages, tooltips | Latin: yes | no | menus, File view, dialogs, messages | 4–6 h |
 | Portuguese | pt-BR | 943 (~43%) | dialogs and tooltips (dialogs take effect with #669) | Latin: yes | no | menus, File view, dialogs | 2–4 h |
 | Indonesian | id | 0 (0%) | no | Latin: yes | no | none | 5–8 h |
 | Japanese | ja | 268 (~12%) | no | CJK system-font fallback; IME unverified; no furigana display, but phonetic runs (ふりがな) survive an XLSX open + save | no | menus only | 8–12 h |
 | Japanese | ja | 943 (~43%) | dialogs and messages | CJK system-font fallback; IME unverified; no furigana display | no | menus, File view, dialogs, messages | 3–5 h |
 | Japanese | ja | 268 (~12%) | no | CJK system-font fallback; the theme's East Asian typeface (`<a:ea>`) survives open + save (rendering does not use it yet); IME unverified; no furigana display | no | menus only | 8–12 h |
-| German | de | 266 (~12%) | no | Latin: yes | no | menus only | 4–8 h |
+| German | de | 1,253 (every key the other catalogs have, plus UI-only labels) | dialogs, messages, tooltips | Latin: yes | `;` arguments, decimal comma, 420 function names, error values | menus, File view, dialogs, messages | 2–4 h |
 | Italian | it | 971 (~44%) | dialogs, tooltips, pivot pane | Latin: yes | no | menus, File view, dialogs, pivot pane | 3–5 h |
 | Korean | ko | 266 (~12%) | no | Hangul via the CJK fallback; IME unverified | no | menus only | 6–10 h |
 | Vietnamese | vi | 0 (0%) | no | Latin with stacked diacritics: unverified | no | none | 6–10 h |
@@ -110,6 +111,9 @@ language (none so far) and of localized function names.
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-11-08 | minor | French catalog (`i18n/fr.rs`) covers every key the other catalogs translate: 462 → 1,274 keys. Ported from storytold/gridcraft#2965, with a few rows from #3448 and #2655 and the macro editor, window and Advanced Filter labels written here |
+| 2026-11-08 | minor | German catalog (`i18n/de.rs`) covers every key the other catalogs translate plus the labels only the running UI showed (window arranging, macro editor steps, Resize Table): 494 → 1,253 keys. Ported from storytold/gridcraft#3034 |
+| 2026-10-31 | minor | German formula entry and display: Deutsch as the interface language selects German function names (420, observed in German Excel for PR #1201), `WAHR`/`FALSCH`, `;` arguments, decimal commas, `.` between array columns and German error values in formulas (`#WERT!`, `#NV`); Spanish and German share one per-language table instead of Spanish-only branches |
 | 2026-10-23 | minor | Missing translations are reported, never a failure: `cargo xtask i18n-report` prints, per language, the strings other catalogs translate and it lacks (plus Spanish function help rows keyed by English the function catalog no longer has) and always passes; `cargo xtask ci` runs it first. Coverage and per-language parity tests and tests of one language's exact wording are gone; UI tests take the expected text from the catalog. Duplicate-key, placeholder, context-prefix and line-shape checks stay |
 | 2026-10-21 | minor | Romanian interface (`ro`, Română): 970 labels covering every key of the other catalogs (`crates/ui-egui/src/i18n/ro.rs`), `ro-*` system locales, the View-tab switcher and `app.language.set`; context keys show no prefix (File › Options test). English formulas and formats; AI-assisted draft pending native-speaker review |
 | 2026-10-20 | minor | Japanese: furigana (`rPh` phonetic runs and `<phoneticPr>` in `xl/sharedStrings.xml`) is no longer deleted by an open + save; it is kept on the workbook and written back (a `<phoneticPr>` without runs is kept too, while duplicate texts with different readings keep only the first, reported on open). Display of the readings is still missing (`crates/xlsx/src/tests/phonetic_tests.rs`) |
