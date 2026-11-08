@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- A server's link carries its token (`?src=…&token=`): never send it on as a referrer. -->
+  <meta name="referrer" content="no-referrer">
   <title>Deskwerk Sheets</title>
   <link data-trunk rel="icon" href="../../assets/app-icon/gridcraft.ico" />
   <link data-trunk rel="rust" data-bin="gridcraft-web" data-wasm-opt="z" data-weak-refs />

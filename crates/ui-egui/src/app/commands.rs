@@ -367,6 +367,23 @@ impl SheetApp {
         self.session.active().and_then(|d| d.wb.active().map(|s| s.is_protected())).unwrap_or(false)
     }
 
+    /// The format a web Save writes: the one asked for (`{"format": "xlsx"}` from Backstage
+    /// Save As), else the one the workbook was opened in (`Services::save_format`) while its
+    /// title still has that extension, else xlsx.
+    fn web_save_format(&self, params: &Json) -> String {
+        const WRITES: [&str; 5] = ["xlsx", "xlsm", "csv", "tsv", "json"];
+        let writable = |f: &str| WRITES.iter().any(|w| w.eq_ignore_ascii_case(f));
+        if let Some(format) = params.get("format").and_then(Json::as_str).filter(|&f| writable(f)) {
+            return format.to_ascii_lowercase();
+        }
+        let title = self.session.active().map(|d| d.display_title()).unwrap_or_default();
+        let ext = std::path::Path::new(&title).extension().and_then(|e| e.to_str()).unwrap_or_default();
+        match &self.services.save_format {
+            Some(format) if writable(format.as_str()) && format.eq_ignore_ascii_case(ext) => format.to_ascii_lowercase(),
+            _ => "xlsx".into(),
+        }
+    }
+
     pub fn open_dialog(&mut self, name: &str, params: Json) {
         if let Err(e) = self.commit_text_box_edit() {
             self.message = Some(("Text Box".into(), clean_error(&e)));
@@ -411,6 +428,7 @@ impl SheetApp {
                 }
             }
             "saveAs" => {
+                let format = self.web_save_format(&params);
                 let suggested = self.session.active().map(|d| d.display_title()).unwrap_or_else(|| "Book1".into());
                 if let Some(pick) = &self.services.pick_save {
                     if let Some(path) = pick(&suggested) {
@@ -418,7 +436,7 @@ impl SheetApp {
                         self.run_or_alert("file.save", json!({"path": path}));
                     }
                 } else if self.services.download.is_some()
-                    && let Ok(r) = self.run("file.saveBytes", json!({"format": "xlsx"}))
+                    && let Ok(r) = self.run("file.saveBytes", json!({ "format": format }))
                     && let Some(dl) = &self.services.download
                     && let Some(b) = r.get("base64").and_then(Json::as_str).and_then(gridcraft_engine::io::base64_decode)
                 {

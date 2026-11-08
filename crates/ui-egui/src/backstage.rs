@@ -701,7 +701,7 @@ fn save_as(app: &mut SheetApp, ui: &mut Ui, bs: &mut Backstage, out: &mut Outcom
     if square_button(ui, Icon::OpenFolder, &label).clicked() && app.commit_edit(0, 0, false, false) {
         if fmt == "xlsx" {
             let before = app.session.active().map(|d| (d.path.clone(), d.is_dirty()));
-            app.open_dialog("saveAs", json!({}));
+            app.open_dialog("saveAs", json!({"format": "xlsx"}));
             let after = app.session.active().map(|d| (d.path.clone(), d.is_dirty()));
             if after != before || app.services.pick_save.is_none() {
                 out.close = true;

@@ -52,12 +52,12 @@ impl Drop for Pending {
 }
 
 #[cfg(target_arch = "wasm32")]
-pub use web::install;
+pub use web::{install, sleep};
 
 #[cfg(target_arch = "wasm32")]
 mod web {
     use std::rc::Rc;
-    use std::sync::mpsc::channel;
+    use std::sync::mpsc::{Sender, channel};
 
     use craft_web_api::methods::Methods;
     use craft_web_api::page::{PageApi, Request};
@@ -71,10 +71,12 @@ mod web {
     const APP: &str = "gridcraft";
 
     /// Give the app its control queue and put `window.gridcraft` on the page. An existing
-    /// `window.gridcraft` keeps the functions it already has.
-    pub fn install(app: &mut SheetApp, ctx: egui::Context) {
+    /// `window.gridcraft` keeps the functions it already has. Returns the queue, for other page
+    /// messages that run commands (`remote`).
+    pub fn install(app: &mut SheetApp, ctx: egui::Context) -> Sender<ControlRequest> {
         let (queue, requests) = channel::<ControlRequest>();
         app.control_rx = Some(requests);
+        let control = queue.clone();
         let request: Request = Rc::new(move |method, params| {
             let (control, reply) = ControlRequest::new(method, params);
             let mut pending = Pending { reply, state: control.state.clone(), answered: false };
@@ -95,9 +97,11 @@ mod web {
         if let Err(e) = Rc::new(PageApi::new(APP, Methods::default(), request)).install() {
             log::warn!("couldn't install window.{APP}: {e:?}");
         }
+        control
     }
 
-    async fn sleep(ms: i32) {
+    /// Wait `ms` milliseconds.
+    pub async fn sleep(ms: i32) {
         let promise = js_sys::Promise::new(&mut |resolve, _| {
             if let Some(window) = web_sys::window() {
                 let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, ms);

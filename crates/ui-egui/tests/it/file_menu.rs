@@ -715,3 +715,37 @@ fn control_requests_route_to_a_window_and_list_windows() {
     let r = call(&mut h, "engine.execute", serde_json::json!({"command": "cell.get", "params": {"cell": "A1"}, "window": 999}));
     assert_eq!(r["ok"], false, "{r}");
 }
+
+#[test]
+fn web_save_keeps_the_format_the_workbook_was_opened_in() {
+    type Downloads = Arc<Mutex<Vec<(String, Vec<u8>)>>>;
+    let web = |save_format: Option<&str>| {
+        let downloads = Downloads::default();
+        let capture = downloads.clone();
+        let services = Services {
+            download: Some(Box::new(move |name, bytes| capture.lock().unwrap().push((name.to_string(), bytes.to_vec())))),
+            save_format: save_format.map(str::to_string),
+            ..Default::default()
+        };
+        let mut app = SheetApp::new(Session::new(), services);
+        let csv = gridcraft_engine::io::base64_encode(b"a;b\n1;2\n");
+        app.run("file.open", serde_json::json!({"name": "data.csv", "base64": csv})).unwrap();
+        (app, downloads)
+    };
+    let (mut app, downloads) = web(Some("csv"));
+    app.run("file.save", serde_json::json!({})).unwrap();
+    // Backstage Save As asks for a workbook.
+    app.open_dialog("saveAs", serde_json::json!({"format": "xlsx"}));
+    {
+        let saved = downloads.lock().unwrap();
+        assert_eq!(saved.iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>(), ["data.csv", "data.xlsx"]);
+        assert_eq!(String::from_utf8_lossy(&saved[0].1).lines().next(), Some("a;b"), "the separator is kept");
+        assert!(gridcraft_engine::io::open_bytes("data.xlsx", &saved[1].1).is_ok());
+    }
+    // A format Save can't write, or none, saves an .xlsx.
+    for format in [None, Some("ods")] {
+        let (mut app, downloads) = web(format);
+        app.run("file.save", serde_json::json!({})).unwrap();
+        assert_eq!(downloads.lock().unwrap().iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>(), ["data.xlsx"], "{format:?}");
+    }
+}
