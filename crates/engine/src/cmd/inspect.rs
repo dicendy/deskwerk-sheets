@@ -77,6 +77,19 @@ fn inspect(s: &mut Session, _: &Json) -> Result<Json> {
     }))
 }
 
+/// The most text one `sheet.read` answer may hold.
+const MAX_READ_TEXT_BYTES: usize = 64 << 20;
+
+/// Bytes of text in a value read from a cell; numbers, booleans and blanks count a little.
+fn json_text_bytes(v: &Json) -> usize {
+    match v {
+        Json::String(t) => t.len(),
+        Json::Array(a) => a.iter().map(json_text_bytes).fold(0, usize::saturating_add),
+        Json::Object(o) => o.values().map(json_text_bytes).fold(0, usize::saturating_add),
+        _ => 8,
+    }
+}
+
 fn read(s: &mut Session, p: &Json) -> Result<Json> {
     let sheet = target_sheet(s, p)?;
     let d = s.doc()?;
@@ -98,6 +111,7 @@ fn read(s: &mut Session, p: &Json) -> Result<Json> {
     let formulas = bool_param(p, "formulas").unwrap_or(false);
     let formatted = bool_param(p, "formatted").unwrap_or(false);
     let mut rows = Vec::with_capacity(r.height() as usize);
+    let mut text_bytes = 0usize;
     for row in r.start.row..=r.end.row {
         let mut cols = Vec::with_capacity(r.width() as usize);
         for col in r.start.col..=r.end.col {
@@ -109,6 +123,12 @@ fn read(s: &mut Session, p: &Json) -> Result<Json> {
             } else {
                 value_json(&sh.value(c))
             };
+            // Cells share their text, the answer copies it: one long shared string in every
+            // cell of a crafted file would otherwise grow the answer without bound.
+            text_bytes = text_bytes.saturating_add(json_text_bytes(&v));
+            if text_bytes > MAX_READ_TEXT_BYTES {
+                return Err(bad("sheet.read", format!("the range holds more than {} MiB of text; read it in parts", MAX_READ_TEXT_BYTES >> 20)));
+            }
             cols.push(v);
         }
         rows.push(Json::Array(cols));
