@@ -2,9 +2,11 @@
 //!
 //! Recognises numbers with thousands separators, percentages, currency, scientific notation,
 //! fractions (`1 1/2`), dates (`3/4/2026`, `2026-03-04`, `4-Mar-2026`, `Mar 4, 2026`), times
-//! (`10:30`, `10:30:15 PM`) and date-times. Locale: en-US.
+//! (`10:30`, `10:30:15 PM`) and date-times. [`parse_input`] is en-US; [`parse_input_in`] reads
+//! German and French entry (`1.234,56`, `31.12.2026`, `31/12/2026`, `12,5 %`, `1.234,56 €`).
 
 use crate::date::{DateSystem, MONTHS, serial_from_ymd, time_fraction};
+use crate::locale::Locale;
 use crate::value::{CellError, Value};
 
 /// A parsed entry: its value and the number format Excel would apply automatically.
@@ -357,6 +359,11 @@ pub fn current_year() -> i64 {
 }
 
 fn parse_datetime(t: &str, sys: DateSystem) -> Option<(f64, Option<&'static str>)> {
+    parse_datetime_with(t, |d| parse_date(d, sys))
+}
+
+/// A time, a date (read by `date`) or a date and a time.
+fn parse_datetime_with(t: &str, date: impl Fn(&str) -> Option<(f64, &'static str)>) -> Option<(f64, Option<&'static str>)> {
     if let Some((tf, secs, ampm)) = parse_time(t) {
         let f = match (secs, ampm) {
             // 24 hours or more: elapsed hours, so 25:00 shows as 25:00:00, not 1:00.
@@ -368,7 +375,7 @@ fn parse_datetime(t: &str, sys: DateSystem) -> Option<(f64, Option<&'static str>
         };
         return Some((tf, Some(f)));
     }
-    if let Some((d, f)) = parse_date(t, sys) {
+    if let Some((d, f)) = date(t) {
         return Some((d, Some(f)));
     }
     // date + time: split at the last space(s) before a time-looking tail. Only splits where the
@@ -380,9 +387,245 @@ fn parse_datetime(t: &str, sys: DateSystem) -> Option<(f64, Option<&'static str>
         if b.len() > 36 || !bytes.first().is_some_and(u8::is_ascii_digit) || !b.contains(':') {
             continue;
         }
-        if let (Some((d, _)), Some((tf, _, _))) = (t.get(..i).and_then(|a| parse_date(a, sys)), parse_time(b)) {
+        if let (Some((d, _)), Some((tf, _, _))) = (t.get(..i).and_then(&date), parse_time(b)) {
             return Some((d + tf, Some("m/d/yyyy h:mm")));
         }
+    }
+    None
+}
+
+/// Interprets typed cell input as a German or French Excel does; en-US is [`parse_input`].
+///
+/// - Booleans are the locale's (`WAHR`/`FALSCH`, `VRAI`/`FAUX`, any case).
+/// - Numbers take the locale's decimal comma and validated groups of three: `1.234,56` in German,
+///   `1 234,56` in French (space, no-break space or U+202F), with `%` (`12,5 %`) or a `€` before
+///   or after (`1.234,56 €`, format `#,##0.00 "€"`).
+/// - Dates are day first: `31.12.2026` (German), `31/12/2026` and `31-12-2026` (both), two-digit
+///   years, `31.12.` and `1.5` (German: the current year), month names (`4. März 2026`,
+///   `4 mars 2026`, `4-Okt-26`), ISO `2026-12-31`, and a date followed by a time. In German a
+///   dotted pair reads as a date before a number, as in Excel: `1.5` is 1 May, `1.234` is 1234.
+/// - Times are as in en-US (`18:00`, `10:30:15`).
+///
+/// The automatic formats are the en-US codes Excel stores (`m/d/yyyy`, `#,##0.00`, `0.00%`); they
+/// display in the locale's conventions.
+pub fn parse_input_in(s: &str, sys: DateSystem, loc: Locale) -> Parsed {
+    if loc == Locale::En {
+        return parse_input(s, sys);
+    }
+    if s.is_empty() {
+        return Parsed { value: Value::Empty, format: None };
+    }
+    if let Some(rest) = s.strip_prefix('\'') {
+        return Parsed { value: Value::text(rest), format: None };
+    }
+    let t = s.trim();
+    let lower = t.to_lowercase();
+    for b in [true, false] {
+        if lower == loc.bool_name(b).to_lowercase() {
+            return Parsed { value: Value::Bool(b), format: None };
+        }
+    }
+    if let Some(e) = CellError::parse(t) {
+        return Parsed { value: Value::Error(e), format: None };
+    }
+    if let Some((n, f)) = parse_numeric_local(t, sys, loc) {
+        return Parsed { value: Value::number(n), format: f };
+    }
+    Parsed { value: Value::text(s), format: None }
+}
+
+/// Numeric text read in `loc`'s conventions (what [`parse_input_in`] makes a number of).
+pub fn parse_number_text_local(s: &str, sys: DateSystem, loc: Locale) -> Option<f64> {
+    match loc {
+        Locale::En => parse_number_text_in(s, sys),
+        _ => parse_numeric_local(s.trim(), sys, loc).map(|(n, _)| n),
+    }
+}
+
+fn parse_numeric_local(t: &str, sys: DateSystem, loc: Locale) -> Option<(f64, Option<&'static str>)> {
+    if t.is_empty() {
+        return None;
+    }
+    // A parenthesised negative: `(100)`, `(1.234,5)`.
+    if let Some(inner) = t.strip_prefix('(').and_then(|r| r.strip_suffix(')')) {
+        let inner = inner.trim();
+        if inner.is_empty() || inner.starts_with(['-', '+', '(']) {
+            return None;
+        }
+        let r = parse_plain_local(inner, loc).or_else(|| parse_fraction(inner).map(|n| (n, Some("# ?/?"))));
+        return r.map(|(n, f)| (-n, f));
+    }
+    // German Excel reads a dotted pair as a date first: `1.5` is 1 May, `1.234` stays a number.
+    if loc == Locale::De
+        && let Some((d, f)) = parse_date_local(t, sys, loc)
+    {
+        return Some((d, Some(f)));
+    }
+    if let Some(r) = parse_plain_local(t, loc) {
+        return Some(r);
+    }
+    if let Some(r) = parse_fraction(t) {
+        return Some((r, Some("# ?/?")));
+    }
+    parse_datetime_with(t, |d| parse_date_local(d, sys, loc))
+}
+
+/// True for a character `loc` groups thousands with.
+fn is_group(c: char, loc: Locale) -> bool {
+    match loc {
+        // Typed French groups come with any kind of space.
+        Locale::Fr => c == ' ' || c == '\u{a0}' || c == crate::locale::NARROW_NBSP,
+        _ => c == loc.group(),
+    }
+}
+
+/// Signs, `€` before or after, thousands groups, decimal comma, percent, exponent.
+fn parse_plain_local(t: &str, loc: Locale) -> Option<(f64, Option<&'static str>)> {
+    let mut s = t;
+    let mut neg = false;
+    let mut currency = false;
+    let mut percent = false;
+    if let Some(r) = s.strip_prefix('-') {
+        neg = true;
+        s = r.trim_start();
+    } else if let Some(r) = s.strip_prefix('+') {
+        s = r.trim_start();
+    }
+    if let Some(r) = s.strip_prefix('€') {
+        currency = true;
+        s = r.trim_start();
+        if !neg && let Some(r2) = s.strip_prefix('-') {
+            neg = true;
+            s = r2.trim_start();
+        }
+    }
+    if let Some(r) = s.strip_suffix('€') {
+        if currency {
+            return None;
+        }
+        currency = true;
+        s = r.trim_end();
+    }
+    if let Some(r) = s.strip_suffix('%') {
+        percent = true;
+        s = r.trim_end();
+    }
+    if s.is_empty() || currency && percent {
+        return None;
+    }
+    let (int, frac) = s.split_once(loc.decimal()).map_or((s, None), |(a, b)| (a, Some(b)));
+    let has_sep = int.chars().any(|c| is_group(c, loc));
+    let mut digits = if has_sep {
+        // Thousands separators must be in groups of three before the decimal comma.
+        let groups: Vec<&str> = int.split(|c| is_group(c, loc)).collect();
+        let first = groups.first()?;
+        if first.is_empty() || first.len() > 3 || groups.iter().skip(1).any(|g| g.len() != 3) {
+            return None;
+        }
+        groups.concat()
+    } else {
+        int.to_string()
+    };
+    // A point is neither the decimal nor (in French) a group separator.
+    if digits.contains('.') || frac.is_some_and(|f| f.contains('.')) {
+        return None;
+    }
+    if let Some(f) = frac {
+        digits.push('.');
+        digits.push_str(f);
+    }
+    let b = digits.as_bytes();
+    if !b.iter().all(|c| c.is_ascii_digit() || matches!(c, b'.' | b'e' | b'E' | b'+' | b'-')) {
+        return None;
+    }
+    if !b.first().is_some_and(|c| c.is_ascii_digit() || *c == b'.') {
+        return None;
+    }
+    let mut n: f64 = digits.parse().ok()?;
+    if !n.is_finite() {
+        return None;
+    }
+    let sci = digits.contains(['e', 'E']);
+    if percent {
+        n /= 100.0;
+    }
+    if neg {
+        n = -n;
+    }
+    let decimals = frac.is_some();
+    let fmt = if currency {
+        Some(if decimals { "#,##0.00 \"€\"" } else { "#,##0 \"€\"" })
+    } else if percent {
+        Some(if decimals { "0.00%" } else { "0%" })
+    } else if sci {
+        Some("0.00E+00")
+    } else if has_sep {
+        Some(if decimals { "#,##0.00" } else { "#,##0" })
+    } else {
+        None
+    };
+    Some((n, fmt))
+}
+
+/// A two-digit year as Excel expands it: `00`–`29` are 2000–2029, `30`–`99` are 1930–1999.
+fn expand_year(text: &str, y: i64) -> i64 {
+    if text.len() <= 2 { if y < 30 { 2000 + y } else { 1900 + y } } else { y }
+}
+
+/// A day-first date: `31.12.2026` (German only), `31/12/2026`, `31-12-26`, `31.12.`, `1.5`,
+/// `4-Okt-2026`, `4. März 2026`, `4 mars 2026`, `12.2026` (month and year), ISO `2026-12-31`.
+fn parse_date_local(t: &str, sys: DateSystem, loc: Locale) -> Option<(f64, &'static str)> {
+    let t = t.trim();
+    let num = |s: &str| {
+        let s = s.trim();
+        if s.is_empty() || !s.bytes().all(|b| b.is_ascii_digit()) {
+            return None;
+        }
+        s.parse::<i64>().ok()
+    };
+    let seps: &[char] = if loc == Locale::De { &['.', '/', '-'] } else { &['/', '-'] };
+    // German closes a day and month with a dot: `31.12.`
+    let body = if loc == Locale::De { t.strip_suffix('.').filter(|b| b.matches('.').count() == 1).unwrap_or(t) } else { t };
+    let parts: Vec<&str> = body.split(seps).map(str::trim).collect();
+    match parts.as_slice() {
+        &[a, b, c] => {
+            if a.len() == 4
+                && let (Some(y), Some(m), Some(d)) = (num(a), num(b), num(c))
+            {
+                return valid_ymd(sys, y, m, d).map(|s| (s, "yyyy-mm-dd"));
+            }
+            if let (Some(d), Some(m), Some(y)) = (num(a), num(b), num(c)) {
+                return valid_ymd(sys, expand_year(c, y), m, d).map(|s| (s, "m/d/yyyy"));
+            }
+            if let (Some(d), Some(m), Some(y)) = (num(a), loc.month_from_name(b), num(c)) {
+                return valid_ymd(sys, expand_year(c, y), i64::from(m), d).map(|s| (s, "d-mmm-yy"));
+            }
+        }
+        &[a, b] => {
+            if let (Some(d), Some(m)) = (num(a), num(b)) {
+                if (1..=12).contains(&m) && (1..=31).contains(&d) {
+                    return valid_ymd(sys, current_year(), m, d).map(|s| (s, "d-mmm"));
+                }
+                // m.yyyy
+                if (1..=12).contains(&d) && b.len() == 4 {
+                    return valid_ymd(sys, m, d, 1).map(|s| (s, "mmm-yy"));
+                }
+            }
+            if let (Some(d), Some(m)) = (num(a), loc.month_from_name(b)) {
+                return valid_ymd(sys, current_year(), i64::from(m), d).map(|s| (s, "d-mmm"));
+            }
+            if let (Some(m), Some(y)) = (loc.month_from_name(a), num(b)) {
+                return valid_ymd(sys, expand_year(b, y), i64::from(m), 1).map(|s| (s, "mmm-yy"));
+            }
+        }
+        _ => {}
+    }
+    // `4. März 2026`, `4 mars 2026`, `4 mars 26`
+    let words: Vec<&str> = t.split([' ', ',', '\u{a0}']).filter(|w| !w.is_empty()).collect();
+    if let &[d, m, y] = words.as_slice()
+        && let (Some(d), Some(m), Some(yv)) = (num(d.strip_suffix('.').unwrap_or(d)), loc.month_from_name(m), num(y))
+    {
+        return valid_ymd(sys, expand_year(y, yv), i64::from(m), d).map(|s| (s, "d-mmm-yy"));
     }
     None
 }
@@ -611,6 +854,112 @@ mod tests {
         // The 1904 system starts after it.
         assert_eq!(parse_input("2/29/1900", DateSystem::D1904).value, Value::text("2/29/1900"));
         assert_eq!(parse_input("2/29/1904", DateSystem::D1904).value, Value::Number(59.0));
+    }
+
+    fn de(s: &str) -> Parsed {
+        parse_input_in(s, DateSystem::D1900, Locale::De)
+    }
+
+    fn fr(s: &str) -> Parsed {
+        parse_input_in(s, DateSystem::D1900, Locale::Fr)
+    }
+
+    fn num(n: f64, format: Option<&'static str>) -> Parsed {
+        Parsed { value: Value::Number(n), format }
+    }
+
+    #[test]
+    fn english_entry_is_parse_input() {
+        for s in ["1,234.5", "3/4/2026", "TRUE", "12%", "$5", "1.5", "1,5", "31.12.2026", "abc", "'1", ""] {
+            assert_eq!(parse_input_in(s, DateSystem::D1900, Locale::En), p(s), "{s}");
+        }
+    }
+
+    #[test]
+    fn german_numbers() {
+        assert_eq!(de("1.234,56"), num(1234.56, Some("#,##0.00")));
+        assert_eq!(de("1.234"), num(1234.0, Some("#,##0")));
+        assert_eq!(de("1.000.000"), num(1_000_000.0, Some("#,##0")));
+        assert_eq!(de("1,5"), num(1.5, None));
+        assert_eq!(de("-1,5"), num(-1.5, None));
+        assert_eq!(de(",5"), num(0.5, None));
+        assert_eq!(de("42"), num(42.0, None));
+        assert_eq!(de("12,5 %"), num(0.125, Some("0.00%")));
+        assert_eq!(de("12,5%"), num(0.125, Some("0.00%")));
+        assert_eq!(de("50 %"), num(0.5, Some("0%")));
+        assert_eq!(de("1.234,56 €"), num(1234.56, Some("#,##0.00 \"€\"")));
+        assert_eq!(de("5€"), num(5.0, Some("#,##0 \"€\"")));
+        assert_eq!(de("€ 5,50"), num(5.5, Some("#,##0.00 \"€\"")));
+        assert_eq!(de("-5 €"), num(-5.0, Some("#,##0 \"€\"")));
+        assert_eq!(de("(1.234,5)"), num(-1234.5, Some("#,##0.00")));
+        assert_eq!(de("1,5E3"), num(1500.0, Some("0.00E+00")));
+        assert_eq!(de("1 1/2"), num(1.5, Some("# ?/?")));
+        for s in ["1.23,4", "1,2,3", "1.23", "12.34.56", "5 € %", "€5€", "1.5.3,2", "abc", "1,5x"] {
+            assert_eq!(de(s).value, Value::text(s), "{s}");
+        }
+    }
+
+    #[test]
+    fn german_dates() {
+        assert_eq!(de("31.12.2026"), num(46387.0, Some("m/d/yyyy")));
+        assert_eq!(de("31.12.26"), num(46387.0, Some("m/d/yyyy")));
+        assert_eq!(de("31/12/2026"), num(46387.0, Some("m/d/yyyy")));
+        assert_eq!(de("31-12-2026"), num(46387.0, Some("m/d/yyyy")));
+        assert_eq!(de("4.3.2026"), num(46085.0, Some("m/d/yyyy")));
+        assert_eq!(de("2026-12-31"), num(46387.0, Some("yyyy-mm-dd")));
+        assert_eq!(de("4. März 2026"), num(46085.0, Some("d-mmm-yy")));
+        assert_eq!(de("4-Mär-2026"), num(46085.0, Some("d-mmm-yy")));
+        assert_eq!(de("31.12.2026 18:00"), num(46387.75, Some("m/d/yyyy h:mm")));
+        assert_eq!(de("18:00"), num(0.75, Some("h:mm")));
+        let year = current_year();
+        // A dotted pair is a date in the current year, before it is a number.
+        let dec31 = valid_ymd(DateSystem::D1900, year, 12, 31);
+        assert!(dec31.is_some());
+        assert_eq!(de("31.12."), Parsed { value: dec31.map_or(Value::Empty, Value::Number), format: Some("d-mmm") });
+        assert_eq!(de("1.5").value, de(&format!("1.5.{year}")).value);
+        assert_eq!(de("1.5").format, Some("d-mmm"));
+        assert_eq!(de("12.2026").value, de("1.12.2026").value);
+        assert_eq!(de("12.2026").format, Some("mmm-yy"));
+        for s in ["31.02.2026", "1.1.1776", "32.1.2026", "4."] {
+            assert_eq!(de(s).value, Value::text(s), "{s}");
+        }
+    }
+
+    #[test]
+    fn german_and_french_booleans() {
+        assert_eq!(de("WAHR").value, Value::Bool(true));
+        assert_eq!(de("falsch").value, Value::Bool(false));
+        assert_eq!(fr("Vrai").value, Value::Bool(true));
+        assert_eq!(fr("FAUX").value, Value::Bool(false));
+        // The English words are text in a German or French sheet, as in Excel.
+        assert_eq!(de("TRUE").value, Value::text("TRUE"));
+        assert_eq!(fr("FALSE").value, Value::text("FALSE"));
+        assert_eq!(de("#DIV/0!").value, Value::Error(CellError::Div0));
+        assert_eq!(fr("'1,5").value, Value::text("1,5"));
+        assert_eq!(fr("").value, Value::Empty);
+    }
+
+    #[test]
+    fn french_numbers_and_dates() {
+        assert_eq!(fr("1 234,56"), num(1234.56, Some("#,##0.00")));
+        assert_eq!(fr("1\u{202F}234,56"), num(1234.56, Some("#,##0.00")));
+        assert_eq!(fr("1\u{a0}234"), num(1234.0, Some("#,##0")));
+        assert_eq!(fr("1,5"), num(1.5, None));
+        assert_eq!(fr("12,5 %"), num(0.125, Some("0.00%")));
+        assert_eq!(fr("12,5\u{a0}%"), num(0.125, Some("0.00%")));
+        assert_eq!(fr("1 234,56 €"), num(1234.56, Some("#,##0.00 \"€\"")));
+        assert_eq!(fr("31/12/2026"), num(46387.0, Some("m/d/yyyy")));
+        assert_eq!(fr("31-12-26"), num(46387.0, Some("m/d/yyyy")));
+        assert_eq!(fr("4 mars 2026"), num(46085.0, Some("d-mmm-yy")));
+        assert_eq!(fr("4-févr.-2026"), num(46057.0, Some("d-mmm-yy")));
+        assert_eq!(fr("31/12/2026 18:00"), num(46387.75, Some("m/d/yyyy h:mm")));
+        // A point is no separator in French.
+        for s in ["1.5", "1.234,5", "31.12.2026", "1 23,4", "12 345 6"] {
+            assert_eq!(fr(s).value, Value::text(s), "{s}");
+        }
+        assert_eq!(parse_number_text_local(" 1 234,5 ", DateSystem::D1900, Locale::Fr), Some(1234.5));
+        assert_eq!(parse_number_text_local("1,5", DateSystem::D1900, Locale::En), None);
+        assert_eq!(parse_number_text_local("1,500", DateSystem::D1900, Locale::En), Some(1500.0));
     }
 
     #[test]
