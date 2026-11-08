@@ -1,6 +1,6 @@
 # GridCraft MCP server
 
-`gridcraft-cli mcp` exposes GridCraft to AI agents over the [Model Context Protocol](https://modelcontextprotocol.io):
+`deskwerk-sheets-cli mcp` exposes Deskwerk Sheets to AI agents over the [Model Context Protocol](https://modelcontextprotocol.io):
 newline-delimited JSON-RPC 2.0 on stdin/stdout (protocol `2025-06-18`; `2025-03-26` and `2024-11-05` clients are
 answered in their own version). Logs go to stderr.
 
@@ -8,15 +8,15 @@ Two backends:
 
 | Mode | Command | What it drives |
 |---|---|---|
-| Headless (default) | `gridcraft-cli mcp [--in book.xlsx \| --sample budget]` | An in-process engine session — no window. |
-| Remote | `gridcraft-cli mcp --connect 7979` | A running app started with `gridcraft --control 7979` (TCP JSON lines on `127.0.0.1`, authenticated with the app's token: it is read from the app's token file or `GRIDCRAFT_CONTROL_TOKEN`, see [`control-protocol.md`](control-protocol.md)). |
+| Headless (default) | `deskwerk-sheets-cli mcp [--in book.xlsx \| --sample budget]` | An in-process engine session — no window. |
+| Remote | `deskwerk-sheets-cli mcp --connect 7979` | A running app started with `deskwerk-sheets --control 7979` (TCP JSON lines on `127.0.0.1`, authenticated with the app's token: it is read from the app's token file or `GRIDCRAFT_CONTROL_TOKEN`, see [`control-protocol.md`](control-protocol.md)). |
 
 ## Claude Code
 
 ```sh
-claude mcp add gridcraft -- gridcraft-cli mcp
+claude mcp add deskwerk-sheets -- deskwerk-sheets-cli mcp
 # or drive the desktop app you are looking at:
-claude mcp add gridcraft-app -- gridcraft-cli mcp --connect 7979
+claude mcp add deskwerk-sheets-app -- deskwerk-sheets-cli mcp --connect 7979
 ```
 
 JSON config (`.mcp.json`, Claude Desktop, other clients):

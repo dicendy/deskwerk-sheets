@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/app-icon/hicolor/256x256/apps/ai.storyteller.gridcraft.png" width="128" height="128" alt="Deskwerk Sheets icon: a spreadsheet page on a green tile">
+  <img src="assets/app-icon/hicolor/256x256/apps/eu.deskwerk.Sheets.png" width="128" height="128" alt="Deskwerk Sheets icon: a spreadsheet page on a green tile">
 </p>
 
 <h1 align="center">Deskwerk Sheets</h1>
@@ -126,9 +126,9 @@ Browsers or desktop environments may reserve Alt/F10 for their own menus.
 ### Logs
 
 The desktop app writes its log to standard error and to `gridcraft.log` in the `logs` folder
-next to its settings: `~/.config/gridcraft/logs` on Linux and BSD (`$XDG_CONFIG_HOME/gridcraft/logs`
-when set), `~/Library/Application Support/GridCraft/logs` on macOS and
-`%APPDATA%\GridCraft\logs` on Windows. Each start moves the previous log to `gridcraft.1.log` and
+next to its settings: `~/.config/deskwerk-sheets/logs` on Linux and BSD (`$XDG_CONFIG_HOME/deskwerk-sheets/logs`
+when set), `~/Library/Application Support/Deskwerk Sheets/logs` on macOS and
+`%APPDATA%\Deskwerk Sheets\logs` on Windows. Each start moves the previous log to `gridcraft.1.log` and
 that one to `gridcraft.2.log`, so the log of a run that crashed survives the next start; attach
 them to a bug report. A log file stops growing at 16 MiB. By default Deskwerk Sheets's own crates log
 at `info` and everything else at `warn`; `RUST_LOG` replaces that with env_logger-style
@@ -139,12 +139,12 @@ log to standard error only.
 ## For agents: MCP, CLI and the control channel
 
 ```sh
-claude mcp add gridcraft -- gridcraft-cli mcp                 # headless MCP server
-gridcraft-cli mcp --connect 7979                               # MCP bridged to a running window
-gridcraft-cli eval '=XLOOKUP("b",{"a","b"},{1,2})'             # → 2
-gridcraft-cli run --sample budget --cmd 'home.bold={"range":"B4:F4"}' --out budget.xlsx
-gridcraft-cli cat budget.xlsx --range B4:F15                   # aligned text table
-gridcraft-cli commands --search chart                          # every command and its params
+claude mcp add deskwerk-sheets -- deskwerk-sheets-cli mcp  # headless MCP server
+deskwerk-sheets-cli mcp --connect 7979                     # MCP bridged to a running window
+deskwerk-sheets-cli eval '=XLOOKUP("b",{"a","b"},{1,2})'   # → 2
+deskwerk-sheets-cli run --sample budget --cmd 'home.bold={"range":"B4:F4"}' --out budget.xlsx
+deskwerk-sheets-cli cat budget.xlsx --range B4:F15         # aligned text table
+deskwerk-sheets-cli commands --search chart                # every command and its params
 ```
 
 The MCP server offers tools such as `read_range`, `write_range`, `set_cell`, `evaluate_formula`,
@@ -190,9 +190,9 @@ numbers and estimates are in [ROADMAP.md](ROADMAP.md); the ranked work list is [
 
 | Build | Installer | Portable |
 |---|---|---|
-| x64 (64-bit Intel/AMD) | `gridcraft-<ver>-windows-x64.msi` | `gridcraft-<ver>-windows-x64-portable.zip` |
-| arm64 (Snapdragon and other ARM PCs) | `gridcraft-<ver>-windows-arm64.msi` | `gridcraft-<ver>-windows-arm64-portable.zip` |
-| x86 (32-bit) | `gridcraft-<ver>-windows-x86.msi` | `gridcraft-<ver>-windows-x86-portable.zip` |
+| x64 (64-bit Intel/AMD) | `deskwerk-sheets-<ver>-windows-x64.msi` | `deskwerk-sheets-<ver>-windows-x64-portable.zip` |
+| arm64 (Snapdragon and other ARM PCs) | `deskwerk-sheets-<ver>-windows-arm64.msi` | `deskwerk-sheets-<ver>-windows-arm64-portable.zip` |
+| x86 (32-bit) | `deskwerk-sheets-<ver>-windows-x86.msi` | `deskwerk-sheets-<ver>-windows-x86-portable.zip` |
 
 Installers and executables are code-signed. The MSI installer offers an optional desktop shortcut
 (unchecked on a new installation).
@@ -205,7 +205,7 @@ PowerShell, from the folder containing the executable:
 
 ```powershell
 $env:WGPU_BACKEND = "vulkan"
-& .\gridcraft.exe
+& .\deskwerk-sheets.exe
 Remove-Item Env:WGPU_BACKEND                     # restore the default for later launches
 ```
 
@@ -229,24 +229,24 @@ handling again for troubleshooting.
 
 | Build | File | Notes |
 |---|---|---|
-| App, universal (Apple silicon + Intel) | `gridcraft-<ver>-macos-universal.dmg` | Signed and notarized |
-| Command-line tool, universal | `gridcraft-cli-<ver>-macos-universal.zip` | Signed and notarized |
+| App, universal (Apple silicon + Intel) | `deskwerk-sheets-<ver>-macos-universal.dmg` | Signed and notarized |
+| Command-line tool, universal | `deskwerk-sheets-cli-<ver>-macos-universal.zip` | Signed and notarized |
 
 ### Linux
 
 | Format | x86_64 | aarch64 (ARM64) | Notes |
 |---|---|---|---|
-| AppImage | `gridcraft-<ver>-linux-x86_64.AppImage` | `gridcraft-<ver>-linux-aarch64.AppImage` | Runs anywhere; updates itself with [AppImageUpdate](https://github.com/AppImageCommunity/AppImageUpdate) (`.zsync` files) |
-| Flatpak | `gridcraft-<ver>-linux-x86_64.flatpak` | `gridcraft-<ver>-linux-aarch64.flatpak` | Sandboxed; `flatpak install --user <file>` |
-| Debian/Ubuntu | `gridcraft-<ver>-linux-x86_64.deb` | `gridcraft-<ver>-linux-aarch64.deb` | |
-| Fedora/RHEL/openSUSE | `gridcraft-<ver>-linux-x86_64.rpm` | `gridcraft-<ver>-linux-aarch64.rpm` | |
-| Tarball | `gridcraft-<ver>-linux-x86_64.tar.gz` | `gridcraft-<ver>-linux-aarch64.tar.gz` | Unpack anywhere |
+| AppImage | `deskwerk-sheets-<ver>-linux-x86_64.AppImage` | `deskwerk-sheets-<ver>-linux-aarch64.AppImage` | Runs anywhere; updates itself with [AppImageUpdate](https://github.com/AppImageCommunity/AppImageUpdate) (`.zsync` files) |
+| Flatpak | `deskwerk-sheets-<ver>-linux-x86_64.flatpak` | `deskwerk-sheets-<ver>-linux-aarch64.flatpak` | Sandboxed; `flatpak install --user <file>` |
+| Debian/Ubuntu | `deskwerk-sheets-<ver>-linux-x86_64.deb` | `deskwerk-sheets-<ver>-linux-aarch64.deb` | |
+| Fedora/RHEL/openSUSE | `deskwerk-sheets-<ver>-linux-x86_64.rpm` | `deskwerk-sheets-<ver>-linux-aarch64.rpm` | |
+| Tarball | `deskwerk-sheets-<ver>-linux-x86_64.tar.gz` | `deskwerk-sheets-<ver>-linux-aarch64.tar.gz` | Unpack anywhere |
 
 ### FreeBSD
 
 | Build | File |
 |---|---|
-| x86_64 | `gridcraft-<ver>-freebsd-x86_64.tar.gz` |
+| x86_64 | `deskwerk-sheets-<ver>-freebsd-x86_64.tar.gz` |
 
 ### Web (WebAssembly)
 

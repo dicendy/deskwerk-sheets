@@ -23,6 +23,7 @@ fn the_default_filter_shows_gridcraft_info_and_other_crates_warnings() {
     let f = Filter::parse(DEFAULT_FILTER);
     assert_eq!(f.level_for("gridcraft"), LevelFilter::Info);
     assert_eq!(f.level_for("gridcraft::control_server"), LevelFilter::Info);
+    assert_eq!(f.level_for("deskwerk_sheets::control_server"), LevelFilter::Info);
     assert_eq!(f.level_for("gridcraft_engine::sample"), LevelFilter::Info);
     assert_eq!(f.level_for("gridcraft_ui_egui::control"), LevelFilter::Info);
     assert_eq!(f.level_for("wgpu_core::device"), LevelFilter::Warn);

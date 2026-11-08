@@ -1,6 +1,6 @@
-//! GridCraft desktop app.
+//! Deskwerk Sheets desktop app (based on GridCraft).
 //!
-//! Usage: `gridcraft [--control <port> [--control-token <token>]] [--sample <name>] [files…]`
+//! Usage: `deskwerk-sheets [--control <port> [--control-token <token>]] [--sample <name>] [files…]`
 //!
 //! `--control <port>` (or `GRIDCRAFT_CONTROL_PORT`) starts a localhost JSON-lines control
 //! server: `{"id":1,"method":"ui.inspect","params":{}}` → `{"id":1,"ok":true,"result":…}`.
@@ -79,14 +79,14 @@ impl eframe::App for App {
 
 fn config_dir() -> Option<std::path::PathBuf> {
     if cfg!(target_os = "macos") {
-        std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join("Library/Application Support/GridCraft"))
+        std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join("Library/Application Support/Deskwerk Sheets"))
     } else if cfg!(windows) {
-        std::env::var_os("APPDATA").map(|a| std::path::PathBuf::from(a).join("GridCraft"))
+        std::env::var_os("APPDATA").map(|a| std::path::PathBuf::from(a).join("Deskwerk Sheets"))
     } else {
         std::env::var_os("XDG_CONFIG_HOME")
             .map(std::path::PathBuf::from)
             .or_else(|| std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join(".config")))
-            .map(|c| c.join("gridcraft"))
+            .map(|c| c.join("deskwerk-sheets"))
     }
 }
 
@@ -232,7 +232,7 @@ fn icon() -> Option<egui::IconData> {
     #[cfg(target_os = "macos")]
     let bytes = include_bytes!("../../../assets/app-icon/gridcraft-macos-512.png");
     #[cfg(not(target_os = "macos"))]
-    let bytes = include_bytes!("../../../assets/app-icon/hicolor/256x256/apps/ai.storyteller.gridcraft.png");
+    let bytes = include_bytes!("../../../assets/app-icon/hicolor/256x256/apps/eu.deskwerk.Sheets.png");
     let img = image::load_from_memory(bytes).ok()?.to_rgba8();
     Some(egui::IconData { width: img.width(), height: img.height(), rgba: img.into_raw() })
 }
@@ -255,7 +255,7 @@ fn main() -> eframe::Result<()> {
             log::error!("{report}");
         } else {
             // `eprintln!` panics on a broken stderr pipe, and a panic inside the panic hook aborts.
-            let _ = std::io::Write::write_fmt(&mut std::io::stderr(), format_args!("gridcraft: {report}\n"));
+            let _ = std::io::Write::write_fmt(&mut std::io::stderr(), format_args!("deskwerk-sheets: {report}\n"));
         }
     }));
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -317,8 +317,8 @@ fn main() -> eframe::Result<()> {
     }
     let mut app = SheetApp::new(session, services());
     app.watch_desktop_theme();
-    // No startup update check: craft-update's GRIDCRAFT target is upstream's release feed, not
-    // this fork's. Help › Check for Updates… still asks on request.
+    // No startup update check. Help › Check for Updates… asks on request, and only this fork's
+    // release feed (`UPDATE_APP.repo`, dicendy/deskwerk-sheets).
     let control_port = control_port;
     load_prefs(&mut app);
     // Stamp the startup workbook's author from the persisted user name.
@@ -336,7 +336,7 @@ fn main() -> eframe::Result<()> {
         .with_title("Deskwerk Sheets")
         .with_inner_size([1440.0, 900.0])
         .with_min_inner_size([640.0, 420.0])
-        .with_app_id("ai.storyteller.gridcraft")
+        .with_app_id("eu.deskwerk.Sheets")
         .with_drag_and_drop(true);
     if cfg!(target_os = "macos") {
         viewport = viewport.with_fullsize_content_view(true).with_titlebar_shown(false).with_title_shown(false);
@@ -384,7 +384,7 @@ fn main() -> eframe::Result<()> {
     let pending = std::cell::Cell::new(Some(app));
     let run = |options: eframe::NativeOptions| {
         eframe::run_native(
-            "GridCraft",
+            "Deskwerk Sheets",
             options,
             Box::new(|cc| {
                 let Some(mut app) = pending.take() else {
