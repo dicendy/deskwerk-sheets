@@ -262,13 +262,13 @@ fn main() -> eframe::Result<()> {
     // The restart helper a self-update spawns: it finishes the swap and relaunches, then exits.
     if let Some(done) = craft_update::self_update::finish(&gridcraft_ui_egui::UPDATE_APP, &std::env::args_os().skip(1).collect::<Vec<_>>()) {
         if let Err(e) = done {
-            eprintln!("GridCraft update helper failed: {e}");
+            eprintln!("Deskwerk Sheets update helper failed: {e}");
             std::process::exit(1);
         }
         return Ok(());
     }
     if args.iter().any(|a| a == "--version" || a == "-V") {
-        println!("GridCraft {}", env!("CARGO_PKG_VERSION"));
+        println!("Deskwerk Sheets {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
     let mut control_port: Option<u16> = std::env::var("GRIDCRAFT_CONTROL_PORT").ok().and_then(|p| p.parse().ok());
@@ -302,7 +302,7 @@ fn main() -> eframe::Result<()> {
     if let Some(logger) = logger {
         match log_dir().filter(|_| prefs_enabled()) {
             Some(dir) => match logger.attach_dir(&dir) {
-                Ok(path) => log::info!("GridCraft {}, log file {}", env!("CARGO_PKG_VERSION"), path.display()),
+                Ok(path) => log::info!("Deskwerk Sheets {}, log file {}", env!("CARGO_PKG_VERSION"), path.display()),
                 // Standard error only by now (`attach_dir` gave up on the file); unlike `eprintln!`, never panics.
                 Err(e) => log::warn!("no log file: {e}"),
             },
@@ -317,7 +317,8 @@ fn main() -> eframe::Result<()> {
     }
     let mut app = SheetApp::new(session, services());
     app.watch_desktop_theme();
-    app.start_update_check();
+    // No startup update check: craft-update's GRIDCRAFT target is upstream's release feed, not
+    // this fork's. Help › Check for Updates… still asks on request.
     let control_port = control_port;
     load_prefs(&mut app);
     // Stamp the startup workbook's author from the persisted user name.
@@ -332,7 +333,7 @@ fn main() -> eframe::Result<()> {
         app.open_path(f);
     }
     let mut viewport = egui::ViewportBuilder::default()
-        .with_title("GridCraft")
+        .with_title("Deskwerk Sheets")
         .with_inner_size([1440.0, 900.0])
         .with_min_inner_size([640.0, 420.0])
         .with_app_id("ai.storyteller.gridcraft")

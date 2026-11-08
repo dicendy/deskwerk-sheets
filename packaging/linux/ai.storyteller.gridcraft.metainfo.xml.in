@@ -5,14 +5,14 @@
   <id>ai.storyteller.gridcraft</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT OR Apache-2.0</project_license>
-  <name>GridCraft</name>
+  <name>Deskwerk Sheets</name>
   <summary>Calculate, analyse and chart data in workbooks</summary>
   <developer id="ai.storyteller">
     <name>Learning Machines LLC</name>
   </developer>
   <description>
     <p>
-      GridCraft is an open-source, native spreadsheet. It opens and saves .xlsx workbooks and
+      Deskwerk Sheets is an open-source, native spreadsheet. It opens and saves .xlsx workbooks and
       CSV/TSV files, evaluates hundreds of worksheet functions, and formats, sorts, filters and
       charts your data.
     </p>
@@ -24,10 +24,9 @@
   <launchable type="desktop-id">ai.storyteller.gridcraft.desktop</launchable>
   <icon type="stock">ai.storyteller.gridcraft</icon>
   <!-- Only url types known to appstream 0.15 (Ubuntu 22.04, where CI validates): no vcs-browser. -->
-  <url type="homepage">https://getartcraft.com/apps/gridcraft</url>
-  <url type="bugtracker">https://github.com/storytold/gridcraft/issues</url>
-  <url type="help">https://github.com/storytold/gridcraft</url>
-  <url type="contact">https://discord.gg/artcraft</url>
+  <url type="homepage">https://github.com/dicendy/deskwerk-sheets</url>
+  <url type="bugtracker">https://github.com/dicendy/deskwerk-sheets/issues</url>
+  <url type="help">https://github.com/dicendy/deskwerk-sheets</url>
   <categories>
     <category>Office</category>
     <category>Spreadsheet</category>

@@ -121,7 +121,7 @@ is GUI, `gridcraft-cli.exe` console), signs both executables, builds the MSI wit
 the MSI, and zips a portable build.
 
 - `gridcraft.wxs`: a dual-scope package (per-user by default into
-  `%LOCALAPPDATA%\Programs\ArtCraft\GridCraft`, per-machine into `Program Files\ArtCraft\GridCraft` (`Program Files (x86)` for the 32-bit build),
+  `%LOCALAPPDATA%\Programs\Deskwerk\GridCraft`, per-machine into `Program Files\Deskwerk\GridCraft` (`Program Files (x86)` for the 32-bit build),
   see `packaging/windows/INSTALLATION.md`), advertised Start Menu shortcut, App
   Paths (Win+R `gridcraft`). File types: ProgIds `GridCraft.Workbook` (`.xlsx`, `.xlsm`) and
   `GridCraft.TextData` (`.csv`, `.tsv`), listed under each extension's `OpenWithProgids` and
@@ -147,7 +147,7 @@ the MSI, and zips a portable build.
   the separate silent lifecycle test verifies installation behavior. Normal full UI presents
   the shortcut choice and then completion; cancel/failure and files-in-use dialogs are support
   paths. To review on a maintainer branch, run **Packaging lint** with that branch selected
-  (or `gh workflow run packaging-lint.yml --repo storytold/gridcraft --ref BRANCH`). No release
+  (or `gh workflow run packaging-lint.yml --repo dicendy/deskwerk-sheets --ref BRANCH`). No release
   environment, signing credentials or Rust build is required. Interactive checkbox behavior
   still needs a Windows desktop check; previews alone do not establish that behavior.
 - **Signing:** `packaging/windows/sign.ps1` uses `signtool` with SHA-256 and an RFC 3161

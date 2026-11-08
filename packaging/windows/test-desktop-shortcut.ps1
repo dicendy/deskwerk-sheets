@@ -16,9 +16,9 @@ if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_OS -ne 'Windows' -or $env:RUN
 }
 if (-not $WorkDir) { $WorkDir = Join-Path $env:RUNNER_TEMP 'gridcraft-shortcut-smoke' }
 $Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$InstallDir = Join-Path $env:ProgramFiles 'ArtCraft\GridCraft'
-$DesktopLink = Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'GridCraft.lnk'
-$StartLink = Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'GridCraft.lnk'
+$InstallDir = Join-Path $env:ProgramFiles 'Deskwerk\GridCraft'
+$DesktopLink = Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'Deskwerk Sheets.lnk'
+$StartLink = Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'Deskwerk Sheets.lnk'
 $ChoiceKey = 'HKLM:\Software\GridCraft\Installer'
 $ComponentKey = 'HKLM:\Software\GridCraft\Installer'
 $UninstallRoot = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
