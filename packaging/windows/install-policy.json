@@ -1,6 +1,7 @@
 {
   "id": "deskwerk-sheets",
   "name": "Sheets",
+  "installDirKey": "Software\\Deskwerk\\Sheets",
   "upgradeCode": "CA81A1E0-D901-45D0-9E16-8859F2B95AF8",
   "sources": [
     "gridcraft.wxs"
