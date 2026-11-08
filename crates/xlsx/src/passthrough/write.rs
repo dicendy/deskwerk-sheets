@@ -315,24 +315,35 @@ fn without_refs(mut ch: Chart) -> Chart {
 }
 
 /// The kept original of the embedded chart `ch` of sheet `si`, when it can be written in place of
-/// GridCraft's chart part: the chart is unchanged since it was read but for its series references
-/// (moving or resizing it only changes the drawing, which GridCraft writes), the kept XML follows
-/// the references and refreshes their caches (#1676, #1677), and every sheet the kept formulas
+/// GridCraft's chart part: the chart is unchanged since it was read but for its series references,
+/// title, legend and type (moving or resizing it only changes the drawing, which GridCraft
+/// writes), the kept XML follows the references and refreshes their caches (#1676, #1677), takes
+/// the new title, legend and type and reads back as the model, and every sheet the kept formulas
 /// name still exists under the same name (a formula the model doesn't hold, such as a title from
 /// a cell, would otherwise be left pointing at nothing). `None` means: write the chart from the
 /// model.
 pub fn kept_chart<'a>(wb: &Workbook, si: usize, sheet: &'a Sheet, ch: &Chart) -> Option<KeptChart<'a>> {
+    use super::chart_edit::{edit_fields, fields_changed, reads_as, without_fields};
+    use super::chart_patch::{apply, patch};
     let k = sheet.preserved.as_deref()?.charts.iter().find(|k| k.id == ch.id)?;
     let model = unplaced(ch);
-    if without_refs(model.clone()) != without_refs(k.chart.clone()) {
+    if without_fields(without_refs(model.clone())) != without_fields(without_refs(k.chart.clone())) {
         return None;
     }
     let is_chart = |q: &PreservedPart| normalize(&q.name) == normalize(&k.part);
     let part = k.parts.iter().find(|q| is_chart(q))?;
-    let edits = super::chart_patch::patch(wb, si, &part.data, &k.chart, &model)?;
+    let edits = patch(wb, si, &part.data, &k.chart, &model)?;
+    let mut data = if edits.is_empty() { None } else { Some(apply(&part.data, edits)?) };
+    if fields_changed(&k.chart, &model) {
+        let base: &[u8] = data.as_deref().unwrap_or(&part.data[..]);
+        let edited = apply(base, edit_fields(base, &k.chart, &model)?)?;
+        if !reads_as(&edited, &model) {
+            return None;
+        }
+        data = Some(edited);
+    }
     let mut parts = k.parts.clone();
-    if !edits.is_empty() {
-        let data = super::chart_patch::apply(&part.data, edits)?;
+    if let Some(data) = data {
         for q in parts.iter_mut().filter(|q| is_chart(q)) {
             q.data = Arc::from(data.as_slice());
         }

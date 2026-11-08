@@ -14,7 +14,7 @@ use crate::xml::{El, esc, esc_attr, num};
 
 /// The plot-area elements [`read_chart`] reads series from (those [`group_kind`] knows), in
 /// any order; kept chart XML is patched in place through the same list (`chart_patch`).
-pub(crate) const PLOT_GROUPS: [&str; 14] = [
+pub(crate) const PLOT_GROUPS: [&str; 16] = [
     "barChart",
     "bar3DChart",
     "lineChart",
@@ -29,6 +29,8 @@ pub(crate) const PLOT_GROUPS: [&str; 14] = [
     "bubbleChart",
     "radarChart",
     "stockChart",
+    "surfaceChart",
+    "surface3DChart",
 ];
 
 fn group_kind(g: &El) -> Option<ChartKind> {
@@ -78,6 +80,9 @@ fn group_kind(g: &El) -> Option<ChartKind> {
         "bubbleChart" => ChartKind::Bubble,
         "radarChart" => ChartKind::Radar,
         "stockChart" => ChartKind::Stock,
+        // The model has no surface type: shown as lines over the same categories, while the kept
+        // part is written back as it was (`passthrough`); edited, it is written as a line chart.
+        "surfaceChart" | "surface3DChart" => ChartKind::Line,
         _ => return None,
     })
 }
@@ -216,8 +221,8 @@ fn read_trendline(t: &El) -> Option<Trendline> {
     })
 }
 
-/// The options of a value axis (`c:valAx`) the model holds: fixed bounds, the major unit, and a
-/// number format not linked to the source cells.
+/// The options of a value axis (`c:valAx`) the model holds: fixed bounds, the major unit, a
+/// number format not linked to the source cells, and a logarithmic scale base.
 fn read_axis(a: &El) -> ChartAxis {
     let scaling = a.child("scaling");
     let finite = |v: f64| v.is_finite().then_some(v);
@@ -231,6 +236,7 @@ fn read_axis(a: &El) -> ChartAxis {
             .and_then(|n| n.attr("formatCode"))
             .filter(|c| !c.is_empty() && !c.eq_ignore_ascii_case("General"))
             .map(str::to_string),
+        log_base: scaling.and_then(|s| f64_val(s, "logBase")).filter(|b| (2.0..=1000.0).contains(b)),
     }
 }
 
@@ -276,8 +282,14 @@ pub fn read_chart(root: &El) -> Option<Chart> {
         }
     }
     let kind = if groups.len() > 1 { ChartKind::Combo } else { first_kind };
-    let show_val = |e: &El| e.child("dLbls").is_some_and(|d| bool_val(d, "showVal"));
-    let data_labels = groups.iter().any(|(g, _)| show_val(g) || g.kids("ser").any(show_val));
+    // Labels shown on the group or on any of its series.
+    let shown = |flag: &str| {
+        let on = |e: &El| e.child("dLbls").is_some_and(|d| bool_val(d, flag));
+        groups.iter().any(|(g, _)| on(g) || g.kids("ser").any(on))
+    };
+    let data_labels = shown("showVal");
+    // A slice's share of the total, which only pies and doughnuts label.
+    let data_label_percent = matches!(kind, ChartKind::Pie | ChartKind::Doughnut) && shown("showPercent");
     let val_axes: Vec<&El> = plot.kids("valAx").collect();
     let cat_ax = plot.child("catAx").or_else(|| plot.child("dateAx"));
     let scatter = matches!(first_kind, ChartKind::Scatter | ChartKind::ScatterLines | ChartKind::Bubble);
@@ -286,7 +298,9 @@ pub fn read_chart(root: &El) -> Option<Chart> {
         let y = val_axes.iter().find(|a| matches!(a.child_val("axPos"), Some("l") | Some("r"))).copied();
         (x, y)
     } else {
-        (cat_ax, val_axes.first().copied())
+        // The primary value axis is the one the first group plots on, wherever it is listed.
+        let primary = val_axes.iter().find(|a| a.child_val("axId").is_some_and(|id| first_axes.iter().any(|f| f == id)));
+        (cat_ax, primary.or(val_axes.first()).copied())
     };
     let legend = match chart.child("legend") {
         None => LegendPos::None,
@@ -320,6 +334,7 @@ pub fn read_chart(root: &El) -> Option<Chart> {
         hole_size,
         first_slice_angle,
         value_axis: y_ax.map(read_axis).unwrap_or_default(),
+        data_label_percent,
         x_title: x_ax.and_then(|a| a.child("title")).and_then(rich_title),
         y_title: y_ax.and_then(|a| a.child("title")).and_then(rich_title),
         source: None,
@@ -330,8 +345,10 @@ pub fn read_chart(root: &El) -> Option<Chart> {
 
 // ---------------------------------------------------------------- writing
 
+/// The plot group a chart type is written as; `passthrough::chart_edit` rewrites kept groups
+/// with it.
 #[derive(Clone, Copy, PartialEq)]
-enum G {
+pub(crate) enum G {
     Bar { bar: bool, grouping: &'static str },
     Line { stacked: bool, markers: bool },
     Pie,
@@ -343,7 +360,7 @@ enum G {
     Stock,
 }
 
-fn group_for(k: ChartKind) -> G {
+pub(crate) fn group_for(k: ChartKind) -> G {
     match k {
         ChartKind::ColumnStacked => G::Bar { bar: false, grouping: "stacked" },
         ChartKind::ColumnStacked100 => G::Bar { bar: false, grouping: "percentStacked" },
@@ -699,16 +716,16 @@ fn trendline_xml(t: &Trendline, wb: &Workbook) -> String {
     x
 }
 
-fn dlbls(show: bool) -> String {
+fn dlbls(value: bool, percent: bool) -> String {
     format!(
-        "<c:dLbls><c:showLegendKey val=\"0\"/><c:showVal val=\"{}\"/><c:showCatName val=\"0\"/><c:showSerName val=\"0\"/><c:showPercent val=\"0\"/><c:showBubbleSize val=\"0\"/></c:dLbls>",
-        show as u8
+        "<c:dLbls><c:showLegendKey val=\"0\"/><c:showVal val=\"{}\"/><c:showCatName val=\"0\"/><c:showSerName val=\"0\"/><c:showPercent val=\"{}\"/><c:showBubbleSize val=\"0\"/></c:dLbls>",
+        value as u8, percent as u8
     )
 }
 
 fn group_xml(g: G, series: &[(usize, &Series)], ch: &Chart, axes: (u32, u32), wb: &Workbook, si: usize) -> String {
     let sers: String = series.iter().map(|(i, s)| series_xml(s, *i, g, wb, si)).collect();
-    let dl = dlbls(ch.data_labels);
+    let dl = dlbls(ch.data_labels, ch.data_label_percent && matches!(g, G::Pie | G::Doughnut));
     let ax = format!("<c:axId val=\"{}\"/><c:axId val=\"{}\"/>", axes.0, axes.1);
     match g {
         G::Bar { bar, grouping } => {
@@ -761,8 +778,16 @@ struct Ax<'a> {
 }
 
 fn axis_xml(a: &Ax<'_>) -> String {
+    let log = a.opts.and_then(ChartAxis::log);
+    // A log axis can't reach zero or below: such bounds are left automatic.
+    let usable = |v: &f64| log.is_none() || *v > 0.0;
     let (min, max) = a.opts.map(ChartAxis::bounds).unwrap_or_default();
-    let mut s = format!("<c:{0}><c:axId val=\"{1}\"/><c:scaling><c:orientation val=\"minMax\"/>", if a.cat { "catAx" } else { "valAx" }, a.id);
+    let (min, max) = (min.filter(usable), max.filter(usable));
+    let mut s = format!("<c:{0}><c:axId val=\"{1}\"/><c:scaling>", if a.cat { "catAx" } else { "valAx" }, a.id);
+    if let Some(b) = log {
+        let _ = write!(s, "<c:logBase val=\"{}\"/>", num(b));
+    }
+    s.push_str("<c:orientation val=\"minMax\"/>");
     if let Some(v) = max {
         let _ = write!(s, "<c:max val=\"{}\"/>", num(v));
     }
@@ -847,7 +872,7 @@ pub fn write_chart(wb: &Workbook, si: usize, ch: &Chart, book_name: &str) -> Str
         }
         if !sec.is_empty() {
             let g = match sec.first().and_then(|(_, x)| x.kind).map(group_for) {
-                Some(b @ G::Bar { .. }) => b,
+                Some(g @ (G::Bar { .. } | G::Line { .. } | G::Area { .. })) => g,
                 _ => G::Line { stacked: false, markers: false },
             };
             s.push_str(&group_xml(g, &sec, ch, (3, 4), wb, si));

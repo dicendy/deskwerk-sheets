@@ -223,6 +223,18 @@ fn wedge(ctx: &mut Ctx, ring: &Ring, a0: f32, sweep: f32, fill: Rgba) {
     }
 }
 
+/// A slice's data label: its value, its share of the total (`25%`, `showPercent`), or both, as the
+/// chart asks; `None` when it shows neither.
+fn slice_label(chart: &Chart, f: &Fmt, value: f64, share: f64) -> Option<String> {
+    let percent = || format!("{:.0}%", share * 100.0);
+    match (chart.data_labels, chart.data_label_percent) {
+        (true, true) => Some(format!("{}, {}", f.format(value, None), percent())),
+        (true, false) => Some(f.format(value, None)),
+        (false, true) => Some(percent()),
+        (false, false) => None,
+    }
+}
+
 pub(super) fn pie(ctx: &mut Ctx, chart: &Chart, data: &ChartData, area: Bx, inner: f32, names: bool) {
     let Some(s) = data.series.first() else { return };
     let vals: Vec<f64> = s.values.iter().take(MAX_CATS).map(|v| v.map(f64::abs).unwrap_or(0.0)).collect();
@@ -245,8 +257,9 @@ pub(super) fn pie(ctx: &mut Ctx, chart: &Chart, data: &ChartData, area: Bx, inne
         if sweep > 1e-4 {
             let fill = point_color(data, j);
             wedge(ctx, &ring, a, sweep, fill);
-            if (chart.data_labels || names) && vals.len() <= MAX_LABELS {
-                let t = if names { cat_label(data, j) } else { f.format(s.values.get(j).copied().flatten().unwrap_or(0.0), None) };
+            let label =
+                if names { Some(cat_label(data, j)) } else { slice_label(chart, &f, s.values.get(j).copied().flatten().unwrap_or(0.0), *v / total) };
+            if let Some(t) = label.filter(|_| vals.len() <= MAX_LABELS) {
                 let mid = a + sweep / 2.0;
                 let rr = if ri > 0.0 { (r + ri) / 2.0 } else { r * 0.65 };
                 let room = sweep * rr;
@@ -321,8 +334,8 @@ pub(super) fn doughnut(ctx: &mut Ctx, chart: &Chart, data: &ChartData, area: Bx)
             if sweep > 1e-4 {
                 let fill = point_color(data, j);
                 wedge(ctx, &ring, a, sweep, fill);
-                if chart.data_labels && n <= MAX_LABELS {
-                    let t = f.format(s.values.get(j).copied().flatten().unwrap_or(0.0), None);
+                let label = slice_label(chart, &f, s.values.get(j).copied().flatten().unwrap_or(0.0), v / total);
+                if let Some(t) = label.filter(|_| n <= MAX_LABELS) {
                     let mid = a + sweep / 2.0;
                     let rr = (outer + inner) / 2.0;
                     if ctx.tw(&t, LABEL_SIZE) <= (sweep * rr).max(outer - inner) && sweep * rr >= LABEL_SIZE {

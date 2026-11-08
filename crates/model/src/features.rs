@@ -563,7 +563,7 @@ impl Default for ChartDataTable {
 }
 
 /// Options of a chart's (primary) value axis, as Excel's Format Axis pane sets them: fixed
-/// bounds, the major unit, a number format of its own. `None` everywhere is Excel's automatic
+/// bounds, the major unit, a number format of its own, a logarithmic scale. `None` everywhere is Excel's automatic
 /// axis, which the renderer picks from the data and the source cells' format.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -574,9 +574,16 @@ pub struct ChartAxis {
     pub major_unit: Option<f64>,
     /// Label format not linked to the source cells (`numFmt sourceLinked="0"`).
     pub number_format: Option<String>,
+    /// Logarithmic scale base (`c:scaling/c:logBase`, Excel's 2–1000); `None` is a linear axis.
+    pub log_base: Option<f64>,
 }
 
 impl ChartAxis {
+    /// The logarithmic scale base when set and usable: finite and within Excel's 2–1000.
+    pub fn log(&self) -> Option<f64> {
+        self.log_base.filter(|b| (2.0..=1000.0).contains(b))
+    }
+
     /// The bounds `(min, max)` when set and usable: finite, and `min < max` when both are.
     pub fn bounds(&self) -> (Option<f64>, Option<f64>) {
         let min = self.min.filter(|v| v.is_finite());
@@ -611,6 +618,10 @@ pub struct Chart {
     /// The value axis's bounds, unit and number format (read from and written to XLSX).
     #[serde(default)]
     pub value_axis: ChartAxis,
+    /// Pie and doughnut data labels show each slice's share of the total (`showPercent`), after
+    /// the value when `data_labels` is set too.
+    #[serde(default)]
+    pub data_label_percent: bool,
     pub x_title: Option<String>,
     pub y_title: Option<String>,
     /// Source range when created from a selection (for Switch Row/Column).
@@ -1150,6 +1161,7 @@ mod tests {
             hole_size: 75,
             first_slice_angle: 0,
             value_axis: Default::default(),
+            data_label_percent: false,
             x_title: None,
             y_title: None,
             source: None,

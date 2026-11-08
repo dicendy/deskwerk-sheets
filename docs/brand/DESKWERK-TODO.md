@@ -82,3 +82,22 @@ After replacing the SVG: run `packaging/icons.sh`, update `assets/app-icon/READM
   `ai.storyteller.<id>` on macOS. So in-place install from the update prompt may not find
   Deskwerk installs and fall back to a download. Fixing it needs a craft-update change (or
   disabling the menu item).
+
+## Charts
+
+Gaps closed on the `charts-2` branch (details in `docs/chart-parity.md`): a kept XLSX chart with a
+new title, legend position or type within column/bar/line/area is patched in place instead of
+rebuilt; surface charts are kept byte for byte (shown as lines); pie/doughnut percentage labels;
+a logarithmic primary value axis; secondary line/area/column groups keep their kind. Still open:
+
+- No UI for the new model fields: `ChartAxis.log_base` and `Chart.data_label_percent` are read,
+  drawn and saved, but no Format Axis pane or Data Labels option sets them yet (nor a
+  `chart.set` command parameter).
+- Other edits of a kept chart (colours, axis options, data labels, combo or pie type changes)
+  still write the chart from the model and lose its formatting.
+- Log scale is drawn on the primary axis of category charts only; scatter/bubble and the
+  secondary axis stay linear, and columns on a log axis rise from the bottom of the plot rather
+  than from the crossing point.
+- Surface charts are drawn as lines; there is no surface/contour renderer.
+- Not checked in Excel: the patched XML is validated by reading it back, not by opening it in
+  Excel.

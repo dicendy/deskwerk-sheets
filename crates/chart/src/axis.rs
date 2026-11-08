@@ -115,16 +115,29 @@ pub fn nice_scale(lo: f64, hi: f64, force_zero: bool) -> Scale {
 pub(crate) struct Fmt {
     general: bool,
     fmt: NumberFormat,
+    /// A logarithmic axis's base: the values formatted are exponents of it.
+    pow: Option<f64>,
 }
 
 impl Fmt {
     pub fn new(code: &str) -> Fmt {
         let t = code.trim();
         let general = t.is_empty() || t.eq_ignore_ascii_case("general");
-        Fmt { general, fmt: NumberFormat::parse_cached(if general { "General" } else { t }) }
+        Fmt { general, fmt: NumberFormat::parse_cached(if general { "General" } else { t }), pow: None }
+    }
+    /// The same format for a logarithmic axis in `base`: it is given exponents and shows
+    /// `base` raised to them.
+    pub fn log(self, base: f64) -> Fmt {
+        Fmt { pow: Some(base), ..self }
     }
     /// Formats `v`; `step` (axis labels) fixes the decimals for General.
     pub fn format(&self, v: f64, step: Option<f64>) -> String {
+        match self.pow {
+            Some(base) => self.text(power(base, v), None),
+            None => self.text(v, step),
+        }
+    }
+    fn text(&self, v: f64, step: Option<f64>) -> String {
         let mut v = clean(v);
         if let Some(s) = step
             && s > 0.0
@@ -141,6 +154,11 @@ impl Fmt {
         }
         t
     }
+}
+
+/// `base` to the power `e`, exact for whole exponents (`10³` is `1000`, not `999.9999999999998`).
+fn power(base: f64, e: f64) -> f64 {
+    if e.fract() == 0.0 && e.abs() < 1000.0 { base.powi(e as i32) } else { base.powf(e) }
 }
 
 fn general_text(v: f64, step: Option<f64>) -> String {

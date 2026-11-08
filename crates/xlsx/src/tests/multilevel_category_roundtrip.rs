@@ -47,6 +47,7 @@ fn workbook(categories: &str, values: &str) -> Workbook {
         hole_size: 75,
         first_slice_angle: 0,
         value_axis: Default::default(),
+        data_label_percent: false,
         x_title: None,
         y_title: None,
         source: None,
