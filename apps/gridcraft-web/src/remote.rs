@@ -312,7 +312,7 @@ impl SaveQueue {
         saves.retain(|save| match (&save.outcome, &save.sent) {
             (None, _) => true,
             (Some(Err(error)), _) => {
-                alerts.push(format!("Couldn't save {name}: {error}"));
+                alerts.push(app.ui.language.tr("Couldn't save {name}: {error}").replace("{name}", name).replace("{error}", error));
                 false
             }
             (Some(Ok(())), Some((uid, wb))) => {
@@ -413,7 +413,8 @@ mod browser {
         fn deliver(self: &Rc<Self>, path: &str, bytes: &[u8], ctx: &egui::Context) {
             if let Some(error) = self.params.refused(path) {
                 log::warn!("{error}");
-                self.saves.alert(format!("Couldn't save {}: {error}", self.params.name));
+                let text = gridcraft_ui_egui::i18n::current(ctx).tr("Couldn't save {name}: {error}");
+                self.saves.alert(text.replace("{name}", &self.params.name).replace("{error}", &error));
                 self.post("deskwerk:save-failed", json!({ "status": 415, "error": error }));
                 ctx.request_repaint();
             } else if self.params.saves_back(path) {
@@ -445,7 +446,8 @@ mod browser {
                     }
                     Err((status, error)) => {
                         log::error!("couldn't load {name}: {error}");
-                        remote.saves.alert(format!("Couldn't open {name}: {error}"));
+                        let text = gridcraft_ui_egui::i18n::current(&ctx).tr("Couldn't open {name}: {error}");
+                        remote.saves.alert(text.replace("{name}", &name).replace("{error}", &error));
                         remote.post("deskwerk:load-failed", json!({ "status": status, "error": error }));
                     }
                 }

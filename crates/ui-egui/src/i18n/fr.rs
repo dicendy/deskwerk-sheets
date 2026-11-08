@@ -1318,6 +1318,12 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
         "Unique rows only" => "Extraction sans doublon",
         "Windows of active workbook" => "Fenêtres du classeur actif",
         "Write a macro step by step" => "Écrire une macro étape par étape",
+        "A clean-room, open-source, Rust-native spreadsheet." => "Un tableur open source écrit en Rust, développé en salle blanche.",
+        "Based on GridCraft by the ArtCraft team. Not affiliated with or endorsed by them." => {
+            "Basé sur GridCraft de l'équipe ArtCraft. Sans lien avec elle ni approbation de sa part."
+        }
+        "Couldn't save {name}: {error}" => "Impossible d'enregistrer {name} : {error}",
+        "Couldn't open {name}: {error}" => "Impossible d'ouvrir {name} : {error}",
         _ => return None,
     })
 }
