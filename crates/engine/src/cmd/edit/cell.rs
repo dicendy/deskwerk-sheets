@@ -1,3 +1,5 @@
+use gridcraft_core::Locale;
+
 use super::{
     Cell, CellRef, EngineError, Formula, Json, MAX_ROWS, RangeRef, Result, Session, StyleId, Value, bad, bool_param, cell_param_on, edit, json,
     locked_cell_error, str_param, target_range, target_ranges, target_sheet,
@@ -22,6 +24,12 @@ pub(crate) fn is_formula_input(input: &str) -> bool {
 /// format). Inherits the destination's cell, row or column style, including its number
 /// format, before parsing. Errors when the formula can't be parsed.
 pub(crate) fn input_to_cell(input: &str, sheet: usize, at: CellRef, wb: &mut gridcraft_model::Workbook) -> Result<Option<Cell>> {
+    input_to_cell_in(input, sheet, at, wb, Locale::En)
+}
+
+/// [`input_to_cell`] with constants read in `loc`'s conventions (`1.234,5`, `31.12.2026`,
+/// `WAHR`). Formulas are always canonical (English) syntax.
+pub(crate) fn input_to_cell_in(input: &str, sheet: usize, at: CellRef, wb: &mut gridcraft_model::Workbook, loc: Locale) -> Result<Option<Cell>> {
     let style = wb.sheet(sheet).map(|sh| sh.style_id(at)).unwrap_or_default();
     if input.is_empty() {
         let c = Cell { value: Value::Empty, formula: None, style, py: None };
@@ -64,7 +72,7 @@ pub(crate) fn input_to_cell(input: &str, sheet: usize, at: CellRef, wb: &mut gri
         }
         return Ok(Some(cell));
     }
-    let mut parsed = gridcraft_core::parse::parse_input(input, wb.date_system);
+    let mut parsed = gridcraft_core::parse::parse_input_in(input, wb.date_system, loc);
     // Like Excel's automatic percent entry: a bare number of 1 or more typed into a cell already
     // formatted as a percentage is a percent (3 -> 3%); smaller numbers are taken as fractions.
     if parsed.format.is_none()
@@ -119,7 +127,17 @@ pub(crate) fn check_arg_counts(expr: &gridcraft_formula::Expr) -> Result<()> {
     }
 }
 
+/// The optional `locale` parameter of typed entry (`"de"`, `"fr"`; en-US when absent): the
+/// conventions constants are typed in. Callers of the control protocol stay English by default.
+pub(crate) fn locale_param(cmd: &str, p: &Json) -> Result<Locale> {
+    match str_param(p, "locale") {
+        None => Ok(Locale::En),
+        Some(tag) => Locale::from_tag(tag).ok_or_else(|| bad(cmd, format!("unknown locale {tag:?}: en, de or fr"))),
+    }
+}
+
 pub(super) fn cell_set(s: &mut Session, p: &Json) -> Result<Json> {
+    let loc = locale_param("cell.set", p)?;
     let sheet = target_sheet(s, p)?;
     let at = match cell_param_on(s, p, "cell", sheet)? {
         Some(c) => c,
@@ -147,7 +165,7 @@ pub(super) fn cell_set(s: &mut Session, p: &Json) -> Result<Json> {
             if !range.is_single() && cx.wb.sheet(sheet).is_some_and(|sh| sh.tables.iter().any(|t| t.range.intersects(&range))) {
                 return Err(EngineError::Other("Multi-cell array formulas aren't allowed in tables.".into()));
             }
-            let mut cell = input_to_cell(&input, sheet, range.start, &mut cx.wb)?.unwrap_or_default();
+            let mut cell = input_to_cell_in(&input, sheet, range.start, &mut cx.wb, loc)?.unwrap_or_default();
             if let Some(f) = cell.formula.as_mut() {
                 std::sync::Arc::make_mut(f).array = Some(range);
             }
@@ -163,7 +181,7 @@ pub(super) fn cell_set(s: &mut Session, p: &Json) -> Result<Json> {
             cx.touch(sheet, range.start);
             return Ok(Json::Null);
         }
-        let cell = input_to_cell(&input, sheet, at, &mut cx.wb)?;
+        let cell = input_to_cell_in(&input, sheet, at, &mut cx.wb, loc)?;
         let sh = cx.sheet_mut(sheet)?;
         match cell {
             Some(c) => sh.set_cell(at, c),
@@ -318,6 +336,7 @@ pub(super) fn range_fill(s: &mut Session, p: &Json) -> Result<Json> {
     let sheet = target_sheet(s, p)?;
     let ranges = target_ranges(s, p)?;
     let input = str_param(p, "input").unwrap_or("").to_string();
+    let loc = locale_param("range.fill", p)?;
     let origin = s.doc()?.selection.active;
     edit(s, |cx| {
         // Each cell gets what typing the input there gives: the automatic number format where
@@ -337,7 +356,7 @@ pub(super) fn range_fill(s: &mut Session, p: &Json) -> Result<Json> {
                 let base = match by_style.get(&style) {
                     Some(c) => c.clone(),
                     None => {
-                        let c = input_to_cell(&input, sheet, at, &mut cx.wb)?;
+                        let c = input_to_cell_in(&input, sheet, at, &mut cx.wb, loc)?;
                         by_style.insert(style, c.clone());
                         c
                     }

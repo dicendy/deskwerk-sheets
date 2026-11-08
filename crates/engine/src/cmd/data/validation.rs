@@ -223,6 +223,11 @@ pub fn list_items(wb: &Workbook, sheet: usize, at: CellRef, dv: &Validation) -> 
 
 /// Checks typed input against the validation of a cell. `Ok(None)` = valid.
 pub fn check_validation(wb: &Workbook, sheet: usize, at: CellRef, input: &str) -> Option<(Validation, String)> {
+    check_validation_in(wb, sheet, at, input, gridcraft_core::Locale::En)
+}
+
+/// [`check_validation`] for input typed in `loc`'s conventions (`1,5`, `31.12.2026`).
+pub fn check_validation_in(wb: &Workbook, sheet: usize, at: CellRef, input: &str, loc: gridcraft_core::Locale) -> Option<(Validation, String)> {
     let sh = wb.sheet(sheet)?;
     let dv = sh.validations.iter().find(|d| d.ranges.iter().any(|r| r.contains(at)))?;
     if dv.kind == ValidationKind::Any || !dv.show_error {
@@ -231,7 +236,7 @@ pub fn check_validation(wb: &Workbook, sheet: usize, at: CellRef, input: &str) -
     if input.is_empty() && dv.allow_blank {
         return None;
     }
-    let v = gridcraft_core::parse::parse_input(input, wb.date_system).value;
+    let v = gridcraft_core::parse::parse_input_in(input, wb.date_system, loc).value;
     // The formulas are written for the top-left cell of all the areas and see the value being entered,
     // as in Excel (a custom `=A1>10` on A1:A9 checks A5's new value at A5).
     let first = RangeRef::top_left(&dv.ranges).unwrap_or(at);

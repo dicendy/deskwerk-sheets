@@ -28,7 +28,36 @@ pub fn specs() -> Vec<CommandSpec> {
         cmd!(noundo "window.activate", "Switch Window", ["Window"], None, "{window} | {doc} | {index} (a window id, a workbook id, or the workbook's position in the list)", has_doc, activate_window),
         cmd!(noundo "window.close", "Close Window", ["Window"], None, "{window?, doc?, force?: bool} → {closed, document}: closes a window (the active one by default); its workbook closes with its last window, asking first when it has unsaved changes unless `force`", has_doc, close_window),
         cmd!(query "window.list", "Windows", ["Window"], None, "{} → [{window, doc, index, title, dirty, active, hidden}]", always, |s, _| Ok(s.window_list())),
+        cmd!(
+            query "app.locale.set",
+            "Number Locale",
+            [],
+            None,
+            "{locale: \"en\"|\"de\"|\"fr\"} → {locale}: shows numbers, dates and booleans of every open workbook in that locale's conventions (decimal comma; DD.MM.YYYY or DD/MM/YYYY) and recalculates them for TEXT(). A session setting: no workbook changes. Typed input follows it only with cell.set's `locale`",
+            always,
+            set_locale
+        ),
     ]
+}
+
+/// `app.locale.set`: the session's number locale. Formulas whose result depends on it (TEXT) are
+/// recalculated; a workbook without unsaved changes stays without them.
+fn set_locale(s: &mut Session, p: &Json) -> Result<Json> {
+    let tag = str_param(p, "locale").ok_or_else(|| bad("app.locale.set", "missing `locale`: en, de or fr"))?;
+    let loc = gridcraft_core::Locale::from_tag(tag).ok_or_else(|| bad("app.locale.set", format!("unknown locale {tag:?}: en, de or fr")))?;
+    if s.locale() != loc {
+        s.set_locale(loc);
+        for d in &mut s.docs {
+            let dirty = d.is_dirty();
+            let mut wb = (*d.wb).clone();
+            d.calc.recalc_all(&mut wb);
+            d.wb = std::sync::Arc::new(wb);
+            if !dirty {
+                d.saved = d.wb.clone();
+            }
+        }
+    }
+    Ok(json!({"locale": loc.tag()}))
 }
 
 fn new_workbook(s: &mut Session, p: &Json) -> Result<Json> {
