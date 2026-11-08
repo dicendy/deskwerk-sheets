@@ -5,12 +5,31 @@ use std::fmt::Write as _;
 
 use gridcraft_core::{RangeRef, Value, category_levels};
 use gridcraft_formula::{Expr, SheetSel};
-use gridcraft_model::{Chart, ChartKind, Color, DefinedName, LegendPos, LineDash, Series, Trendline, TrendlineKind, Workbook};
+use gridcraft_model::{Chart, ChartAxis, ChartKind, Color, DefinedName, LegendPos, LineDash, Series, Trendline, TrendlineKind, Workbook};
 
 use crate::drawing::{dml_color, srgb};
-use crate::xml::{El, esc, num};
+use crate::xml::{El, esc, esc_attr, num};
 
 // ---------------------------------------------------------------- reading
+
+/// The plot-area elements [`read_chart`] reads series from (those [`group_kind`] knows), in
+/// any order; kept chart XML is patched in place through the same list (`chart_patch`).
+pub(crate) const PLOT_GROUPS: [&str; 14] = [
+    "barChart",
+    "bar3DChart",
+    "lineChart",
+    "line3DChart",
+    "pieChart",
+    "pie3DChart",
+    "ofPieChart",
+    "doughnutChart",
+    "areaChart",
+    "area3DChart",
+    "scatterChart",
+    "bubbleChart",
+    "radarChart",
+    "stockChart",
+];
 
 fn group_kind(g: &El) -> Option<ChartKind> {
     let grouping = g.child_val("grouping").unwrap_or("standard");
@@ -197,6 +216,24 @@ fn read_trendline(t: &El) -> Option<Trendline> {
     })
 }
 
+/// The options of a value axis (`c:valAx`) the model holds: fixed bounds, the major unit, and a
+/// number format not linked to the source cells.
+fn read_axis(a: &El) -> ChartAxis {
+    let scaling = a.child("scaling");
+    let finite = |v: f64| v.is_finite().then_some(v);
+    ChartAxis {
+        min: scaling.and_then(|s| f64_val(s, "min")).and_then(finite),
+        max: scaling.and_then(|s| f64_val(s, "max")).and_then(finite),
+        major_unit: f64_val(a, "majorUnit").filter(|u| u.is_finite() && *u > 0.0),
+        number_format: a
+            .child("numFmt")
+            .filter(|n| !n.flag("sourceLinked", false))
+            .and_then(|n| n.attr("formatCode"))
+            .filter(|c| !c.is_empty() && !c.eq_ignore_ascii_case("General"))
+            .map(str::to_string),
+    }
+}
+
 fn rich_title(t: &El) -> Option<String> {
     let tx = t.child("tx")?;
     if let Some(rich) = tx.child("rich") {
@@ -282,6 +319,7 @@ pub fn read_chart(root: &El) -> Option<Chart> {
         style: root.child_val("style").and_then(|v| v.parse().ok()).unwrap_or(2),
         hole_size,
         first_slice_angle,
+        value_axis: y_ax.map(read_axis).unwrap_or_default(),
         x_title: x_ax.and_then(|a| a.child("title")).and_then(rich_title),
         y_title: y_ax.and_then(|a| a.child("title")).and_then(rich_title),
         source: None,
@@ -363,7 +401,7 @@ pub(crate) fn ref_values(wb: &Workbook, sheet_idx: usize, f: &str) -> Option<Vec
     Some(range.iter().map(|c| sheet.value(c)).collect())
 }
 
-fn is_ref(f: &str) -> bool {
+pub(crate) fn is_ref(f: &str) -> bool {
     matches!(gridcraft_formula::parse(f), Ok(Expr::Ref(_)))
 }
 
@@ -390,7 +428,7 @@ fn chart_name<'a>(wb: &'a Workbook, si: usize, f: &str) -> Option<(Option<usize>
 /// draws the whole chart blank, with no repair prompt (observed in Excel for Windows,
 /// Microsoft 365). A workbook-scoped name is written `[0]!Name`, as Excel writes it, a
 /// sheet-scoped one `Sheet!Name`; an undefined name gets `[0]!`, as the file it came from had.
-fn chart_ref_to_file(wb: &Workbook, si: usize, f: &str) -> String {
+pub(crate) fn chart_ref_to_file(wb: &Workbook, si: usize, f: &str) -> String {
     let on_sheet = |i: usize, n: &str| wb.sheet(i).map(|sh| format!("{}!{n}", gridcraft_formula::quote_sheet(&sh.name)));
     match chart_name(wb, si, f) {
         Some((Some(i), n, _)) => on_sheet(i, &n).unwrap_or_else(|| crate::fmla::text_to_file(f)),
@@ -400,7 +438,7 @@ fn chart_ref_to_file(wb: &Workbook, si: usize, f: &str) -> String {
 }
 
 /// A series name that refers to a defined name (as opposed to literal text that parses as one).
-fn is_defined_name(wb: &Workbook, si: usize, f: &str) -> bool {
+pub(crate) fn is_defined_name(wb: &Workbook, si: usize, f: &str) -> bool {
     chart_name(wb, si, f).is_some_and(|(_, _, d)| d.is_some())
 }
 
@@ -718,32 +756,46 @@ struct Ax<'a> {
     grid: bool,
     title: Option<&'a str>,
     crosses_max: bool,
+    /// The chart's value-axis options, on its primary value axis.
+    opts: Option<&'a ChartAxis>,
 }
 
 fn axis_xml(a: &Ax<'_>) -> String {
-    let mut s = format!(
-        "<c:{0}><c:axId val=\"{1}\"/><c:scaling><c:orientation val=\"minMax\"/></c:scaling><c:delete val=\"{2}\"/><c:axPos val=\"{3}\"/>",
-        if a.cat { "catAx" } else { "valAx" },
-        a.id,
-        a.delete as u8,
-        a.pos
-    );
+    let (min, max) = a.opts.map(ChartAxis::bounds).unwrap_or_default();
+    let mut s = format!("<c:{0}><c:axId val=\"{1}\"/><c:scaling><c:orientation val=\"minMax\"/>", if a.cat { "catAx" } else { "valAx" }, a.id);
+    if let Some(v) = max {
+        let _ = write!(s, "<c:max val=\"{}\"/>", num(v));
+    }
+    if let Some(v) = min {
+        let _ = write!(s, "<c:min val=\"{}\"/>", num(v));
+    }
+    let _ = write!(s, "</c:scaling><c:delete val=\"{}\"/><c:axPos val=\"{}\"/>", a.delete as u8, a.pos);
     if a.grid {
         s.push_str("<c:majorGridlines/>");
     }
     if let Some(t) = a.title {
         s.push_str(&title_xml(t));
     }
+    match a.opts.and_then(|o| o.number_format.as_deref()).filter(|c| !c.is_empty()) {
+        Some(code) => {
+            let _ = write!(s, "<c:numFmt formatCode=\"{}\" sourceLinked=\"0\"/>", esc_attr(code));
+        }
+        None => s.push_str("<c:numFmt formatCode=\"General\" sourceLinked=\"1\"/>"),
+    }
     let _ = write!(
         s,
-        "<c:numFmt formatCode=\"General\" sourceLinked=\"1\"/><c:majorTickMark val=\"out\"/><c:minorTickMark val=\"none\"/><c:tickLblPos val=\"nextTo\"/><c:crossAx val=\"{}\"/><c:crosses val=\"{}\"/>",
+        "<c:majorTickMark val=\"out\"/><c:minorTickMark val=\"none\"/><c:tickLblPos val=\"nextTo\"/><c:crossAx val=\"{}\"/><c:crosses val=\"{}\"/>",
         a.cross,
         if a.crosses_max { "max" } else { "autoZero" }
     );
     if a.cat {
         s.push_str("<c:auto val=\"1\"/><c:lblAlgn val=\"ctr\"/><c:lblOffset val=\"100\"/><c:noMultiLvlLbl val=\"0\"/></c:catAx>");
     } else {
-        s.push_str("<c:crossBetween val=\"between\"/></c:valAx>");
+        s.push_str("<c:crossBetween val=\"between\"/>");
+        if let Some(u) = a.opts.and_then(|o| o.major_unit).filter(|u| u.is_finite() && *u > 0.0) {
+            let _ = write!(s, "<c:majorUnit val=\"{}\"/>", num(u));
+        }
+        s.push_str("</c:valAx>");
     }
     s
 }
@@ -821,6 +873,7 @@ pub fn write_chart(wb: &Workbook, si: usize, ch: &Chart, book_name: &str) -> Str
                 grid: false,
                 title: ch.x_title.as_deref(),
                 crosses_max: false,
+                opts: None,
             }));
             s.push_str(&axis_xml(&Ax {
                 cat: false,
@@ -831,6 +884,7 @@ pub fn write_chart(wb: &Workbook, si: usize, ch: &Chart, book_name: &str) -> Str
                 grid: ch.gridlines,
                 title: ch.y_title.as_deref(),
                 crosses_max: false,
+                opts: Some(&ch.value_axis),
             }));
         }
         G::Bar { bar: true, .. } => {
@@ -843,6 +897,7 @@ pub fn write_chart(wb: &Workbook, si: usize, ch: &Chart, book_name: &str) -> Str
                 grid: false,
                 title: ch.x_title.as_deref(),
                 crosses_max: false,
+                opts: None,
             }));
             s.push_str(&axis_xml(&Ax {
                 cat: false,
@@ -853,6 +908,7 @@ pub fn write_chart(wb: &Workbook, si: usize, ch: &Chart, book_name: &str) -> Str
                 grid: ch.gridlines,
                 title: ch.y_title.as_deref(),
                 crosses_max: false,
+                opts: Some(&ch.value_axis),
             }));
         }
         _ => {
@@ -865,6 +921,7 @@ pub fn write_chart(wb: &Workbook, si: usize, ch: &Chart, book_name: &str) -> Str
                 grid: false,
                 title: ch.x_title.as_deref(),
                 crosses_max: false,
+                opts: None,
             }));
             s.push_str(&axis_xml(&Ax {
                 cat: false,
@@ -875,12 +932,13 @@ pub fn write_chart(wb: &Workbook, si: usize, ch: &Chart, book_name: &str) -> Str
                 grid: ch.gridlines,
                 title: ch.y_title.as_deref(),
                 crosses_max: false,
+                opts: Some(&ch.value_axis),
             }));
         }
     }
     if secondary.is_some() {
-        s.push_str(&axis_xml(&Ax { cat: true, id: 3, cross: 4, pos: "b", delete: true, grid: false, title: None, crosses_max: false }));
-        s.push_str(&axis_xml(&Ax { cat: false, id: 4, cross: 3, pos: "r", delete: false, grid: false, title: None, crosses_max: true }));
+        s.push_str(&axis_xml(&Ax { cat: true, id: 3, cross: 4, pos: "b", delete: true, grid: false, title: None, crosses_max: false, opts: None }));
+        s.push_str(&axis_xml(&Ax { cat: false, id: 4, cross: 3, pos: "r", delete: false, grid: false, title: None, crosses_max: true, opts: None }));
     }
     if let Some(t) = &ch.data_table {
         let _ = write!(

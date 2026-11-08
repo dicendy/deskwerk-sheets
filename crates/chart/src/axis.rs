@@ -31,6 +31,8 @@ impl Scale {
                 let v = if (snapped - v).abs() < self.step * 1e-9 { snapped } else { v };
                 if v.abs() < self.step * 1e-9 { 0.0 } else { v }
             })
+            // A fixed maximum off the step grid: no tick past it.
+            .filter(|v| *v <= self.max + self.step * 1e-9)
             .collect()
     }
     /// Position of `v` along the axis, 0 at `min`, 1 at `max` (clamped to a sane band).

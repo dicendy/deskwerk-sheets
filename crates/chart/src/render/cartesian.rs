@@ -1,3 +1,5 @@
+use gridcraft_model::ChartAxis;
+
 use super::frame::{Bx, CatAxis, ValAxis, frame, on, value_range};
 use super::legend::{cat_label, plot_kind};
 use super::lines::{decimate_area, draw_markers, draw_runs};
@@ -233,7 +235,31 @@ fn series_spans(data: &ChartData, fams: &[Fam], sec: &[bool], ncat: usize) -> Ve
     spans
 }
 
-fn axis_scales(data: &ChartData, fams: &[Fam], sec: &[bool], spans: &[Vec<Option<(f64, f64)>>]) -> Vec<(Scale, Fmt)> {
+/// The automatic scale `auto` with the bounds and major unit a chart fixes (Format Axis ▸ Bounds
+/// and Units, read from XLSX): a bound left automatic keeps the automatic one, and the step is
+/// the major unit or a nice one for the fixed span.
+pub(super) fn fixed_scale(auto: Scale, opts: &ChartAxis) -> Scale {
+    let (min, max) = opts.bounds();
+    let (lo, hi) = (min.unwrap_or(auto.min), max.unwrap_or(auto.max));
+    if lo >= hi || (hi - lo).is_infinite() {
+        return auto;
+    }
+    let unit = opts.major_unit.filter(|u| u.is_finite() && *u > 0.0 && (hi - lo) / *u <= 50.0);
+    let step = match unit {
+        Some(u) => u,
+        None if min.is_none() && max.is_none() => auto.step,
+        None => nice_scale(lo, hi, false).step,
+    };
+    Scale { min: lo, max: hi, step }
+}
+
+/// Whether values outside the plot are cut at its edge: only when the chart fixes a bound (the
+/// automatic scale always covers the data).
+pub(super) fn clips(opts: &ChartAxis) -> bool {
+    opts.bounds() != (None, None)
+}
+
+fn axis_scales(data: &ChartData, fams: &[Fam], sec: &[bool], spans: &[Vec<Option<(f64, f64)>>], opts: &ChartAxis) -> Vec<(Scale, Fmt)> {
     // Axis scales.
     let mut axes: Vec<(Scale, Fmt)> = Vec::new();
     for axis in [false, true] {
@@ -255,6 +281,8 @@ fn axis_scales(data: &ChartData, fams: &[Fam], sec: &[bool], spans: &[Vec<Option
             let code = members.first().and_then(|i| data.series.get(*i)).map(|s| s.number_format.as_str()).unwrap_or("General");
             (nice_scale(lo, hi, force_zero), Fmt::new(code))
         };
+        // The chart's own axis options apply to the primary axis.
+        let (scale, fmt) = if axis { (scale, fmt) } else { (fixed_scale(scale, opts), opts.number_format.as_deref().map_or(fmt, Fmt::new)) };
         axes.push((scale, fmt));
         if !axis && sec.iter().all(|s| !s) {
             break;
@@ -299,7 +327,7 @@ pub(super) fn cartesian(ctx: &mut Ctx, chart: &Chart, data: &ChartData, area: Bx
 
     let spans = series_spans(data, &fams, &sec, ncat);
 
-    let axes = axis_scales(data, &fams, &sec, &spans);
+    let axes = axis_scales(data, &fams, &sec, &spans, &chart.value_axis);
     let Some((s1, f1)) = axes.first() else { return };
     let y1 = ValAxis { scale: *s1, fmt: f1 };
     let y2 = axes.get(1).map(|(s, f)| ValAxis { scale: *s, fmt: f });
@@ -326,7 +354,11 @@ pub(super) fn cartesian(ctx: &mut Ctx, chart: &Chart, data: &ChartData, area: Bx
     let cat_len = if horizontal { plot.h } else { plot.w };
     let cw = cat_len / ncat_slots as f32;
     let center = |j: usize| if horizontal { plot.bottom() - (j as f32 + 0.5) * cw } else { plot.x + (j as f32 + 0.5) * cw };
-    let vpos = |v: f64, sc: &Scale| if horizontal { plot.x + sc.frac(v) * plot.w } else { plot.bottom() - sc.frac(v) * plot.h };
+    let clip = clips(&chart.value_axis);
+    let vpos = |v: f64, sc: &Scale| {
+        let f = if clip { sc.frac(v).clamp(0.0, 1.0) } else { sc.frac(v) };
+        if horizontal { plot.x + f * plot.w } else { plot.bottom() - f * plot.h }
+    };
 
     let (slot_of, nslots) = column_slots(&fams, &sec);
     let bw = cw / (nslots + 1.5);
@@ -493,14 +525,19 @@ pub(super) fn scatter(ctx: &mut Ctx, chart: &Chart, data: &ChartData, area: Bx) 
     }
     let Some((ylo, yhi)) = value_range(all.iter().flatten().flatten().map(|p| p.1)) else { return };
     let xs = nice_scale(xlo, xhi, false);
-    let ys = nice_scale(ylo, yhi, false);
+    let ys = fixed_scale(nice_scale(ylo, yhi, false), &chart.value_axis);
     let fx = Fmt::new("General");
-    let fy = Fmt::new(data.series.first().map(|s| s.number_format.as_str()).unwrap_or("General"));
+    let source_fmt = data.series.first().map(|s| s.number_format.as_str()).unwrap_or("General");
+    let fy = Fmt::new(chart.value_axis.number_format.as_deref().unwrap_or(source_fmt));
     let plot = frame(ctx, area, CatAxis::Numeric(xs, &fx), &ValAxis { scale: ys, fmt: &fy }, None, false, chart.gridlines);
     if !plot.ok() {
         return;
     }
-    let map = |(x, y): (f64, f64)| [plot.x + xs.frac(x) * plot.w, plot.bottom() - ys.frac(y) * plot.h];
+    let clip = clips(&chart.value_axis);
+    let map = |(x, y): (f64, f64)| {
+        let fy = if clip { ys.frac(y).clamp(0.0, 1.0) } else { ys.frac(y) };
+        [plot.x + xs.frac(x) * plot.w, plot.bottom() - fy * plot.h]
+    };
     let bubble = chart.kind == ChartKind::Bubble;
     let rmax = plot.w.min(plot.h) * 0.12;
     for (s, pts) in data.series.iter().zip(&all) {

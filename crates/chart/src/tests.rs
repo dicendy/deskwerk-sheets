@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use gridcraft_core::{CellRef, Value};
-use gridcraft_model::{Anchor, Chart, ChartKind, Color, LegendPos, Series, SparklineKind, Style, Workbook};
+use gridcraft_model::{Anchor, Chart, ChartAxis, ChartKind, Color, LegendPos, Series, SparklineKind, Style, Workbook};
 
 use crate::*;
 
@@ -51,6 +51,7 @@ fn chart(kind: ChartKind) -> Chart {
         style: 0,
         hole_size: 75,
         first_slice_angle: 0,
+        value_axis: Default::default(),
         x_title: Some("Quarter".into()),
         y_title: Some("Revenue".into()),
         source: None,
@@ -1679,4 +1680,32 @@ fn a_series_named_by_a_name_on_a_sheet_with_a_bang_resolves() {
     }];
     let d = resolve(&wb, 0, &c);
     assert_eq!(d.series.first().map(|s| s.name.as_str()), Some("Takings"));
+}
+
+#[test]
+fn fixed_value_axis_sets_the_ticks_their_format_and_clips() {
+    let m = ApproxMeasure;
+    let (w, h) = (640.0, 400.0);
+    for kind in [ChartKind::ColumnClustered, ChartKind::Line, ChartKind::BarClustered, ChartKind::Scatter] {
+        let mut c = chart(kind);
+        c.data_labels = false;
+        c.value_axis = ChartAxis { min: Some(-10000.0), max: Some(45000.0), major_unit: Some(10000.0), number_format: Some("0.0".into()) };
+        let prims = render(&c, &sample(kind), w, h, &m);
+        assert_sane(&prims, w, h);
+        let t = texts(&prims);
+        for label in ["-10000.0", "0.0", "10000.0", "40000.0"] {
+            assert!(t.contains(&label), "{kind:?}: no {label} in {t:?}");
+        }
+        // The data reach 61 870, past the fixed maximum: no tick there, nor in the source format.
+        assert!(!t.iter().any(|s| *s == "50000.0" || *s == "60000.0" || s.starts_with('$')), "{kind:?}: {t:?}");
+    }
+}
+
+#[test]
+fn reversed_value_axis_bounds_fall_back_to_automatic() {
+    let m = ApproxMeasure;
+    let mut c = chart(ChartKind::ColumnClustered);
+    c.value_axis = ChartAxis { min: Some(5.0), max: Some(1.0), ..ChartAxis::default() };
+    let d = sample(ChartKind::ColumnClustered);
+    assert_eq!(render(&c, &d, 640.0, 400.0, &m), render(&chart(ChartKind::ColumnClustered), &d, 640.0, 400.0, &m));
 }
