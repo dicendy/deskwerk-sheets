@@ -1,0 +1,133 @@
+name: Corpus
+
+# Opens, saves and reopens a pinned corpus of real-world .xlsx files with the release
+# gridcraft-cli (tools/corpus/). Manual only: it is slow and Actions minutes are limited.
+on:
+  workflow_dispatch:
+    inputs:
+      soffice:
+        description: Also compare LibreOffice's CSV of every sheet of the original and the saved file
+        type: boolean
+        default: true
+      limit:
+        description: Only the first N files (0 = all)
+        type: string
+        default: "0"
+      timeout:
+        description: Seconds per step and file
+        type: string
+        default: "30"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: corpus-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  corpus:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: 0
+      CARGO_NET_RETRY: 10
+      RUST_BACKTRACE: 1
+    steps:
+      - name: Start time
+        run: echo "CORPUS_START=$(date +%s)" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Fonts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: storytold/craft-fonts
+          ref: b076417b5880bd4154bd22f00695b1d28c6bea83
+          path: craft-fonts
+          persist-credentials: false
+
+      - name: Translations pin
+        id: i18n
+        run: |
+          if [ -f craft-i18n.rev ]; then echo "rev=$(tr -d '[:space:]' < craft-i18n.rev)" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Translations
+        if: steps.i18n.outputs.rev != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: storytold/craft-i18n
+          ref: ${{ steps.i18n.outputs.rev }}
+          path: craft-i18n
+          persist-credentials: false
+
+      - name: Build environment
+        run: |
+          echo "CRAFT_FONTS_DIR=$GITHUB_WORKSPACE/craft-fonts" >> "$GITHUB_ENV"
+          echo "CRAFT_FONTS_REQUIRED=1" >> "$GITHUB_ENV"
+          if [ -d craft-i18n ]; then
+            echo "CRAFT_I18N_DIR=$GITHUB_WORKSPACE/craft-i18n" >> "$GITHUB_ENV"
+            echo "CRAFT_I18N_REQUIRED=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Free disk space
+        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+
+      - name: System packages
+        env:
+          SOFFICE: ${{ inputs.soffice }}
+        run: |
+          extra=""
+          if [ "$SOFFICE" = "true" ]; then extra="libreoffice-calc-nogui"; fi
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            pkg-config libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev libxi-dev \
+            libgtk-3-dev libfontconfig1-dev libfreetype-dev mesa-vulkan-drivers $extra
+
+      - name: Rust
+        run: |
+          tc=stable
+          if [ -f rust-toolchain.toml ]; then
+            ch=$(sed -n 's/^[[:space:]]*channel[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' rust-toolchain.toml)
+            tc=${ch:-stable}
+          fi
+          rustup toolchain install "$tc" --profile minimal --no-self-update
+          rustup default "$tc"
+          rustc --version
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          prefix-key: v1-rust-corpus
+          save-if: ${{ github.ref_name == github.event.repository.default_branch }}
+          cache-on-failure: true
+
+      - name: Build gridcraft-cli (release)
+        run: cargo build --release --locked -p gridcraft-cli
+
+      - name: Fetch corpus
+        run: bash tools/corpus/fetch.sh "$RUNNER_TEMP/corpus"
+
+      - name: Round trip
+        env:
+          SOFFICE: ${{ inputs.soffice }}
+          LIMIT: ${{ inputs.limit }}
+          STEP_TIMEOUT: ${{ inputs.timeout }}
+        run: |
+          # Stop starting new files 48 minutes into the job, so the report is always written.
+          args=(--bin target/release/gridcraft-cli --corpus "$RUNNER_TEMP/corpus" --out corpus-report
+                --timeout "${STEP_TIMEOUT:-30}" --limit "${LIMIT:-0}" --jobs "$(nproc)" --deadline "$((CORPUS_START + 48 * 60))")
+          if [ "$SOFFICE" = "true" ]; then args+=(--soffice); fi
+          mkdir -p corpus-report
+          cp "$RUNNER_TEMP/corpus/manifest.tsv" corpus-report/
+          python3 tools/corpus/run.py "${args[@]}"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: corpus-report
+          path: corpus-report/
+          if-no-files-found: warn
