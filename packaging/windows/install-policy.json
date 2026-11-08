@@ -1,7 +1,7 @@
 {
-  "id": "gridcraft",
-  "name": "GridCraft",
-  "upgradeCode": "5511327B-F305-41BE-92D0-EB84944E7C4D",
+  "id": "deskwerk-sheets",
+  "name": "Sheets",
+  "upgradeCode": "CA81A1E0-D901-45D0-9E16-8859F2B95AF8",
   "sources": [
     "gridcraft.wxs"
   ],
@@ -9,139 +9,139 @@
   "localization": [],
   "extensions": [],
   "payloads": [
-    "gridcraft-cli.exe",
-    "gridcraft.exe"
+    "deskwerk-sheets-cli.exe",
+    "deskwerk-sheets.exe"
   ],
   "registry": [
     [
       "-1",
-      "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\gridcraft.exe",
+      "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\deskwerk-sheets.exe",
       "",
       "[#GridcraftExe]"
     ],
     [
       "-1",
-      "Software\\Classes\\GridCraft.Workbook",
+      "Software\\Classes\\DeskwerkSheets.Workbook",
       "",
       "Deskwerk Sheets Workbook"
     ],
     [
       "-1",
-      "Software\\Classes\\GridCraft.Workbook\\DefaultIcon",
+      "Software\\Classes\\DeskwerkSheets.Workbook\\DefaultIcon",
       "",
       "\"[#GridcraftExe]\",0"
     ],
     [
       "-1",
-      "Software\\Classes\\GridCraft.Workbook\\shell\\open\\command",
+      "Software\\Classes\\DeskwerkSheets.Workbook\\shell\\open\\command",
       "",
       "\"[#GridcraftExe]\" \"%1\""
     ],
     [
       "-1",
-      "Software\\Classes\\GridCraft.TextData",
+      "Software\\Classes\\DeskwerkSheets.TextData",
       "",
       "Deskwerk Sheets Text Data"
     ],
     [
       "-1",
-      "Software\\Classes\\GridCraft.TextData\\DefaultIcon",
+      "Software\\Classes\\DeskwerkSheets.TextData\\DefaultIcon",
       "",
       "\"[#GridcraftExe]\",0"
     ],
     [
       "-1",
-      "Software\\Classes\\GridCraft.TextData\\shell\\open\\command",
+      "Software\\Classes\\DeskwerkSheets.TextData\\shell\\open\\command",
       "",
       "\"[#GridcraftExe]\" \"%1\""
     ],
     [
       "-1",
       "Software\\Classes\\.xlsx\\OpenWithProgids",
-      "GridCraft.Workbook",
-      "GridCraft.Workbook"
+      "DeskwerkSheets.Workbook",
+      "DeskwerkSheets.Workbook"
     ],
     [
       "-1",
       "Software\\Classes\\.xlsm\\OpenWithProgids",
-      "GridCraft.Workbook",
-      "GridCraft.Workbook"
+      "DeskwerkSheets.Workbook",
+      "DeskwerkSheets.Workbook"
     ],
     [
       "-1",
       "Software\\Classes\\.xlsb\\OpenWithProgids",
-      "GridCraft.Workbook",
-      "GridCraft.Workbook"
+      "DeskwerkSheets.Workbook",
+      "DeskwerkSheets.Workbook"
     ],
     [
       "-1",
       "Software\\Classes\\.ods\\OpenWithProgids",
-      "GridCraft.Workbook",
-      "GridCraft.Workbook"
+      "DeskwerkSheets.Workbook",
+      "DeskwerkSheets.Workbook"
     ],
     [
       "-1",
       "Software\\Classes\\.csv\\OpenWithProgids",
-      "GridCraft.TextData",
-      "GridCraft.TextData"
+      "DeskwerkSheets.TextData",
+      "DeskwerkSheets.TextData"
     ],
     [
       "-1",
       "Software\\Classes\\.tsv\\OpenWithProgids",
-      "GridCraft.TextData",
-      "GridCraft.TextData"
+      "DeskwerkSheets.TextData",
+      "DeskwerkSheets.TextData"
     ],
     [
       "-1",
-      "Software\\GridCraft\\Capabilities",
+      "Software\\Deskwerk\\Sheets\\Capabilities",
       "ApplicationName",
       "Deskwerk Sheets"
     ],
     [
       "-1",
-      "Software\\GridCraft\\Capabilities",
+      "Software\\Deskwerk\\Sheets\\Capabilities",
       "ApplicationDescription",
       "Open-source spreadsheet for .xlsx, CSV and TSV files"
     ],
     [
       "-1",
-      "Software\\GridCraft\\Capabilities\\FileAssociations",
+      "Software\\Deskwerk\\Sheets\\Capabilities\\FileAssociations",
       ".xlsx",
-      "GridCraft.Workbook"
+      "DeskwerkSheets.Workbook"
     ],
     [
       "-1",
-      "Software\\GridCraft\\Capabilities\\FileAssociations",
+      "Software\\Deskwerk\\Sheets\\Capabilities\\FileAssociations",
       ".xlsm",
-      "GridCraft.Workbook"
+      "DeskwerkSheets.Workbook"
     ],
     [
       "-1",
-      "Software\\GridCraft\\Capabilities\\FileAssociations",
+      "Software\\Deskwerk\\Sheets\\Capabilities\\FileAssociations",
       ".csv",
-      "GridCraft.TextData"
+      "DeskwerkSheets.TextData"
     ],
     [
       "-1",
-      "Software\\GridCraft\\Capabilities\\FileAssociations",
+      "Software\\Deskwerk\\Sheets\\Capabilities\\FileAssociations",
       ".tsv",
-      "GridCraft.TextData"
+      "DeskwerkSheets.TextData"
     ],
     [
       "-1",
       "Software\\RegisteredApplications",
-      "GridCraft",
-      "Software\\GridCraft\\Capabilities"
+      "Deskwerk Sheets",
+      "Software\\Deskwerk\\Sheets\\Capabilities"
     ],
     [
       "-1",
-      "Software\\GridCraft\\Installer",
+      "Software\\Deskwerk\\Sheets\\Installer",
       "DesktopShortcut",
       "[DESKTOPSHORTCUT]"
     ],
     [
       "-1",
-      "Software\\GridCraft\\Installer",
+      "Software\\Deskwerk\\Sheets\\Installer",
       "DesktopShortcutComponent",
       "#1"
     ]

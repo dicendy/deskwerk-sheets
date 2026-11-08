@@ -2,13 +2,13 @@
 <!-- AppStream metadata (software centres, Flathub). Template: package.sh and the Flatpak
      manifest substitute @VERSION@ and @DATE@ from Cargo.toml and the build date. -->
 <component type="desktop-application">
-  <id>ai.storyteller.gridcraft</id>
+  <id>eu.deskwerk.Sheets</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT OR Apache-2.0</project_license>
   <name>Deskwerk Sheets</name>
   <summary>Calculate, analyse and chart data in workbooks</summary>
-  <developer id="ai.storyteller">
-    <name>Learning Machines LLC</name>
+  <developer id="eu.deskwerk">
+    <name>Deskwerk</name>
   </developer>
   <description>
     <p>
@@ -17,12 +17,12 @@
       charts your data.
     </p>
     <p>
-      Every action is a command that the included gridcraft-cli tool and AI agents (over MCP)
+      Every action is a command that the included deskwerk-sheets-cli tool and AI agents (over MCP)
       can run too, so workbooks can be built and checked without opening a window.
     </p>
   </description>
-  <launchable type="desktop-id">ai.storyteller.gridcraft.desktop</launchable>
-  <icon type="stock">ai.storyteller.gridcraft</icon>
+  <launchable type="desktop-id">eu.deskwerk.Sheets.desktop</launchable>
+  <icon type="stock">eu.deskwerk.Sheets</icon>
   <!-- Only url types known to appstream 0.15 (Ubuntu 22.04, where CI validates): no vcs-browser. -->
   <url type="homepage">https://github.com/dicendy/deskwerk-sheets</url>
   <url type="bugtracker">https://github.com/dicendy/deskwerk-sheets/issues</url>
@@ -51,8 +51,8 @@
     <control>pointing</control>
   </supports>
   <provides>
-    <binary>gridcraft</binary>
-    <binary>gridcraft-cli</binary>
+    <binary>deskwerk-sheets</binary>
+    <binary>deskwerk-sheets-cli</binary>
     <mediatype>application/vnd.openxmlformats-officedocument.spreadsheetml.sheet</mediatype>
     <mediatype>application/vnd.ms-excel.sheet.macroEnabled.12</mediatype>
     <mediatype>application/vnd.ms-excel.sheet.binary.macroEnabled.12</mediatype>

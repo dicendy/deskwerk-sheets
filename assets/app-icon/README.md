@@ -1,8 +1,8 @@
-# GridCraft app icon (PLACEHOLDER)
+# Deskwerk Sheets app icon (PLACEHOLDER)
 
-**This icon is temporary.** Every Crafting App's icon is an engraved creature portrait that the
-product owner makes; GridCraft's hasn't been made yet.
-Until it is, this placeholder stands in: a simple ledger page with a header row, a row-number
+**This icon is temporary.** It is the placeholder inherited from upstream GridCraft (by the
+ArtCraft team), not an ArtCraft mark; Deskwerk Sheets' own icon hasn't been made yet (see
+`docs/brand/DESKWERK-TODO.md`). Until it is, this placeholder stands in: a simple ledger page with a header row, a row-number
 column, a selected cell with its fill handle and a double rule under a total, on a full-bleed
 GridCraft-green tile. It is original geometry written by hand for this repository, deliberately
 not modelled on any vendor's spreadsheet logo (no letters, no "X", no overlapping panels).
@@ -39,12 +39,12 @@ body with a transparent margin.
 | `gridcraft-macos-512.png` | Runtime Dock icon on macOS (for `apps/gridcraft` to embed) |
 | `gridcraft.icns` | macOS bundle icon (`CFBundleIconFile`) |
 | `gridcraft.ico` | Windows exe icon, 16–256 px (embedded by `apps/gridcraft/build.rs`) |
-| `hicolor/<size>/apps/ai.storyteller.gridcraft.png` | Linux icon theme, 16–512 px; the 256 px one is also the runtime window icon on Windows and Linux |
-| `hicolor/scalable/apps/ai.storyteller.gridcraft.svg` | Linux scalable icon |
+| `hicolor/<size>/apps/eu.deskwerk.Sheets.png` | Linux icon theme, 16–512 px; the 256 px one is also the runtime window icon on Windows and Linux |
+| `hicolor/scalable/apps/eu.deskwerk.Sheets.svg` | Linux scalable icon |
 | `LICENSE.txt` | MIT OR Apache-2.0 |
 
-The app ID is `ai.storyteller.gridcraft`. It's used for the hicolor icon names, the Wayland app
-ID and `packaging/linux/ai.storyteller.gridcraft.desktop`.
+The app ID is `eu.deskwerk.Sheets`. It's used for the hicolor icon names, the Wayland app
+ID and `packaging/linux/eu.deskwerk.Sheets.desktop`.
 
 ## Regenerate
 

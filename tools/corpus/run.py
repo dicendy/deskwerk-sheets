@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""Round-trip a corpus of real-world Excel files through gridcraft-cli and report how it went.
+"""Round-trip a corpus of real-world Excel files through deskwerk-sheets-cli and report how it went.
 
-    python3 tools/corpus/run.py --bin target/release/gridcraft-cli --corpus DIR --out DIR
+    python3 tools/corpus/run.py --bin target/release/deskwerk-sheets-cli --corpus DIR --out DIR
                                 [--timeout 30] [--jobs N] [--soffice] [--deadline EPOCH] [--limit N]
 
 DIR (from fetch.sh) holds the files and manifest.tsv. For every file, each step in its own process
 with a timeout (commands from apps/gridcraft-cli/src/main.rs):
 
-  open           gridcraft-cli run --in <file> --cmd document.inspect
+  open           deskwerk-sheets-cli run --in <file> --cmd document.inspect
                  open + sheets, used ranges, cell counts, tables, charts, names...
-  values         gridcraft-cli run --in <file> --cmd 'sheet.read={"sheet":i}'
+  values         deskwerk-sheets-cli run --in <file> --cmd 'sheet.read={"sheet":i}'
                                                --cmd 'sheet.read={"sheet":i,"formulas":true}' ...
                  every sheet's values and formulas (sheets over 1,000,000 cells are left out)
-  save           gridcraft-cli convert <file> <rt.xlsx>      open + save as .xlsx
+  save           deskwerk-sheets-cli convert <file> <rt.xlsx>      open + save as .xlsx
   reopen         open and values again, on the saved file
-  check          gridcraft-cli check <file> --json --max-report 3
+  check          deskwerk-sheets-cli check <file> --json --max-report 3
                  the CLI's own cached-value calc oracle and XLSX round-trip comparison
 
 Then, in Python only: the saved file is a valid zip whose XML parts all parse; cells with a
@@ -45,7 +45,7 @@ import time
 import zipfile
 import xml.etree.ElementTree as ET
 
-TOOL = "gridcraft-cli"
+TOOL = "deskwerk-sheets-cli"
 EXT = ".xlsx"
 S = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 S_STRICT = "{http://purl.oclc.org/ooxml/spreadsheetml/main}"
@@ -740,7 +740,7 @@ def render_md(report: dict, worst: int) -> tuple[str, str]:
           f"{v['value_diffs']} differ ({v['files_with_value_diffs']} files); formulas {v['formulas_before']} → {v['formulas_after']}, "
           f"{v['formula_diffs']} differ ({v['files_with_formula_diffs']} files)."]
     c = s["check"]
-    L += ["", f"`gridcraft-cli check` (calc oracle + round trip) on {c['files']} files: {c['checked']} formulas checked against cached "
+    L += ["", f"`deskwerk-sheets-cli check` (calc oracle + round trip) on {c['files']} files: {c['checked']} formulas checked against cached "
           f"values, {c['matched']} matched, {c['mismatched']} mismatched ({c['files_with_calc_mismatch']} files), {c['no_oracle']} without a "
           f"cached value; round trip clean in {c['round_trip_clean']} files, failed in {c['round_trip_errors']}."]
     if c["categories_differing"]:

@@ -1,4 +1,4 @@
-# gridcraft-cli
+# deskwerk-sheets-cli
 
 Headless GridCraft: inspect, convert, evaluate, script and serve MCP without a window. Errors go to stderr with a
 non-zero exit code.
@@ -17,27 +17,27 @@ values; source formatting and other workbook features are omitted. Import warnin
 Convert to `.xlsx` to save the imported workbook; ODS output is not supported.
 
 ```sh
-cargo install --path apps/gridcraft-cli     # or: cargo run -p gridcraft-cli -- <subcommand>
+cargo install --path apps/gridcraft-cli     # or: cargo run -p deskwerk-sheets-cli -- <subcommand>
 ```
 
 | Subcommand | Example |
 |---|---|
-| `info <file> [--json]` | `gridcraft-cli info book.xlsx` — sheets, used ranges, cell counts, tables, charts, names. |
-| `convert <in> <out> [--sheet NAME]` | `gridcraft-cli convert book.xlsx data.csv --sheet Sales` — output format from the extension: `.xlsx`, `.csv`, `.tsv`, `.json`, `.html`. |
-| `eval <formula> [--in FILE] [--sheet S] [--cell A1] [--json]` | `gridcraft-cli eval '=PMT(5%/12,360,-300000)'`; `gridcraft-cli eval '=SUM(B2:B9)' --in book.xlsx` — formulas in English with `,` between arguments. A formula that couldn't be entered in a cell (it doesn't parse, or a function gets the wrong number of arguments) is an error saying why; an unknown function is `#NAME?`, as in Excel. |
-| `cat <file> [--range R] [--sheet S] [--formulas] [--csv]` | `gridcraft-cli cat book.xlsx --range A1:F20` — aligned table of displayed values. |
-| `check <file-or-dir>... [--json] [--tolerance 1e-9] [--max-report N]` | `gridcraft-cli check corpus/` — calc oracle and XLSX round-trip fidelity, see below. |
+| `info <file> [--json]` | `deskwerk-sheets-cli info book.xlsx` — sheets, used ranges, cell counts, tables, charts, names. |
+| `convert <in> <out> [--sheet NAME]` | `deskwerk-sheets-cli convert book.xlsx data.csv --sheet Sales` — output format from the extension: `.xlsx`, `.csv`, `.tsv`, `.json`, `.html`. |
+| `eval <formula> [--in FILE] [--sheet S] [--cell A1] [--json]` | `deskwerk-sheets-cli eval '=PMT(5%/12,360,-300000)'`; `deskwerk-sheets-cli eval '=SUM(B2:B9)' --in book.xlsx` — formulas in English with `,` between arguments. A formula that couldn't be entered in a cell (it doesn't parse, or a function gets the wrong number of arguments) is an error saying why; an unknown function is `#NAME?`, as in Excel. |
+| `cat <file> [--range R] [--sheet S] [--formulas] [--csv]` | `deskwerk-sheets-cli cat book.xlsx --range A1:F20` — aligned table of displayed values. |
+| `check <file-or-dir>... [--json] [--tolerance 1e-9] [--max-report N]` | `deskwerk-sheets-cli check corpus/` — calc oracle and XLSX round-trip fidelity, see below. |
 | `run …` | see below |
-| `commands [--json] [--search X]` | `gridcraft-cli commands --search border` — every command with its parameter docs. |
-| `functions [--json] [--search X] [--category C]` | `gridcraft-cli functions --search lookup` |
+| `commands [--json] [--search X]` | `deskwerk-sheets-cli commands --search border` — every command with its parameter docs. |
+| `functions [--json] [--search X] [--category C]` | `deskwerk-sheets-cli functions --search lookup` |
 | `mcp [--connect PORT] [--in FILE \| --sample NAME]` | MCP server on stdio ([mcp.md](mcp.md)). |
-| `send <port> <method> [json]` | `gridcraft-cli send 7979 engine.execute '{"command":"home.bold","params":{"range":"A1:C1"}}'` — one control-channel request to a running app (`gridcraft --control 7979`). |
-| `version` | Prints `gridcraft-cli <version>`. |
+| `send <port> <method> [json]` | `deskwerk-sheets-cli send 7979 engine.execute '{"command":"home.bold","params":{"range":"A1:C1"}}'` — one control-channel request to a running app (`deskwerk-sheets --control 7979`). |
+| `version` | Prints `deskwerk-sheets-cli <version>`. |
 
 ## `run`
 
 ```sh
-gridcraft-cli run [--in FILE | --sample budget|sales|grades] \
+deskwerk-sheets-cli run [--in FILE | --sample budget|sales|grades] \
     [--cmd 'id={json}']... [--script steps.jsonl] \
     [--out FILE] [--print RANGE|used] [--sheet S] [--csv] [--formulas] [--quiet]
 ```
@@ -50,19 +50,19 @@ A `--cmd` is `id`, `id={json}` or `id {json}`. A script has one command per line
 `{"command": "cell.set", "params": {...}}`; blank lines and `#` comments are skipped.
 
 ```sh
-gridcraft-cli run --in book.xlsx \
+deskwerk-sheets-cli run --in book.xlsx \
   --cmd 'home.bold={"range":"A1:C1"}' \
   --cmd 'cell.set={"cell":"D2","input":"=B2*C2"}' \
   --cmd 'edit.fillDown={"range":"D2:D20"}' \
   --out book.xlsx --print A1:D5
 ```
 
-Command ids and parameters: `gridcraft-cli commands`.
+Command ids and parameters: `deskwerk-sheets-cli commands`.
 
 ## `check`
 
 ```sh
-gridcraft-cli check <file-or-dir>... [--json] [--tolerance 1e-9] [--max-report 20]
+deskwerk-sheets-cli check <file-or-dir>... [--json] [--tolerance 1e-9] [--max-report 20]
 ```
 
 Measures calculation correctness and file fidelity on any set of `.xlsx`/`.xlsm` files (directories are searched

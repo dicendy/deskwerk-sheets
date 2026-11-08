@@ -213,10 +213,10 @@ recorded in [`decisions.md`](decisions.md) and re-run by `crates/math/tests/gate
 
 ## Agent control
 
-- Desktop control channel: `gridcraft --control 7979`, JSON lines on localhost
+- Desktop control channel: `deskwerk-sheets --control 7979`, JSON lines on localhost
   (`engine.execute`, `ui.screenshot`, pointer and keyboard input…), see
   [`control-protocol.md`](control-protocol.md).
-- MCP: `gridcraft-cli mcp`, headless or `--connect` to a running app, see [`mcp.md`](mcp.md).
+- MCP: `deskwerk-sheets-cli mcp`, headless or `--connect` to a running app, see [`mcp.md`](mcp.md).
 - CLI: [`cli.md`](cli.md).
 
 ## Platforms and builds

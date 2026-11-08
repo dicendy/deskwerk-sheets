@@ -1,4 +1,4 @@
-//! Windows only: embed the app icon and version info (VERSIONINFO) into `gridcraft.exe`, so it
+//! Windows only: embed the app icon and version info (VERSIONINFO) into `deskwerk-sheets.exe`, so it
 //! shows in Explorer, the taskbar, the Start menu and Alt-Tab.
 //!
 //! On every other target this does nothing. A missing resource compiler is a warning, so a
@@ -16,15 +16,15 @@ fn main() {
     res.set_icon("../../assets/app-icon/gridcraft.ico")
         .set("ProductName", "Deskwerk Sheets")
         .set("FileDescription", "Deskwerk Sheets spreadsheet")
-        .set("CompanyName", "Learning Machines LLC")
+        .set("CompanyName", "Deskwerk")
         .set("LegalCopyright", "Copyright (c) the Deskwerk contributors and the GridCraft authors. MIT OR Apache-2.0.")
-        .set("OriginalFilename", "gridcraft.exe")
-        .set("InternalName", "gridcraft");
+        .set("OriginalFilename", "deskwerk-sheets.exe")
+        .set("InternalName", "deskwerk-sheets");
     if let Err(e) = res.compile() {
         if std::env::var_os("GRIDCRAFT_REQUIRE_WINRES").is_some() {
             eprintln!("embedding Windows resources failed: {e}");
             std::process::exit(1);
         }
-        println!("cargo:warning=gridcraft.exe built without icon/version resources: {e}");
+        println!("cargo:warning=deskwerk-sheets.exe built without icon/version resources: {e}");
     }
 }
