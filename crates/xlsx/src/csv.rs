@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use gridcraft_core::date::{days_in_month_in, serial_from_ymd};
-use gridcraft_core::parse::{Parsed, parse_input};
-use gridcraft_core::{CellRef, DateSystem, MAX_COLS, MAX_ROWS, Value, col_to_letters};
+use gridcraft_core::parse::{Parsed, parse_input, parse_input_in};
+use gridcraft_core::{CellRef, DateSystem, Locale, MAX_COLS, MAX_ROWS, Value, col_to_letters};
 use gridcraft_model::{Cell, NumFmt, Sheet, StyleId, Workbook};
 
 use crate::{CsvOptions, IoError, ReadReport};
@@ -152,46 +152,79 @@ pub fn decode_text(bytes: &[u8]) -> String {
 }
 
 /// Picks comma, semicolon or tab: the candidate with the most consistent count per line
-/// (outside quotes) over the first non-blank lines. A candidate must appear on every such line, otherwise comma wins.
-pub fn sniff_delimiter(text: &str, quote: char) -> u8 {
-    let mut best = (b',', 0usize, 0usize);
-    for d in [',', ';', '\t'] {
-        let mut counts = vec![];
-        let mut n = 0usize;
-        let mut in_q = false;
-        let mut blank = true;
-        for ch in text.chars().take(64 * 1024) {
-            if !in_q && ch == '\n' {
-                // Blank lines carry no delimiter evidence.
-                if !blank {
-                    counts.push(n);
-                }
-                n = 0;
-                blank = true;
-                if counts.len() >= 20 {
-                    break;
-                }
-                continue;
-            }
-            if ch != '\r' {
-                blank = false;
-            }
-            if ch == quote {
-                in_q = !in_q;
-            } else if !in_q && ch == d {
-                n += 1;
-            }
+/// (outside quotes) over the first non-blank lines. A candidate must appear on every such line,
+/// otherwise comma wins (en-US).
+///
+/// German and French Excel separate fields with `;` and write decimals with a comma, so in those
+/// locales `;` comes first: it wins a tie and is the fallback when no candidate is on every line.
+/// A comma that only ever stands between two digits (`1,5`) is a decimal comma there, not a
+/// separator.
+pub fn sniff_delimiter(text: &str, quote: char, loc: Locale) -> u8 {
+    let english = loc == Locale::En;
+    let order = if english { [',', ';', '\t'] } else { [';', '\t', ','] };
+    let mut best = (if english { b',' } else { b';' }, 0usize, 0usize);
+    for d in order {
+        let counts = delimiter_counts(text, quote, d);
+        if !english && d == ',' && counts.between_digits_only {
+            continue;
         }
-        if !blank {
-            counts.push(n);
-        }
-        let min = counts.iter().copied().min().unwrap_or(0);
-        let total: usize = counts.iter().sum();
-        if min > 0 && (min, total) > (best.1, best.2) {
-            best = (d as u8, min, total);
+        if counts.min > 0 && (counts.min, counts.total) > (best.1, best.2) {
+            best = (d as u8, counts.min, counts.total);
         }
     }
     best.0
+}
+
+/// How often a candidate delimiter stands outside quotes on each of the first non-blank lines.
+struct DelimiterCounts {
+    /// The fewest on one line.
+    min: usize,
+    /// All of them together.
+    total: usize,
+    /// True when every one stands between two ASCII digits (`1,5`), or there are none.
+    between_digits_only: bool,
+}
+
+fn delimiter_counts(text: &str, quote: char, d: char) -> DelimiterCounts {
+    let mut counts = vec![];
+    let mut n = 0usize;
+    let mut in_q = false;
+    let mut blank = true;
+    let mut between_digits_only = true;
+    let mut prev = '\n';
+    let mut chars = text.chars().take(64 * 1024).peekable();
+    while let Some(ch) = chars.next() {
+        if !in_q && ch == '\n' {
+            // Blank lines carry no delimiter evidence.
+            if !blank {
+                counts.push(n);
+            }
+            n = 0;
+            blank = true;
+            prev = ch;
+            if counts.len() >= 20 {
+                break;
+            }
+            continue;
+        }
+        if ch != '\r' {
+            blank = false;
+        }
+        if ch == quote {
+            in_q = !in_q;
+        } else if !in_q && ch == d {
+            n += 1;
+            let digits_around = prev.is_ascii_digit() && chars.peek().is_some_and(char::is_ascii_digit);
+            if !digits_around {
+                between_digits_only = false;
+            }
+        }
+        prev = ch;
+    }
+    if !blank {
+        counts.push(n);
+    }
+    DelimiterCounts { min: counts.iter().copied().min().unwrap_or(0), total: counts.iter().sum(), between_digits_only }
 }
 
 /// Splits CSV text into records of fields. A record keeps at most [`MAX_COLS`] fields; the rest are
@@ -299,10 +332,12 @@ struct NumericDate {
 }
 
 impl NumericDate {
-    /// The field under the column's rule: a date when that reading is valid, else text.
-    fn read(&self, field: &str, rule: DateRule) -> Parsed {
+    /// The field under the column's rule: a date when that reading is valid, else text. An
+    /// ambiguous column reads day first with `day_first` (German and French), else month first.
+    fn read(&self, field: &str, rule: DateRule, day_first: bool) -> Parsed {
         let serial = match rule {
             DateRule::DayFirst => self.day_first,
+            DateRule::Ambiguous if day_first => self.day_first,
             DateRule::MonthFirst | DateRule::Ambiguous => self.month_first,
             DateRule::Conflict | DateRule::NoDates => None,
         };
@@ -445,10 +480,12 @@ fn infer_date_rules(rows: &[Vec<String>], sys: DateSystem) -> Vec<(DateRule, Dat
 }
 
 /// Warns when the sample could not choose a date order: an all-ambiguous column keeps the
-/// month-first reading, and a column with both kinds keeps its dates as text.
-fn date_warnings(columns: &[(DateRule, DateEvidence)], report: &mut ReadReport) {
+/// month-first reading, and a column with both kinds keeps its dates as text. In German and
+/// French an all-ambiguous column reads day first, as typed dates do there, without a warning.
+fn date_warnings(columns: &[(DateRule, DateEvidence)], loc: Locale, report: &mut ReadReport) {
     for (col, (rule, evidence)) in columns.iter().enumerate() {
         match rule {
+            DateRule::Ambiguous if loc.day_first() => {}
             DateRule::Ambiguous => report.warn(format!(
                 "column {}: every date is ambiguous, so it was read month first ({})",
                 col_to_letters(col as u32),
@@ -465,11 +502,12 @@ fn date_warnings(columns: &[(DateRule, DateEvidence)], report: &mut ReadReport) 
     }
 }
 
-/// Reads one field with the column's date rule; other values go through typed input.
-fn read_field(field: &str, sys: DateSystem, rule: DateRule) -> Parsed {
+/// Reads one field with the column's date rule; other values go through typed input in `loc`'s
+/// conventions.
+fn read_field(field: &str, sys: DateSystem, rule: DateRule, loc: Locale) -> Parsed {
     match numeric_date(field, sys) {
-        Some(date) if rule != DateRule::NoDates => date.read(field, rule),
-        _ => parse_input(field, sys),
+        Some(date) if rule != DateRule::NoDates => date.read(field, rule, loc.day_first()),
+        _ => parse_input_in(field, sys, loc),
     }
 }
 
@@ -479,16 +517,20 @@ pub fn read_csv(bytes: &[u8], opts: &CsvOptions) -> Result<Workbook, IoError> {
 
 /// [`read_csv`], with the warnings an open shows: a column whose date order had to be guessed,
 /// or whose dates stayed text because it holds both orders.
+///
+/// Fields read in [`CsvOptions::locale`]'s conventions. In German, as in German Excel, a dotted
+/// group of three digits is a thousands group: `1.234` is 1234, not 1.234; `1.5` is 1 May. ISO
+/// dates (`2026-12-31`) read the same in every locale.
 pub fn read_csv_with_report(bytes: &[u8], opts: &CsvOptions) -> Result<(Workbook, ReadReport), IoError> {
     let text = decode_text(bytes);
     let quote = if opts.quote == 0 { '"' } else { opts.quote as char };
-    let delim = if opts.delimiter == 0 { sniff_delimiter(&text, quote) } else { opts.delimiter } as char;
+    let delim = if opts.delimiter == 0 { sniff_delimiter(&text, quote, opts.locale) } else { opts.delimiter } as char;
     if delim == quote {
         return Err(IoError::Format("the delimiter and quote character must differ".into()));
     }
     let date_columns = if opts.parse_values { infer_date_rules(&sample_records(&text, delim, quote), opts.date_system) } else { vec![] };
     let mut report = ReadReport::default();
-    date_warnings(&date_columns, &mut report);
+    date_warnings(&date_columns, opts.locale, &mut report);
     let mut wb = Workbook::new();
     wb.date_system = opts.date_system;
     wb.csv_delimiter = u8::try_from(delim).ok();
@@ -511,7 +553,7 @@ pub fn read_csv_with_report(bytes: &[u8], opts: &CsvOptions) -> Result<(Workbook
             let pos = CellRef::new(row, col as u32);
             let cell = if opts.parse_values {
                 let rule = date_columns.get(col).map_or(DateRule::NoDates, |(rule, _)| *rule);
-                let p = read_field(&f, opts.date_system, rule);
+                let p = read_field(&f, opts.date_system, rule, opts.locale);
                 let style = match p.format {
                     Some(code) => match fmt_cache.iter().find(|(c, _)| *c == code) {
                         Some((_, id)) => *id,

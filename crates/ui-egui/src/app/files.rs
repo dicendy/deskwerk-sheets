@@ -2,6 +2,8 @@ use super::{Json, Notice, NoticeKind, OpenWindow, SheetApp, clean_error, json};
 
 impl SheetApp {
     pub fn open_path(&mut self, path: &str) {
+        // A CSV reads in the number locale; a file from the command line opens before the first frame syncs it.
+        self.sync_number_locale();
         match self.run("file.open", json!({"path": path})) {
             Ok(r) => self.after_open(Some(path), &r),
             // A password-protected workbook: ask for the password; the dialog opens it.

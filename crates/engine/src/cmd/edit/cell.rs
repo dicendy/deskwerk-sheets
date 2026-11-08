@@ -136,6 +136,17 @@ pub(crate) fn locale_param(cmd: &str, p: &Json) -> Result<Locale> {
     }
 }
 
+/// The `locale` text from outside is read in (a paste, a CSV or TSV import): the parameter when
+/// given, else the session's number locale ([`Session::locale`]), which the interface sets from
+/// its language. Unlike typed entry, outside text follows the session by default, as Excel reads
+/// pasted and imported text in the regional conventions.
+pub(crate) fn import_locale(s: &Session, cmd: &str, p: &Json) -> Result<Locale> {
+    match str_param(p, "locale") {
+        None => Ok(s.locale()),
+        Some(_) => locale_param(cmd, p),
+    }
+}
+
 pub(super) fn cell_set(s: &mut Session, p: &Json) -> Result<Json> {
     let loc = locale_param("cell.set", p)?;
     let sheet = target_sheet(s, p)?;

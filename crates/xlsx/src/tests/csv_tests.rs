@@ -1,4 +1,4 @@
-use gridcraft_core::{CellRef, DateSystem, MAX_COLS, Value};
+use gridcraft_core::{CellRef, DateSystem, Locale, MAX_COLS, Value};
 use gridcraft_model::{Sheet, Workbook};
 
 use crate::csv::{decode_text, parse_records, sniff_delimiter};
@@ -245,14 +245,14 @@ fn hebrew_1255_bytes_are_not_read_as_arabic() {
 
 #[test]
 fn delimiter_sniffing() {
-    assert_eq!(sniff_delimiter("a;b;c\n1;2;3\n", '"'), b';');
-    assert_eq!(sniff_delimiter("a\tb\n1\t2\n", '"'), b'\t');
-    assert_eq!(sniff_delimiter("a,b\n\"x;y;z\",2\n", '"'), b',');
-    assert_eq!(sniff_delimiter("single", '"'), b',');
+    assert_eq!(sniff_delimiter("a;b;c\n1;2;3\n", '"', Locale::En), b';');
+    assert_eq!(sniff_delimiter("a\tb\n1\t2\n", '"', Locale::En), b'\t');
+    assert_eq!(sniff_delimiter("a,b\n\"x;y;z\",2\n", '"', Locale::En), b',');
+    assert_eq!(sniff_delimiter("single", '"', Locale::En), b',');
     // A delimiter missing from some lines is text, not a separator (single-column export round trip).
-    assert_eq!(sniff_delimiter("alpha;beta\r\ngamma\r\n", '"'), b',');
-    assert_eq!(sniff_delimiter("alpha\tbeta\r\ngamma\r\n", '"'), b',');
-    assert_eq!(sniff_delimiter("a;b\r\n\r\nc;d\r\n", '"'), b';');
+    assert_eq!(sniff_delimiter("alpha;beta\r\ngamma\r\n", '"', Locale::En), b',');
+    assert_eq!(sniff_delimiter("alpha\tbeta\r\ngamma\r\n", '"', Locale::En), b',');
+    assert_eq!(sniff_delimiter("a;b\r\n\r\nc;d\r\n", '"', Locale::En), b';');
     let wb = read_csv(b"x;y\n1,5;2", &CsvOptions { delimiter: 0, ..Default::default() }).unwrap();
     assert_eq!(v(&wb, 1, 1), Value::Number(2.0));
     // The workbook remembers the separator it was read with, sniffed or given.
@@ -261,6 +261,79 @@ fn delimiter_sniffing() {
     assert_eq!(read_csv(b"a;b", &CsvOptions::default()).unwrap().csv_delimiter, Some(b','));
     assert_eq!(Workbook::new().csv_delimiter, None);
     assert!(read_csv(b"a", &CsvOptions { delimiter: b'"', ..Default::default() }).is_err());
+}
+
+#[test]
+fn german_and_french_files_sniff_semicolons_first() {
+    // `;` wins a tie, and a comma only ever between digits is a decimal comma.
+    assert_eq!(sniff_delimiter("Name;Wert\nA;1,5\nB;2,25\n", '"', Locale::De), b';');
+    assert_eq!(sniff_delimiter("A;1,5;2,5\nB;1,25;3,5\n", '"', Locale::Fr), b';');
+    assert_eq!(sniff_delimiter("1,5\n2,25\n", '"', Locale::De), b';');
+    assert_eq!(sniff_delimiter("single", '"', Locale::Fr), b';');
+    // A comma file with words around its commas, or a tab file, still reads as one.
+    assert_eq!(sniff_delimiter("name,value\nA,1.5\n", '"', Locale::De), b',');
+    assert_eq!(sniff_delimiter("a\tb\n1,5\t2\n", '"', Locale::Fr), b'\t');
+    // en-US is unchanged: the comma wins the tie.
+    assert_eq!(sniff_delimiter("A;1,5;2,5\nB;1,25;3,5\n", '"', Locale::En), b',');
+}
+
+fn read_in(src: &str, delimiter: u8, locale: Locale) -> Workbook {
+    read_csv(src.as_bytes(), &CsvOptions { delimiter, locale, ..Default::default() }).unwrap()
+}
+
+#[test]
+fn german_csv_reads_german_numbers_and_dates() {
+    let src = "Name;Betrag;Datum;Anteil\nA;1.234,56;31.12.2026;12,5 %\nB;-1.234,56;03.04.2026;12,5%\nC;1.234;2026-12-31;50 %\n";
+    let wb = read_in(src, 0, Locale::De);
+    assert_eq!(wb.csv_delimiter, Some(b';'));
+    assert_eq!(v(&wb, 0, 1), Value::text("Betrag"));
+    assert_eq!(v(&wb, 1, 1), Value::Number(1234.56));
+    assert_eq!(v(&wb, 2, 1), Value::Number(-1234.56));
+    // A dotted group of three digits is thousands, as in German Excel.
+    assert_eq!(v(&wb, 3, 1), Value::Number(1234.0));
+    assert_eq!(v(&wb, 1, 2), date(2026, 12, 31));
+    assert_eq!(v(&wb, 2, 2), date(2026, 4, 3));
+    assert_eq!(v(&wb, 3, 2), date(2026, 12, 31));
+    assert_eq!(v(&wb, 1, 3), Value::Number(0.125));
+    assert_eq!(v(&wb, 2, 3), Value::Number(0.125));
+    assert_eq!(v(&wb, 3, 3), Value::Number(0.5));
+    // The same file in en-US: the commas split nothing (`;` is sniffed) but the numbers stay text.
+    let en = read_in(src, 0, Locale::En);
+    assert_eq!(v(&en, 1, 1), Value::text("1.234,56"));
+    assert_eq!(v(&en, 3, 2), date(2026, 12, 31));
+}
+
+#[test]
+fn french_csv_reads_spaced_thousands_and_day_first_dates() {
+    let src = "Nom;Montant;Date\nA;1 234,56;31/12/2026\nB;1\u{a0}234,5;03/04/2026\nC;-1\u{202F}234,56;2026-12-31\n";
+    let wb = read_in(src, 0, Locale::Fr);
+    assert_eq!(wb.csv_delimiter, Some(b';'));
+    assert_eq!(v(&wb, 1, 1), Value::Number(1234.56));
+    assert_eq!(v(&wb, 2, 1), Value::Number(1234.5));
+    assert_eq!(v(&wb, 3, 1), Value::Number(-1234.56));
+    assert_eq!(v(&wb, 1, 2), date(2026, 12, 31));
+    assert_eq!(v(&wb, 2, 2), date(2026, 4, 3));
+    assert_eq!(v(&wb, 3, 2), date(2026, 12, 31));
+    // Tab-separated text and an explicit delimiter are read as given.
+    let tsv = read_in("1,5\t12,5 %\n", b'\t', Locale::Fr);
+    assert_eq!((v(&tsv, 0, 0), v(&tsv, 0, 1)), (Value::Number(1.5), Value::Number(0.125)));
+    let comma = read_in("a,b;c\n", b',', Locale::De);
+    assert_eq!(comma.csv_delimiter, Some(b','));
+    assert_eq!(v(&comma, 0, 1), Value::text("b;c"));
+}
+
+#[test]
+fn ambiguous_dates_read_day_first_in_german_and_french() {
+    let src = b"When\n03/04/2026\n05/06/2026\n";
+    for locale in [Locale::De, Locale::Fr] {
+        let (wb, report) = read_csv_with_report(src, &CsvOptions { locale, ..Default::default() }).unwrap();
+        assert_eq!(v(&wb, 1, 0), date(2026, 4, 3), "{locale:?}");
+        assert_eq!(v(&wb, 2, 0), date(2026, 6, 5), "{locale:?}");
+        assert!(report.warnings.is_empty(), "{locale:?}: {:?}", report.warnings);
+    }
+    let (wb, report) = read_csv_with_report(src, &CsvOptions::default()).unwrap();
+    assert_eq!(v(&wb, 1, 0), date(2026, 3, 4));
+    assert_eq!(report.warnings.len(), 1);
 }
 
 #[test]

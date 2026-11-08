@@ -1,4 +1,4 @@
-use super::cell::input_to_cell;
+use super::cell::{import_locale, input_to_cell_in};
 use super::paste_special::paste_special;
 use super::{
     Cell, CellRef, Clipboard, EngineError, Json, RangeRef, Result, Session, Value, bad, bool_param, cell_param_on, edit, json, ok, str_param,
@@ -308,7 +308,10 @@ pub(super) fn range_move(s: &mut Session, p: &Json) -> Result<Json> {
     moved
 }
 
+/// Pastes outside text, its numbers and dates read in [`import_locale`]'s conventions as typed
+/// entry reads them (`1.234,56`, `1 234,56`, `31.12.2026`, `31/12/2026`, `12,5 %`).
 fn paste_text(s: &mut Session, p: &Json, text: &str) -> Result<Json> {
+    let loc = import_locale(s, "edit.paste", p)?;
     let sheet = target_sheet(s, p)?;
     let at = cell_param_on(s, p, "at", sheet)?.unwrap_or(s.doc()?.selection.current().start);
     let rows: Vec<Vec<String>> = parse_tsv(text);
@@ -321,7 +324,7 @@ fn paste_text(s: &mut Session, p: &Json, text: &str) -> Result<Json> {
         for (ri, row) in rows.iter().enumerate() {
             for (ci, v) in row.iter().enumerate() {
                 let Some(c) = at.offset(ri as i64, ci as i64) else { continue };
-                let mut cell = input_to_cell(v, sheet, c, &mut cx.wb).unwrap_or_else(|_| Some(Cell::value(Value::text(v.as_str()))));
+                let mut cell = input_to_cell_in(v, sheet, c, &mut cx.wb, loc).unwrap_or_else(|_| Some(Cell::value(Value::text(v.as_str()))));
                 if let Some(cl) = cell.as_mut() {
                     numeric_from_html(cl, v, html.get(ri).and_then(|r| r.get(ci)), &mut cx.wb);
                 }

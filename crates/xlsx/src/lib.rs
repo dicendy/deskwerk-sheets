@@ -173,17 +173,22 @@ pub fn write_xlsx_named(wb: &Workbook, kind: XlsxKind, book_name: &str) -> Resul
 /// CSV import options.
 #[derive(Clone, Debug, PartialEq)]
 pub struct CsvOptions {
-    /// Field separator; `0` auto-detects comma, semicolon or tab.
+    /// Field separator; `0` auto-detects comma, semicolon or tab (semicolon first in German and
+    /// French, as their Excel writes it).
     pub delimiter: u8,
     pub quote: u8,
     pub date_system: DateSystem,
     /// Interpret fields like typed input (numbers, dates, booleans…); otherwise keep text.
     pub parse_values: bool,
+    /// The conventions fields are read in: en-US by default; German and French read
+    /// `1.234,56`, `1 234,56`, `31.12.2026`, `31/12/2026` and `12,5 %`, and read a column whose
+    /// dates could be either order (`03/04/2026`) day first.
+    pub locale: gridcraft_core::Locale,
 }
 
 impl Default for CsvOptions {
     fn default() -> Self {
-        CsvOptions { delimiter: b',', quote: b'"', date_system: DateSystem::D1900, parse_values: true }
+        CsvOptions { delimiter: b',', quote: b'"', date_system: DateSystem::D1900, parse_values: true, locale: gridcraft_core::Locale::En }
     }
 }
 

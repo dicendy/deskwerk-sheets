@@ -146,6 +146,17 @@ in `ui.json`. Values a caller types stay en-US: `cell.set` and `range.fill` read
 `31.12.2026` only with `locale: "de"` (or `"fr"`), as the cell editor sends them. Formulas are
 always canonical English syntax.
 
+Text from outside follows the session's number locale instead, as Excel reads pasted and imported
+text in regional conventions: `edit.paste` with `text`, the CSV, TSV and TXT files of `file.open`,
+`data.fromTextCsv` and `data.getData` read `1.234,56`, `-1.234,56`, `31.12.2026` and `12,5 %` in
+German, and `1 234,56` (space, no-break space or narrow no-break space), `31/12/2026` and `12,5 %`
+in French; each takes a `locale` parameter that overrides the session's. In German a dotted group
+of three digits is a thousands group (`1.234` is 1234), and a dotted pair that makes a date is one
+(`1.5` is 1 May), as in German Excel. ISO dates (`2026-12-31`) read the same in every locale. A
+German or French CSV whose delimiter is detected tries `;` first (a comma only ever between two
+digits is a decimal comma), and a date column whose dates read either way (`03/04/2026`) reads day
+first; an explicit `delimiter` is kept. HTML tables keep en-US numbers.
+
 `{command: "file.open", params: {path: "Secret.xlsx", password: "…"}}` opens a password-protected
 workbook (Agile or Standard encryption). Without `password` it returns an error containing
 "is password-protected. Enter its password to open it." and never opens a dialog; a wrong
