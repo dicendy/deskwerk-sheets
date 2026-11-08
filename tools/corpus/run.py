@@ -19,10 +19,11 @@ with a timeout (commands from apps/gridcraft-cli/src/main.rs):
 
 Then, in Python only: the saved file is a valid zip whose XML parts all parse; cells with a
 value and cells with a formula counted in the worksheet XML before and after; and with
---soffice, LibreOffice's CSV of every sheet of both files. Each step ends ok, err (non-zero
-exit), panic (Rust panic, exit 101), crash (killed by a signal) or timeout. Writes
-corpus-report.json and corpus-report.md to --out and appends the summary to
-$GITHUB_STEP_SUMMARY when set. Standard library only.
+--soffice, LibreOffice's CSV of every sheet of both files, both recalculated by LibreOffice. Each
+step ends ok, err (non-zero exit), panic (Rust panic, exit 101), crash (killed by a signal) or
+timeout. Writes corpus-report.json and corpus-report.md to --out and appends the summary to
+$GITHUB_STEP_SUMMARY when set; with --rt-dir, the saved files of files whose verdict isn't ok are
+moved there under their original names. Standard library only.
 """
 
 from __future__ import annotations
@@ -54,6 +55,7 @@ WORKSHEET_REL = ("/relationships/worksheet",)
 MAX_XML_BYTES = 200 * 1024 * 1024  # unpacked part size above which the part is not parsed
 MAX_READ_CELLS = 1_000_000  # sheet.read refuses larger ranges (crates/engine/src/cmd/inspect.rs)
 MAX_TOTAL_CELLS = 3_000_000  # above this the values step is skipped for the whole file
+READ_TOO_MUCH_TEXT = "MiB of text; read it in parts"  # sheet.read's refusal of a range with too much text
 STAGES = ("open", "values", "save", "reopen", "reopen_values", "package")
 STAGE_RANK = {s: i for i, s in enumerate(STAGES + ("check",))}
 # Per-sheet counts in document.inspect compared before and after.
@@ -331,6 +333,8 @@ def read_values(step, name: str, path: str, info: dict, bin_: str) -> dict | Non
     if not wanted:  # nothing to read (empty workbook) or every sheet too large
         return {"skipped": "no readable sheet"} if any(areas) else {"values": {}, "formulas": {}, "skipped_sheets": 0}
     r = step(name, argv)
+    if r["status"] == "err" and READ_TOO_MUCH_TEXT in r["stderr"]:
+        return {"skipped": "too much text for sheet.read"}
     if r["status"] != "ok":
         return None
     reads = [o.get("result") or {} for o in json_lines(r["stdout"]) if o.get("command") == "sheet.read"]
@@ -377,14 +381,26 @@ def compare_values(a: dict, b: dict) -> dict:
 # ---------------------------------------------------------------- LibreOffice
 
 _local = threading.local()
+# LibreOffice recalculates an .xlsx on load or shows its cached values depending on which
+# application wrote it (docProps/app.xml), so the original and the saved file would be compared
+# one recalculated and the other not. The profile makes it recalculate every file.
+LO_ALWAYS_RECALC = """<?xml version="1.0" encoding="UTF-8"?>
+<oor:items xmlns:oor="http://openoffice.org/2001/registry" xmlns:xs="http://www.w3.org/2001/XMLSchema" \
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<item oor:path="/org.openoffice.Office.Calc/Formula/Load"><prop oor:name="OOXMLRecalcMode" oor:op="fuse"><value>0</value></prop></item>
+</oor:items>
+"""
 CSV_ALL_SHEETS = "csv:Text - txt - csv (StarCalc):44,34,76,1,,0,false,true,false,false,false,-1"
 
 
 def soffice_cells(soffice: str, path: str, timeout: float) -> tuple[collections.Counter | None, str | None]:
     """Every non-empty cell LibreOffice shows on every sheet of `path`, as a multiset of text
-    (each worker thread has its own LibreOffice profile)."""
+    (each worker thread has its own LibreOffice profile, set to recalculate every file)."""
     if not hasattr(_local, "profile"):
         _local.profile = tempfile.mkdtemp(prefix="lo-profile-")
+        os.makedirs(os.path.join(_local.profile, "user"), exist_ok=True)
+        with open(os.path.join(_local.profile, "user", "registrymodifications.xcu"), "w", encoding="utf-8") as f:
+            f.write(LO_ALWAYS_RECALC)
     outdir = tempfile.mkdtemp(prefix="lo-out-")
     try:
         r = run_proc(
@@ -419,10 +435,38 @@ def overlap(a: collections.Counter | None, b: collections.Counter | None) -> flo
 # ---------------------------------------------------------------- one file
 
 
+def rt_name(file: str) -> str:
+    """The saved file's name: the original's, with .xlsx added unless it already ends so
+    (`a.xlsm` -> `a.xlsm.xlsx`, so names stay unique)."""
+    name = os.path.basename(file)
+    return name if name.lower().endswith(EXT) else name + EXT
+
+
+_rt_lock = threading.Lock()
+_rt_kept = {"bytes": 0}
+
+
+def keep_rt(rec: dict, rt: str, args) -> None:
+    """Moves the saved file of a file whose verdict isn't ok to --rt-dir (the CI artifact), while
+    the files kept so far stay within --rt-max-mb."""
+    if not args.rt_dir or rec["verdict"] == "ok" or not os.path.isfile(rt):
+        return
+    size = os.path.getsize(rt)
+    with _rt_lock:
+        if _rt_kept["bytes"] + size > args.rt_max_mb * 1024 * 1024:
+            rec["rt_file_note"] = "not kept: over --rt-max-mb"
+            return
+        _rt_kept["bytes"] += size
+    dst = os.path.join(args.rt_dir, os.path.dirname(rec["file"]), os.path.basename(rt))
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    shutil.move(rt, dst)
+    rec["rt_file"] = os.path.relpath(dst, args.rt_dir)
+
+
 def process(entry: dict, args, workdir: str, env: dict) -> dict:
     src = os.path.join(args.corpus, entry["file"])
     rec = {"file": entry["file"], "source": entry["source"], "url": entry["url"], "bytes": int(entry["bytes"])}
-    rt = os.path.join(workdir, f"{entry['n']:05d}{EXT}")
+    rt = os.path.join(workdir, rt_name(entry["file"]))
     paths = [src, rt, args.corpus, workdir]
 
     def step(name: str, argv: list[str], timeout: float | None = None) -> dict:
@@ -443,6 +487,7 @@ def process(entry: dict, args, workdir: str, env: dict) -> dict:
         vals = read_values(step, values_name, path, info, args.bin) if info is not None else {"skipped": "not opened"}
         if vals is not None and "skipped" in vals:
             rec[values_name], rec[f"{values_name}_note"] = "skipped", vals["skipped"]
+            rec.pop(f"{values_name}_error", None)
             vals = None
         elif vals is not None:
             rec.setdefault(values_name, "ok")  # an empty workbook needs no read
@@ -525,16 +570,21 @@ def process(entry: dict, args, workdir: str, env: dict) -> dict:
         rec["lo_cells_kept"] = overlap(lo_a, lo_b)
         if ea or eb:
             rec["lo_error"] = f"original: {ea or 'ok'}, round-trip: {eb or 'ok'}"
+    rec["verdict"] = verdict(rec)
+    keep_rt(rec, rt, args)
     if not args.keep:
         try:
             os.remove(rt)
         except OSError:
             pass
-    rec["verdict"] = verdict(rec)
     return rec
 
 
 FIDELITY_KEYS = ("values_kept", "xml_cells_kept", "xml_formulas_kept", "lo_cells_kept")
+# Measured on the files themselves and GridCraft's own reading of both: below 0.99 the saved file
+# lost cells, formulas or values (`real_loss`). LibreOffice's view alone below 0.99 is
+# `content_changed`: it may also be how LibreOffice reads either file.
+OWN_KEYS = ("values_kept", "xml_cells_kept", "xml_formulas_kept")
 
 
 def verdict(rec: dict) -> str:
@@ -546,6 +596,8 @@ def verdict(rec: dict) -> str:
         return "save:skipped"
     if rec.get("check") in ("panic", "crash", "timeout"):
         return f"check:{rec['check']}"
+    if any(rec.get(k) is not None and rec[k] < 0.99 for k in OWN_KEYS):
+        return "real_loss"
     vals = [rec.get(k) for k in FIDELITY_KEYS if rec.get(k) is not None]
     if vals and min(vals) < 0.99:
         return "content_changed"
@@ -671,7 +723,10 @@ def render_md(report: dict, worst: int) -> tuple[str, str]:
                  f"{c.get('crash', 0)} | {c.get('timeout', 0)} | {c.get('skipped', 0)} |")
     L += ["", f"Full round trip (open, save, reopen, valid package): **{s['full_round_trip_ok']}** "
           f"({pct(s['full_round_trip_ok'], s['processed'])}); verdict ok (content kept ≥ 99%, formulas unchanged): "
-          f"**{s['verdicts'].get('ok', 0)}**.", ""]
+          f"**{s['verdicts'].get('ok', 0)}**.", "",
+          "Verdicts: " + ", ".join(f"{k} {n}" for k, n in s["verdicts"].items()) + ". real_loss: the saved file lost cells, formulas "
+          "or values by the files' XML or GridCraft's reading of both; content_changed: only LibreOffice's view of the two differs "
+          "(both recalculated by LibreOffice).", ""]
     L += ["| Content kept | files | identical | ≥ 0.99 | < 0.90 | median | mean |", "|---|---|---|---|---|---|---|"]
     labels = {"values_kept": "app cell values, original vs saved", "xml_cells_kept": "worksheet XML cells with a value",
               "xml_formulas_kept": "worksheet XML formula cells", "lo_cells_kept": "LibreOffice CSV cells, original vs saved",
@@ -735,6 +790,8 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=0, help="only the first N files (0 = all)")
     ap.add_argument("--worst", type=int, default=40, help="files listed in the worst table")
     ap.add_argument("--keep", action="store_true", help="keep the saved round-trip files in OUT/work")
+    ap.add_argument("--rt-dir", default=None, help="move the saved files of files whose verdict isn't ok here (original names)")
+    ap.add_argument("--rt-max-mb", type=float, default=50.0, help="most megabytes of saved files moved to --rt-dir (default 50)")
     args = ap.parse_args()
     args.bin = os.path.abspath(args.bin)
     args.corpus = os.path.abspath(args.corpus)
@@ -744,6 +801,9 @@ def main() -> int:
             print(f"soffice not found ({args.soffice}); LibreOffice comparison off", file=sys.stderr)
         args.soffice = found
     os.makedirs(args.out, exist_ok=True)
+    if args.rt_dir:
+        args.rt_dir = os.path.abspath(args.rt_dir)
+        os.makedirs(args.rt_dir, exist_ok=True)
     workdir = os.path.join(os.path.abspath(args.out), "work")
     os.makedirs(workdir, exist_ok=True)
 

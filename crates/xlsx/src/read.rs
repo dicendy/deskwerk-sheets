@@ -432,6 +432,10 @@ pub fn read_xlsx<'a>(bytes: &'a [u8], known_function: Option<&'a dyn Fn(&str) ->
         wb.props.author = get("creator");
         wb.props.keywords = get("keywords");
         wb.props.description = get("description");
+        wb.props.created = get("created");
+        wb.props.modified = get("modified");
+        wb.props.last_modified_by = get("lastModifiedBy");
+        wb.props.category = get("category");
     }
     if let Some(r) = find_rel(&root_rels, "extended-properties").cloned()
         && let Ok(Some(x)) = cx.pkg.read_xml(&r.target)
@@ -458,6 +462,8 @@ pub fn read_xlsx<'a>(bytes: &'a [u8], known_function: Option<&'a dyn Fn(&str) ->
     }
     // Calls of LAMBDA names are spelled like the names (the parser upper-cases them).
     wb.apply_name_call_case();
+    // Legacy formulas intersect where a dynamic-array formula would spill: say so with `@`.
+    crate::legacy_formula::mark_implicit_intersections(&mut wb);
     wb.styles = cx.styles;
     wb.phonetics = cx.phonetics;
     Ok((wb, cx.report))

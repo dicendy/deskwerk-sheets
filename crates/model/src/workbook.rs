@@ -152,6 +152,17 @@ pub struct DocProps {
     pub company: String,
     pub keywords: String,
     pub description: String,
+    /// When the file was created and last saved (`dcterms:created`, `dcterms:modified`) and by
+    /// whom (`cp:lastModifiedBy`), as the opened file had them, and its category (`cp:category`).
+    /// Dates are W3CDTF text (`2024-05-01T09:30:00Z`); all are empty for a new workbook.
+    #[serde(default)]
+    pub created: String,
+    #[serde(default)]
+    pub modified: String,
+    #[serde(default)]
+    pub last_modified_by: String,
+    #[serde(default)]
+    pub category: String,
 }
 
 /// One phonetic (furigana) run of a string item (`<rPh>`): the reading `text` and the range of the

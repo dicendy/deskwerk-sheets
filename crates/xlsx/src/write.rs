@@ -214,6 +214,45 @@ pub fn write_xlsx(wb: &Workbook, kind: XlsxKind) -> Result<Vec<u8>, IoError> {
     write_xlsx_named(wb, kind, None)
 }
 
+/// `docProps/core.xml`. "Remove personal information on save" leaves out the author and who
+/// saved it last (#3089).
+fn core_xml(wb: &Workbook) -> String {
+    let p = &wb.props;
+    let private = |v: &String| if wb.remove_personal_info { String::new() } else { v.clone() };
+    let (author, last_modified_by) = (private(&p.author), private(&p.last_modified_by));
+    let mut core = format!(
+        "{XML_DECL}<cp:coreProperties xmlns:cp=\"http://schemas.openxmlformats.org/package/2006/metadata/core-properties\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:dcmitype=\"http://purl.org/dc/dcmitype/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">"
+    );
+    for (tag, v) in [
+        ("dc:title", &p.title),
+        ("dc:subject", &p.subject),
+        ("dc:creator", &author),
+        ("cp:keywords", &p.keywords),
+        ("dc:description", &p.description),
+        ("cp:lastModifiedBy", &last_modified_by),
+        ("cp:category", &p.category),
+    ] {
+        if !v.is_empty() {
+            let _ = write!(core, "<{tag}>{}</{tag}>", esc(v));
+        }
+    }
+    // Excel refuses a core part whose dates aren't W3CDTF: anything else is left out.
+    for (tag, v) in [("dcterms:created", p.created.trim()), ("dcterms:modified", p.modified.trim())] {
+        if is_w3cdtf(v) {
+            let _ = write!(core, "<{tag} xsi:type=\"dcterms:W3CDTF\">{v}</{tag}>");
+        }
+    }
+    core.push_str("</cp:coreProperties>");
+    core
+}
+
+/// Whether `v` looks like a W3CDTF date (`2024`, `2024-05-01`, `2024-05-01T09:30:00.5+02:00`).
+fn is_w3cdtf(v: &str) -> bool {
+    v.len() <= 40
+        && v.get(..4).is_some_and(|y| y.bytes().all(|b| b.is_ascii_digit()))
+        && v.bytes().all(|b| b.is_ascii_digit() || b"-:.TZ+".contains(&b))
+}
+
 /// The `<workbookView>` attributes beyond `activeTab`: the window's display settings
 /// that differ from the format's defaults. An ordinary workbook gets none, so its file
 /// is unchanged; a workbook Excel saved with the sheet tabs or scroll bars hidden
@@ -412,25 +451,9 @@ pub fn write_xlsx_named(wb: &Workbook, kind: XlsxKind, book_name: Option<&str>) 
 
     // Document properties.
     let p = &wb.props;
+    out.part("docProps/core.xml", Some("application/vnd.openxmlformats-package.core-properties+xml"), core_xml(wb).into_bytes());
     // "Remove personal information on save": the author and company are not saved (#3089).
-    let private = |v: &String| if wb.remove_personal_info { String::new() } else { v.clone() };
-    let (author, company) = (private(&p.author), private(&p.company));
-    let mut core = format!(
-        "{XML_DECL}<cp:coreProperties xmlns:cp=\"http://schemas.openxmlformats.org/package/2006/metadata/core-properties\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:dcmitype=\"http://purl.org/dc/dcmitype/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">"
-    );
-    for (tag, v) in [
-        ("dc:title", &p.title),
-        ("dc:subject", &p.subject),
-        ("dc:creator", &author),
-        ("cp:keywords", &p.keywords),
-        ("dc:description", &p.description),
-    ] {
-        if !v.is_empty() {
-            let _ = write!(core, "<{tag}>{}</{tag}>", esc(v));
-        }
-    }
-    core.push_str("</cp:coreProperties>");
-    out.part("docProps/core.xml", Some("application/vnd.openxmlformats-package.core-properties+xml"), core.into_bytes());
+    let company = if wb.remove_personal_info { String::new() } else { p.company.clone() };
     let mut app = String::from(XML_DECL);
     app.push_str("<Properties xmlns=\"http://schemas.openxmlformats.org/officeDocument/2006/extended-properties\" xmlns:vt=\"http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes\"><Application>Deskwerk Sheets</Application>");
     if !company.is_empty() {

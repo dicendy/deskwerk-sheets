@@ -21,6 +21,7 @@ mod csv;
 mod drawing;
 mod feature_bags;
 mod fmla;
+mod legacy_formula;
 mod ods;
 mod omml;
 mod package;

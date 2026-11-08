@@ -32,6 +32,12 @@ pub(crate) fn needs_array(wb: &Workbook, sheet: usize, at: CellRef, formula: &Fo
     shape.array || shape.affected || at
 }
 
+/// Whether `e`, evaluated in the formula at `at`, may give more than one value.
+pub(crate) fn may_be_array(wb: &Workbook, sheet: usize, at: CellRef, e: &Expr) -> bool {
+    let mut scan = Scan { wb, at, remaining: 16_384, locals: Vec::new() };
+    scan.expr(e, sheet, false, 0).array
+}
+
 struct Scan<'a> {
     wb: &'a Workbook,
     at: CellRef,
@@ -222,7 +228,7 @@ fn single_column(e: &Expr) -> bool {
 
 /// Legacy reference/array-taking parameters. Other parameters consume a single value.
 /// This is file-format policy, not a second evaluator: unknown results are never calculated.
-fn scalar_arg(name: &str, i: usize) -> bool {
+pub(crate) fn scalar_arg(name: &str, i: usize) -> bool {
     match name {
         "SUM" | "AVERAGE" | "AVERAGEA" | "MIN" | "MINA" | "MAX" | "MAXA" | "COUNT" | "COUNTA" | "COUNTBLANK" | "PRODUCT" | "SUMSQ" | "MEDIAN"
         | "MODE" | "MODE.SNGL" | "STDEV" | "STDEV.S" | "STDEV.P" | "STDEVP" | "VAR" | "VAR.S" | "VAR.P" | "VARP" | "AVEDEV" | "DEVSQ" | "GEOMEAN"

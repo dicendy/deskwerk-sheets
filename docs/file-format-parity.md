@@ -158,6 +158,8 @@ refresh. Counted under features (Get & Transform, ~10% ready), not here.
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-11-08 | minor | XLSX core properties keep `dcterms:created`, `dcterms:modified`, `cp:lastModifiedBy` and `cp:category` through open and save (a W3CDTF date is required, anything else is left out); "remove personal information" also leaves out who saved last. Before, a file with no title, subject, author, keywords or description was saved with an empty core part |
+| 2026-11-08 | minor | XLSX legacy formulas (no dynamic-array metadata, no array range) get the `@` Excel implies wherever they intersect a range with the formula's row or column, so they no longer spill or show `#SPILL!`; on save such a formula is written back without `@` and without `cm` |
 | 2026-11-02 | minor | XLSX: buttons, scroll bars and spin buttons read and written (control properties parts, `<controls>`, VML `x:ClientData`); other form controls stay with pass-through; a button's command, fixed input or output cell travels in a hidden defined name and comes back only while the file still assigns the button's macro (or none, for a command) |
 | 2026-11-03 | minor | SYLK (`.slk`) import: values, R1C1 formulas as A1 (shared formulas too) with cached results, number formats and column widths; import only (#1481) |
 | 2026-11-03 | minor | Opening a web page (HTML) reads its first table as a sheet, whatever the file is called: a web app's "Export to Excel" saved as `.xls` no longer opens as lines of markup. Values read as in a CSV (or as text with `csvAsText`), `<th>` cells are bold and centred, `<x:Name>` names the sheet, and a page not named `.htm`/`.html` opens with a warning (#3166) |

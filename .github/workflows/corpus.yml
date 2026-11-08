@@ -118,7 +118,8 @@ jobs:
         run: |
           # Stop starting new files 48 minutes into the job, so the report is always written.
           args=(--bin target/release/gridcraft-cli --corpus "$RUNNER_TEMP/corpus" --out corpus-report
-                --timeout "${STEP_TIMEOUT:-30}" --limit "${LIMIT:-0}" --jobs "$(nproc)" --deadline "$((CORPUS_START + 48 * 60))")
+                --timeout "${STEP_TIMEOUT:-30}" --limit "${LIMIT:-0}" --jobs "$(nproc)" --deadline "$((CORPUS_START + 48 * 60))"
+                --rt-dir corpus-saved --rt-max-mb 50)
           if [ "$SOFFICE" = "true" ]; then args+=(--soffice); fi
           mkdir -p corpus-report
           cp "$RUNNER_TEMP/corpus/manifest.tsv" corpus-report/
@@ -131,3 +132,11 @@ jobs:
           name: corpus-report
           path: corpus-report/
           if-no-files-found: warn
+
+      - name: Upload saved files that changed
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: corpus-saved
+          path: corpus-saved/
+          if-no-files-found: ignore
