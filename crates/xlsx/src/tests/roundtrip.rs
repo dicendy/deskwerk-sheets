@@ -30,6 +30,10 @@ fn sample() -> Workbook {
         company: "Co".into(),
         keywords: "k".into(),
         description: "d".into(),
+        created: "2006-09-16T00:00:00Z".into(),
+        modified: "2024-05-01T09:30:00.5+02:00".into(),
+        last_modified_by: "You".into(),
+        category: "c".into(),
     };
     wb.theme.colors[4] = 0x112233;
     wb.theme.minor_font = "Aptos".into();
@@ -1395,6 +1399,9 @@ fn doc_props_keep_boundary_whitespace() {
         company: " Co ".into(),
         keywords: " a, b ".into(),
         description: "\n  d\n".into(),
+        last_modified_by: " You ".into(),
+        category: "\tc".into(),
+        ..DocProps::default()
     };
     let (back, _) = read_xlsx(&write_xlsx(&wb).unwrap()).unwrap();
     assert_eq!(back.props, wb.props);
@@ -1751,4 +1758,48 @@ fn remove_personal_information_is_kept_and_honoured() {
     let book = pkg.read_xml("xl/workbook.xml").unwrap().unwrap();
     assert_eq!(book.child("workbookPr").and_then(|p| p.attr("filterPrivacy")), None);
     assert!(String::from_utf8(pkg.read("docProps/core.xml").unwrap().unwrap()).unwrap().contains("Jane Example"));
+}
+
+#[test]
+fn core_properties_keep_dates_and_who_saved_last() {
+    // A core part with only the dates and who saved it last came back empty: every save lost
+    // when the file was created and last modified, and by whom.
+    let core = r#"<?xml version="1.0"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><cp:lastModifiedBy>Jane Example</cp:lastModifiedBy><dcterms:created xsi:type="dcterms:W3CDTF">2006-09-16T00:00:00Z</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">2024-05-01T09:30:00Z</dcterms:modified><cp:category>Budgets</cp:category></cp:coreProperties>"#;
+    let root_rels = super::ROOT_RELS.replace(
+        "</Relationships>",
+        r#"<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>"#,
+    );
+    let book = r#"<?xml version="1.0"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Data" sheetId="1" r:id="rId1"/></sheets></workbook>"#;
+    let book_rels = r#"<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>"#;
+    let sheet = r#"<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>"#;
+    let bytes = super::make_zip(&[
+        ("[Content_Types].xml", super::CT.as_bytes()),
+        ("_rels/.rels", root_rels.as_bytes()),
+        ("docProps/core.xml", core.as_bytes()),
+        ("xl/workbook.xml", book.as_bytes()),
+        ("xl/_rels/workbook.xml.rels", book_rels.as_bytes()),
+        ("xl/worksheets/sheet1.xml", sheet.as_bytes()),
+    ]);
+    let (mut wb, _) = read_xlsx(&bytes).unwrap();
+    assert_eq!(wb.props.created, "2006-09-16T00:00:00Z");
+    assert_eq!(wb.props.modified, "2024-05-01T09:30:00Z");
+    assert_eq!(wb.props.last_modified_by, "Jane Example");
+    assert_eq!(wb.props.category, "Budgets");
+    let core_of = |wb: &Workbook| {
+        let bytes = write_xlsx(wb).unwrap();
+        let mut pkg = Package::open(&bytes).unwrap();
+        String::from_utf8(pkg.read("docProps/core.xml").unwrap().unwrap()).unwrap()
+    };
+    let saved = core_of(&wb);
+    assert!(saved.contains(r#"<dcterms:created xsi:type="dcterms:W3CDTF">2006-09-16T00:00:00Z</dcterms:created>"#), "{saved}");
+    assert!(saved.contains(r#"<dcterms:modified xsi:type="dcterms:W3CDTF">2024-05-01T09:30:00Z</dcterms:modified>"#), "{saved}");
+    assert!(saved.contains("<cp:lastModifiedBy>Jane Example</cp:lastModifiedBy>"), "{saved}");
+    let (back, _) = read_xlsx(&write_xlsx(&wb).unwrap()).unwrap();
+    assert_eq!(back.props, wb.props);
+    // A date Excel would refuse is left out; "remove personal information" leaves out who saved.
+    wb.props.created = "yesterday".into();
+    wb.remove_personal_info = true;
+    let saved = core_of(&wb);
+    assert!(!saved.contains("dcterms:created") && saved.contains("dcterms:modified"), "{saved}");
+    assert!(!saved.contains("Jane Example"), "{saved}");
 }
