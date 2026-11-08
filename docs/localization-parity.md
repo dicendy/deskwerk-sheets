@@ -74,7 +74,7 @@ separators, number/date formats, machine translation with agent review, and scri
 | Spanish | es | 0 (0%) | no | Latin: yes | no | none | 6–10 h |
 | Hindi | hi | 0 (0%) | no | Devanagari: **no shaping** | no | none | 12–18 h |
 | Arabic | ar | 0 (0%) | no | **no shaping, no RTL UI**; Sheet Right-to-Left mirrors the grid (#146) | no | none | 25–35 h |
-| French | fr | 0 (0%) | no | Latin: yes | no | none | 6–10 h |
+| French | fr | 1,274 (every key the other catalogs have) | dialogs, messages, tooltips | Latin: yes | no | menus, File view, dialogs, messages | 4–6 h |
 | Portuguese | pt-BR | 943 (~43%) | dialogs and tooltips (dialogs take effect with #669) | Latin: yes | no | menus, File view, dialogs | 2–4 h |
 | Indonesian | id | 0 (0%) | no | Latin: yes | no | none | 5–8 h |
 | Japanese | ja | 268 (~12%) | no | CJK system-font fallback; IME unverified; no furigana display, but phonetic runs (ふりがな) survive an XLSX open + save | no | menus only | 8–12 h |
@@ -111,6 +111,7 @@ language (none so far) and of localized function names.
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-11-08 | minor | French catalog (`i18n/fr.rs`) covers every key the other catalogs translate: 462 → 1,274 keys. Ported from storytold/gridcraft#2965, with a few rows from #3448 and #2655 and the macro editor, window and Advanced Filter labels written here |
 | 2026-11-08 | minor | German catalog (`i18n/de.rs`) covers every key the other catalogs translate plus the labels only the running UI showed (window arranging, macro editor steps, Resize Table): 494 → 1,253 keys. Ported from storytold/gridcraft#3034 |
 | 2026-10-31 | minor | German formula entry and display: Deutsch as the interface language selects German function names (420, observed in German Excel for PR #1201), `WAHR`/`FALSCH`, `;` arguments, decimal commas, `.` between array columns and German error values in formulas (`#WERT!`, `#NV`); Spanish and German share one per-language table instead of Spanish-only branches |
 | 2026-10-23 | minor | Missing translations are reported, never a failure: `cargo xtask i18n-report` prints, per language, the strings other catalogs translate and it lacks (plus Spanish function help rows keyed by English the function catalog no longer has) and always passes; `cargo xtask ci` runs it first. Coverage and per-language parity tests and tests of one language's exact wording are gone; UI tests take the expected text from the catalog. Duplicate-key, placeholder, context-prefix and line-shape checks stay |
