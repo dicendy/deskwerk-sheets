@@ -255,6 +255,8 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
         "Light" => "Clair",
         "Dark" => "Sombre",
         "Interface language" => "Langue de l'interface",
+        "Number and date format" => "Format des nombres et des dates",
+        "Like the interface language" => "Comme la langue de l'interface",
         "Interface size" => "Taille de l'interface",
         "Auto" => "Automatique",
         "Drag to freeze columns" => "Faites glisser pour figer les colonnes",

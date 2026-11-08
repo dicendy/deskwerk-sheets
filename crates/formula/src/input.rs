@@ -1,6 +1,7 @@
 //! Localized aliases accepted at user-entry boundaries; file syntax stays English.
 
 use crate::input_de::{GERMAN, GERMAN_ERRORS};
+use crate::input_fr::{FRENCH, FRENCH_ERRORS};
 use crate::{Expr, ParseError, parser};
 use gridcraft_core::CellError;
 
@@ -12,6 +13,7 @@ pub enum FormulaLocale {
     En,
     Es,
     De,
+    Fr,
 }
 
 const SPANISH: &[(&str, &str)] = &[
@@ -37,20 +39,20 @@ impl FormulaLocale {
     pub fn list_separator(self) -> char {
         match self {
             Self::En => ',',
-            Self::Es | Self::De => ';',
+            Self::Es | Self::De | Self::Fr => ';',
         }
     }
     pub fn decimal_separator(self) -> char {
         match self {
             Self::En => '.',
-            Self::Es | Self::De => ',',
+            Self::Es | Self::De | Self::Fr => ',',
         }
     }
     pub fn array_column_separator(self) -> char {
         match self {
             Self::En => ',',
             Self::Es => '\\',
-            Self::De => '.',
+            Self::De | Self::Fr => '.',
         }
     }
     /// Canonical → localized function names; English has none.
@@ -59,6 +61,7 @@ impl FormulaLocale {
             Self::En => &[],
             Self::Es => SPANISH,
             Self::De => GERMAN,
+            Self::Fr => FRENCH,
         }
     }
     pub fn function_name(self, canonical: &str) -> &str {
@@ -71,6 +74,7 @@ impl FormulaLocale {
     pub fn error_name(self, error: CellError) -> &'static str {
         let names: &[(CellError, &str)] = match self {
             Self::De => GERMAN_ERRORS,
+            Self::Fr => FRENCH_ERRORS,
             Self::En | Self::Es => &[],
         };
         names.iter().find(|(e, _)| *e == error).map(|(_, name)| *name).unwrap_or(error.as_str())
@@ -299,6 +303,26 @@ mod tests {
             let parsed = parse_input(&format!("{de}(1)"), FormulaLocale::De, |_| false).unwrap();
             assert_eq!(crate::print(&parsed), canonical, "{de}");
             assert_eq!(print_input(&parsed, FormulaLocale::De, |_| false).unwrap(), format!("{de}(1)"), "{en}");
+        }
+    }
+
+    #[test]
+    fn every_french_name_round_trips() {
+        for (en, fr) in FRENCH {
+            let canonical = format!("{en}(1)");
+            let parsed = parse_input(&format!("{fr}(1)"), FormulaLocale::Fr, |_| false).unwrap();
+            assert_eq!(crate::print(&parsed), canonical, "{fr}");
+            assert_eq!(print_input(&parsed, FormulaLocale::Fr, |_| false).unwrap(), format!("{fr}(1)"), "{en}");
+        }
+    }
+
+    #[test]
+    fn french_names_are_unique_both_ways() {
+        for (i, (en, fr)) in FRENCH.iter().enumerate() {
+            for (en2, fr2) in FRENCH.iter().skip(i + 1) {
+                assert!(!crate::same_name(en, en2), "two rows for {en}");
+                assert!(!crate::same_name(fr, fr2), "{fr} names both {en} and {en2}");
+            }
         }
     }
 }

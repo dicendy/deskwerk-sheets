@@ -531,6 +531,9 @@ pub struct Session {
     /// Measures cell text for AutoFit Column Width. Without it (CLI, MCP) AutoFit uses
     /// [`cmd::format::approx_text_width`].
     pub text_width: Option<TextWidth>,
+    /// The number locale every open workbook is shown in ([`Session::set_locale`],
+    /// `app.locale.set`).
+    locale: gridcraft_core::Locale,
 }
 
 impl Session {
@@ -539,6 +542,23 @@ impl Session {
     }
     pub fn documents(&self) -> &[DocState] {
         &self.docs
+    }
+    /// The number locale workbooks are shown in and the front end types in (en-US by default).
+    pub fn locale(&self) -> gridcraft_core::Locale {
+        self.locale
+    }
+    /// Shows every open workbook, and those opened later, in `loc`'s number conventions. A view
+    /// setting: no workbook changes, and nothing is recalculated (see `app.locale.set`).
+    pub fn set_locale(&mut self, loc: gridcraft_core::Locale) {
+        self.locale = loc;
+        self.sync_locale();
+    }
+    /// Puts the session's locale on every open workbook, also those a command replaced (undo,
+    /// revert) with a copy taken under another locale.
+    fn sync_locale(&self) {
+        for d in &self.docs {
+            d.wb.set_locale(self.locale);
+        }
     }
     pub fn active_index(&self) -> usize {
         self.active
@@ -583,6 +603,7 @@ impl Session {
     }
     /// Opens a workbook in a new window, which becomes the active one.
     pub fn add_document(&mut self, d: DocState) -> usize {
+        d.wb.set_locale(self.locale);
         let uid = d.uid;
         self.docs.push(d);
         let w = self.push_window(uid);
@@ -669,6 +690,7 @@ impl Session {
     /// Panics inside commands are caught and reported; the workbook is restored.
     pub fn execute(&mut self, id: &str, params: Json) -> Result<Json> {
         let spec = find_command(id).ok_or_else(|| EngineError::UnknownCommand(id.to_string()))?;
+        self.sync_locale();
         if let Err(why) = (spec.enabled)(self) {
             return Err(EngineError::Disabled(id.to_string(), why));
         }
@@ -1094,7 +1116,9 @@ impl Session {
     }
 
     pub fn run(&mut self, id: &str, params: Json) -> std::result::Result<Json, String> {
-        self.execute(id, params).map_err(|e| e.to_string())
+        let r = self.execute(id, params).map_err(|e| e.to_string());
+        self.sync_locale();
+        r
     }
 
     pub fn take_ui_requests(&mut self) -> Vec<UiRequest> {

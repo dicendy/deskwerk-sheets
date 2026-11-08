@@ -394,6 +394,8 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
         "Unfreeze Panes" => "Fixierung aufheben",
         "Dark Mode" => "Dunkler Modus",
         "Interface language" => "Anzeigesprache",
+        "Number and date format" => "Zahlen- und Datumsformat",
+        "Like the interface language" => "Wie die Anzeigesprache",
         "Command\nPalette" => "Befehls-\npalette",
         "Agent\nControl" => "Agenten-\nsteuerung",
         "Action\nJournal" => "Aktions-\nprotokoll",

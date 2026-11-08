@@ -1,9 +1,9 @@
 //! Workbooks.
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU8, AtomicUsize, Ordering};
 
-use gridcraft_core::DateSystem;
+use gridcraft_core::{DateSystem, Locale};
 use gridcraft_formula::Expr;
 use serde::{Deserialize, Serialize};
 
@@ -275,6 +275,11 @@ pub struct Workbook {
     /// the links in memory are still written for the old one. Not in JSON.
     #[serde(skip)]
     pub source_path: Option<std::path::PathBuf>,
+    /// The number locale the workbook is shown and typed in: a session setting, not part of the
+    /// file (opening a workbook never changes it, and equal workbooks may differ in it). Read and
+    /// set with [`Workbook::locale`] and [`Workbook::set_locale`].
+    #[serde(skip)]
+    pub locale: WorkbookLocale,
 }
 
 fn is_all(s: &ShowObjects) -> bool {
@@ -338,6 +343,51 @@ impl std::fmt::Debug for ActiveSheet {
     }
 }
 
+/// The number locale of a [`Workbook`] ([`Workbook::locale`]).
+///
+/// Like [`ActiveSheet`], an atomic, so the session can switch the locale of a shared
+/// `Arc<Workbook>` without cloning it (which would mark the document changed). It is not content:
+/// it is never saved and two workbooks compare equal whatever their locales.
+#[derive(Default)]
+pub struct WorkbookLocale(AtomicU8);
+
+impl WorkbookLocale {
+    pub fn get(&self) -> Locale {
+        Locale::ALL.get(usize::from(self.0.load(Ordering::Relaxed))).copied().unwrap_or_default()
+    }
+    pub fn set(&self, loc: Locale) {
+        let i = Locale::ALL.iter().position(|&l| l == loc).and_then(|i| u8::try_from(i).ok()).unwrap_or(0);
+        self.0.store(i, Ordering::Relaxed);
+    }
+}
+
+impl From<Locale> for WorkbookLocale {
+    fn from(loc: Locale) -> WorkbookLocale {
+        let w = WorkbookLocale::default();
+        w.set(loc);
+        w
+    }
+}
+
+impl Clone for WorkbookLocale {
+    fn clone(&self) -> WorkbookLocale {
+        WorkbookLocale::from(self.get())
+    }
+}
+
+impl PartialEq for WorkbookLocale {
+    /// A session setting, not content: always equal.
+    fn eq(&self, _: &WorkbookLocale) -> bool {
+        true
+    }
+}
+
+impl std::fmt::Debug for WorkbookLocale {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&self.get(), f)
+    }
+}
+
 impl Workbook {
     /// A new workbook with one sheet, "Sheet1".
     pub fn new() -> Workbook {
@@ -366,7 +416,16 @@ impl Workbook {
             preserved: None,
             source_dir: None,
             source_path: None,
+            locale: WorkbookLocale::default(),
         }
+    }
+    /// The number locale values are shown and typed in (en-US unless the session set one).
+    pub fn locale(&self) -> Locale {
+        self.locale.get()
+    }
+    /// Sets the number locale through a shared reference; see [`WorkbookLocale`].
+    pub fn set_locale(&self, loc: Locale) {
+        self.locale.set(loc);
     }
     pub fn sheet(&self, i: usize) -> Option<&Sheet> {
         self.sheets.get(i).map(|s| s.as_ref())
@@ -591,6 +650,26 @@ mod tests {
         let mut value: serde_json::Value = serde_json::from_str(&json)?;
         value.as_object_mut().ok_or("none")?.remove("phonetics");
         assert!(serde_json::from_value::<Workbook>(value)?.phonetics.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn locale_is_a_session_setting() -> Result<(), Box<dyn std::error::Error>> {
+        let wb = Arc::new(Workbook::new());
+        assert_eq!(wb.locale(), Locale::En);
+        // Set through a shared reference, kept by copies, never saved, never part of equality.
+        let shared = Arc::clone(&wb);
+        for loc in [Locale::De, Locale::Fr, Locale::En, Locale::Fr] {
+            shared.set_locale(loc);
+            assert_eq!(wb.locale(), loc);
+        }
+        let copy = (*wb).clone();
+        assert_eq!(copy.locale(), Locale::Fr);
+        let other = copy.clone();
+        other.set_locale(Locale::De);
+        assert_eq!(copy, other);
+        let json = serde_json::to_string(&*wb)?;
+        assert_eq!(serde_json::from_str::<Workbook>(&json)?.locale(), Locale::En);
         Ok(())
     }
 

@@ -135,6 +135,17 @@ the View ▸ Animations checkbox, saved with the other UI preferences and on by 
 interface chrome is translated, never command ids or document text. The choice is saved in `ui.json`; with nothing saved the desktop app follows the
 system language.
 
+`{command: "app.locale.set", params: {locale: "de"}}` sets the number locale: every open workbook
+shows numbers, dates and booleans in German (`1.234,5`, `31.12.2026`, `WAHR`) or French
+(`1 234,5` with a narrow no-break space, `31/12/2026`, `VRAI`) conventions, General and the
+built-in formats 0–49 included, and `TEXT()` reads its format code in that locale (`"TT.MM.JJJJ"`,
+`"jj/mm/aaaa"`). `"en"` goes back to en-US. It is a session setting, never saved in the file. The
+interface follows its language (German and French get their own conventions, every other language
+en-US) unless a locale is set; there `"auto"` follows the language again, and the choice is saved
+in `ui.json`. Values a caller types stay en-US: `cell.set` and `range.fill` read `1,5` or
+`31.12.2026` only with `locale: "de"` (or `"fr"`), as the cell editor sends them. Formulas are
+always canonical English syntax.
+
 `{command: "file.open", params: {path: "Secret.xlsx", password: "…"}}` opens a password-protected
 workbook (Agile or Standard encryption). Without `password` it returns an error containing
 "is password-protected. Enter its password to open it." and never opens a dialog; a wrong

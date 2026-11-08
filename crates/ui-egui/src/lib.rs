@@ -125,6 +125,11 @@ pub struct UiState {
     /// [`INTERFACE_SCALE_MIN`]..=[`INTERFACE_SCALE_MAX`]; a malformed saved value reads as 100.
     #[serde(deserialize_with = "lenient_interface_scale")]
     pub interface_scale: u16,
+    /// Number and date conventions (`"en"`, `"de"`, `"fr"`) chosen apart from the language
+    /// (`app.locale.set`); `None` follows it ([`i18n::Language::number_locale`]). An unknown
+    /// saved tag reads as following the language.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub number_locale: Option<String>,
 }
 
 pub const INTERFACE_SCALE_MIN: u16 = 75;
@@ -160,6 +165,7 @@ impl Default for UiState {
             keytip_invoke_next: None,
             language: i18n::Language::En,
             interface_scale: 100,
+            number_locale: None,
         }
     }
 }
@@ -186,6 +192,12 @@ impl UiState {
     /// The zoom factor for the interface size preference.
     pub fn zoom_factor(&self) -> f32 {
         clamp_interface_scale(self.interface_scale as f64).unwrap_or(100) as f32 / 100.0
+    }
+
+    /// The number locale workbooks are shown and typed in: the one chosen with `app.locale.set`,
+    /// else the language's.
+    pub fn number_locale(&self) -> gridcraft_engine::core::Locale {
+        self.number_locale.as_deref().and_then(gridcraft_engine::core::Locale::from_tag).unwrap_or_else(|| self.language.number_locale())
     }
 
     pub fn theme_mode(&self) -> &'static str {

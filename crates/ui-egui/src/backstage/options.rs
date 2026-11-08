@@ -90,7 +90,35 @@ fn general_options(app: &mut SheetApp, ui: &mut Ui, lang: Language) {
             .response
             .labelled_by(label.id);
         ui.end_row();
+        number_locale_option(app, ui, lang);
     });
+}
+
+/// The number and date conventions (decimal comma, day-first dates): the interface language's
+/// unless one is chosen here (`app.locale.set`).
+fn number_locale_option(app: &mut SheetApp, ui: &mut Ui, lang: Language) {
+    const NAMES: [(&str, &str); 3] =
+        [("en", "English (US): 1,234.5  12/31/2026"), ("de", "Deutsch: 1.234,5  31.12.2026"), ("fr", "Français : 1 234,5  31/12/2026")];
+    let label = ui.label(lang.tr("Number and date format"));
+    let auto = lang.tr("Like the interface language");
+    let chosen = app.ui.number_locale.as_deref().and_then(gridcraft_engine::core::Locale::from_tag).map(|l| l.tag());
+    let selected = NAMES.iter().find(|(tag, _)| Some(*tag) == chosen).map_or(auto, |(_, name)| *name);
+    craft_ui::ComboBox::from_id_salt("backstage_number_locale")
+        .width(240.0)
+        .selected_text(selected)
+        .show_ui(ui, |ui| {
+            if ui.selectable_label(chosen.is_none(), auto).clicked() {
+                app.run_or_alert("app.locale.set", json!({"locale": "auto"}));
+            }
+            for (tag, name) in NAMES {
+                if ui.selectable_label(chosen == Some(tag), name).clicked() {
+                    app.run_or_alert("app.locale.set", json!({"locale": tag}));
+                }
+            }
+        })
+        .response
+        .labelled_by(label.id);
+    ui.end_row();
 }
 
 /// The calculation mode, and iterative calculation, of the active workbook.

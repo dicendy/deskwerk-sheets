@@ -1,19 +1,22 @@
 //! GridCraft number formats: Excel format codes (`#,##0.00;[Red](#,##0.00)`, dates, fractions,
-//! scientific…), the General display format and the `TEXT()` worksheet function. en-US only.
+//! scientific…), the General display format and the `TEXT()` worksheet function. Codes are stored
+//! en-US; the `_in` entry points write numbers, dates and booleans in a [`Locale`]'s conventions.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 #![forbid(unsafe_code)]
 
 mod builtin;
 mod decimal;
+mod local;
 mod parse;
 mod render;
 
 use std::sync::Arc;
 
-use gridcraft_core::{CellError, DateSystem, Value};
+use gridcraft_core::{CellError, DateSystem, Locale, Value};
 
 pub use builtin::{builtin_format, builtin_id};
-pub use decimal::format_general_fit;
+pub use decimal::{format_general_fit, format_general_fit_in};
+pub use local::canonical_format_code;
 
 use parse::{DatePart, SecKind, Section, Tok};
 use render::Out;
@@ -286,9 +289,9 @@ impl NumberFormat {
     }
 
     /// Formats a number. The flag is true when the value cannot be shown (date out of range).
-    fn format_number(&self, n: f64, sys: DateSystem) -> (Formatted, bool) {
+    fn format_number(&self, n: f64, sys: DateSystem, loc: Locale) -> (Formatted, bool) {
         let general = |n: f64| Formatted {
-            text: format_general_fit(n, GENERAL_WIDTH).unwrap_or_else(|| OVERFLOW.into()),
+            text: format_general_fit_in(n, GENERAL_WIDTH, loc).unwrap_or_else(|| OVERFLOW.into()),
             color: None,
             fill: None,
             numeric: true,
@@ -299,19 +302,19 @@ impl NumberFormat {
         let Some((sec, drop_sign)) = self.select(n) else { return (general(n), false) };
         let minus = n < 0.0 && !drop_sign;
         let out: Option<Out> = match sec.kind {
-            SecKind::Text => Some(render::render_text(sec, &format_general_fit(n, GENERAL_WIDTH).unwrap_or_default())),
+            SecKind::Text => Some(render::render_text(sec, &format_general_fit_in(n, GENERAL_WIDTH, loc).unwrap_or_default())),
             SecKind::General => {
                 let width = if minus { GENERAL_WIDTH - 1 } else { GENERAL_WIDTH };
-                Some(render::render_general(sec, n.abs(), width))
+                Some(render::render_general(sec, n.abs(), width, loc))
             }
             SecKind::Date => {
                 if minus {
                     None
                 } else {
-                    render::render_date(sec, n.abs(), sys)
+                    render::render_date(sec, n.abs(), sys, loc)
                 }
             }
-            SecKind::Number => Some(render::render_number(sec, n.abs())),
+            SecKind::Number => Some(render::render_number(sec, n.abs(), loc)),
         };
         let Some(mut out) = out else {
             return (Formatted { text: OVERFLOW.into(), color: sec.color, fill: None, numeric: true }, true);
@@ -388,18 +391,27 @@ impl NumberFormat {
     }
 }
 
-/// Formats a cell value for display.
+/// Formats a cell value for display (en-US).
 pub fn format_value(v: &Value, fmt: &NumberFormat, sys: DateSystem) -> Formatted {
+    format_value_in(v, fmt, sys, Locale::En)
+}
+
+/// Formats a cell value for display in `loc`'s conventions: separators, month and weekday names,
+/// booleans, and the short date built-ins (ids 14 and 22) in the locale's date order.
+pub fn format_value_in(v: &Value, fmt: &NumberFormat, sys: DateSystem, loc: Locale) -> Formatted {
     match v {
         Value::Empty => Formatted::default(),
         Value::Number(n) if !n.is_finite() => Formatted { text: CellError::Num.as_str().into(), ..Formatted::default() },
-        Value::Number(n) => fmt.format_number(*n, sys).0,
+        Value::Number(n) => match local::short_date(fmt, loc) {
+            Some(shown) => shown.format_number(*n, sys, loc).0,
+            None => fmt.format_number(*n, sys, loc).0,
+        },
         Value::Text(t) => fmt.format_text(t),
-        Value::Bool(b) => Formatted { text: if *b { "TRUE" } else { "FALSE" }.into(), ..Formatted::default() },
+        Value::Bool(b) => Formatted { text: loc.bool_name(*b).into(), ..Formatted::default() },
         Value::Error(e) => Formatted { text: e.as_str().into(), ..Formatted::default() },
         Value::Array(a) => match a.data.first() {
             Some(Value::Array(_)) | None => Formatted::default(),
-            Some(first) => format_value(first, fmt, sys),
+            Some(first) => format_value_in(first, fmt, sys, loc),
         },
     }
 }
@@ -480,19 +492,30 @@ impl NumberFormat {
 /// converted to a number first; other text and booleans (as `TRUE`/`FALSE`) go through the text
 /// section, or are returned as is.
 pub fn text_function(v: &Value, code: &str, sys: DateSystem) -> Result<String, CellError> {
+    text_function_in(v, code, sys, Locale::En)
+}
+
+/// [`text_function`] as a German or French Excel computes it: the format code is read in `loc`'s
+/// notation (`#.##0,00` and `TT.MM.JJJJ` in German, `# ##0,00` and `jj/mm/aaaa` in French, see
+/// [`canonical_format_code`]), numeric text may use the locale's separators, and the result is
+/// written in the locale's conventions.
+pub fn text_function_in(v: &Value, code: &str, sys: DateSystem, loc: Locale) -> Result<String, CellError> {
     if code.is_empty() {
         return Ok(String::new());
     }
     if too_long(code) {
         return Err(CellError::Value);
     }
-    let fmt = NumberFormat::parse_cached(code);
+    let fmt = match loc {
+        Locale::En => NumberFormat::parse_cached(code),
+        _ => NumberFormat::parse_cached(&canonical_format_code(code, loc)),
+    };
     let n = match v.scalar() {
         Value::Error(e) => return Err(e),
         Value::Empty => 0.0,
         Value::Number(n) => n,
-        Value::Bool(b) => return Ok(fmt.format_text(if b { "TRUE" } else { "FALSE" }).text),
-        Value::Text(t) => match gridcraft_core::parse::parse_number_text(&t) {
+        Value::Bool(b) => return Ok(fmt.format_text(loc.bool_name(b)).text),
+        Value::Text(t) => match local::number_text(&t, sys, loc) {
             Some(n) => n,
             None => return Ok(fmt.format_text(&t).text),
         },
@@ -501,7 +524,7 @@ pub fn text_function(v: &Value, code: &str, sys: DateSystem) -> Result<String, C
     if !n.is_finite() {
         return Err(CellError::Num);
     }
-    let (f, overflow) = fmt.format_number(n, sys);
+    let (f, overflow) = fmt.format_number(n, sys, loc);
     if overflow { Err(CellError::Value) } else { Ok(f.text) }
 }
 

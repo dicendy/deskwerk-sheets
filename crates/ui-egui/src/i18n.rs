@@ -192,7 +192,19 @@ impl Language {
         match self {
             Self::Es => FormulaLocale::Es,
             Self::De => FormulaLocale::De,
+            Self::Fr => FormulaLocale::Fr,
             _ => FormulaLocale::En,
+        }
+    }
+
+    /// The number and date conventions that go with the language (decimal comma, `31.12.2026`
+    /// in German and `31/12/2026` in French); en-US for every other language.
+    pub fn number_locale(self) -> gridcraft_engine::core::Locale {
+        use gridcraft_engine::core::Locale;
+        match self {
+            Self::De => Locale::De,
+            Self::Fr => Locale::Fr,
+            _ => Locale::En,
         }
     }
 
@@ -447,7 +459,18 @@ mod tests {
         assert_eq!(Language::De.formula_locale(), FormulaLocale::De);
         assert_eq!(Language::Es.formula_locale(), FormulaLocale::Es);
         assert_eq!(Language::En.formula_locale(), FormulaLocale::En);
-        assert_eq!(Language::Fr.formula_locale(), FormulaLocale::En);
+        assert_eq!(Language::Fr.formula_locale(), FormulaLocale::Fr);
+        assert_eq!(Language::It.formula_locale(), FormulaLocale::En);
+    }
+
+    #[test]
+    fn numbers_follow_german_and_french_only() {
+        use gridcraft_engine::core::Locale;
+        assert_eq!(Language::De.number_locale(), Locale::De);
+        assert_eq!(Language::Fr.number_locale(), Locale::Fr);
+        for l in Language::ALL.into_iter().filter(|l| !matches!(l, Language::De | Language::Fr)) {
+            assert_eq!(l.number_locale(), Locale::En, "{l:?}");
+        }
     }
 
     #[test]

@@ -32,6 +32,11 @@ pub(crate) fn canonical(
         let expr = formula::parse_closing_parens(body, |text| formula::parse_input(text, locale, known));
         return Ok(format!("={}", formula::print(&expr?)));
     }
+    // In a German or French number locale the engine reads constants itself (`cell.set` with
+    // `locale`), dates and grouping included.
+    if wb.locale() != gridcraft_engine::core::Locale::En {
+        return Ok(text.to_string());
+    }
     // Decimal-comma number entry follows the same preference, without rewriting text or dates.
     let normalized = body.trim().replace(locale.decimal_separator(), ".");
     let number = normalized.strip_suffix('%').unwrap_or(&normalized);

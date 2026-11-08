@@ -1,4 +1,4 @@
-use super::{SheetApp, clean_error, editor, formula_bar, formula_locale, json, now_ms};
+use super::{Json, SheetApp, clean_error, editor, formula_bar, formula_locale, json, now_ms};
 
 /// Why a draft whose sheet was deleted while it was open is dropped.
 pub(crate) const DRAFT_SHEET_GONE: &str = "The sheet of the cell being edited was deleted, so the entry was discarded.";
@@ -71,6 +71,16 @@ impl SheetApp {
         }
         self.editor = Some(ed);
         self.session.mode = if replace { gridcraft_engine::Mode::Enter } else { gridcraft_engine::Mode::Edit };
+    }
+
+    /// Parameters of a typed entry, with the session's number conventions when they aren't
+    /// en-US (`1,5`, `31.12.2026`: `cell.set`'s `locale`).
+    fn typed(&self, mut params: Json) -> Json {
+        let loc = self.session.locale();
+        if loc != gridcraft_engine::core::Locale::En {
+            params["locale"] = json!(loc.tag());
+        }
+        params
     }
 
     /// Commits the edit; `then` moves the selection (dr, dc) afterwards.
@@ -163,7 +173,7 @@ impl SheetApp {
         };
         // Data validation.
         if let Some(d) = self.session.active()
-            && let Some((dv, msg)) = gridcraft_engine::cmd::data::check_validation(&d.wb, ed.sheet, ed.cell, &text)
+            && let Some((dv, msg)) = gridcraft_engine::cmd::data::check_validation_in(&d.wb, ed.sheet, ed.cell, &text, self.session.locale())
         {
             if dv.error_style == gridcraft_engine::model::ErrorStyle::Stop {
                 let title = if dv.error_title.is_empty() { "Deskwerk Sheets".to_string() } else { dv.error_title.clone() };
@@ -194,9 +204,11 @@ impl SheetApp {
         let r = if unchanged {
             Ok(json!({}))
         } else if fill_selection {
-            self.session.run("range.fill", json!({"input": text}))
+            let params = self.typed(json!({"input": text}));
+            self.session.run("range.fill", params)
         } else {
-            self.session.run("cell.set", json!({"cell": ed.cell.a1(), "input": text, "array": array}))
+            let params = self.typed(json!({"cell": ed.cell.a1(), "input": text, "array": array}));
+            self.session.run("cell.set", params)
         };
         match r {
             Ok(_) => {

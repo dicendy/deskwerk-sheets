@@ -673,7 +673,7 @@ fn text_uncached(v: &Value, code: &str, sys: DateSystem) -> Result<String, CellE
     if !n.is_finite() {
         return Err(CellError::Num);
     }
-    let (f, overflow) = fmt.format_number(n, sys);
+    let (f, overflow) = fmt.format_number(n, sys, Locale::En);
     if overflow { Err(CellError::Value) } else { Ok(f.text) }
 }
 
@@ -1017,4 +1017,78 @@ fn round_as_displayed_matches_excel() {
     assert_eq!(r("0%%%%%%%%%%%%%%%%%%%%%%%%", f64::MAX), f64::MAX);
     assert_eq!(r("0", f64::MAX), f64::MAX);
     assert_eq!(r("0.0E+0", f64::MIN_POSITIVE), 2.2e-308);
+}
+
+// ---- German and French output ----
+
+fn f_in(code: &str, n: f64, loc: Locale) -> String {
+    format_value_in(&Value::Number(n), &NumberFormat::parse(code), S, loc).text
+}
+
+#[test]
+fn english_is_the_default_locale() {
+    for code in ["#,##0.00", "0.0%", "General", "m/d/yyyy", "m/d/yyyy h:mm", "dddd, mmmm d", "# ?/?", "0.00E+00", "hh:mm:ss.00"] {
+        for n in [0.0, 1234567.891, -0.5, 46302.75] {
+            assert_eq!(f_in(code, n, Locale::En), f(code, n), "{code} {n}");
+        }
+    }
+    assert_eq!(format_value_in(&Value::Bool(true), &NumberFormat::general(), S, Locale::En).text, "TRUE");
+    assert_eq!(text_function_in(&Value::Number(1234.5), "#,##0.00", S, Locale::En), text_function(&Value::Number(1234.5), "#,##0.00", S));
+}
+
+#[test]
+fn german_and_french_separators() {
+    assert_eq!(f_in("#,##0.00", 1234567.891, Locale::De), "1.234.567,89");
+    assert_eq!(f_in("#,##0.00", 1234567.891, Locale::Fr), "1\u{202F}234\u{202F}567,89");
+    assert_eq!(f_in("#,##0", -1234.0, Locale::De), "-1.234");
+    assert_eq!(f_in("0.00%", 0.125, Locale::De), "12,50%");
+    assert_eq!(f_in("0.00E+00", 12345.0, Locale::Fr), "1,23E+04");
+    assert_eq!(f_in("General", 1234.5, Locale::De), "1234,5");
+    assert_eq!(f_in("General", 0.1 + 0.2, Locale::Fr), "0,3");
+    assert_eq!(f_in("0.0", 2.0, Locale::Fr), "2,0");
+    assert_eq!(f_in("# ?/?", 1.5, Locale::De), "1 1/2");
+    assert_eq!(f_in("#,##0.00 \"€\"", 1234.5, Locale::De), "1.234,50 €");
+    for (loc, t, fl) in [(Locale::De, "WAHR", "FALSCH"), (Locale::Fr, "VRAI", "FAUX")] {
+        assert_eq!(format_value_in(&Value::Bool(true), &NumberFormat::general(), S, loc).text, t);
+        assert_eq!(format_value_in(&Value::Bool(false), &NumberFormat::general(), S, loc).text, fl);
+    }
+}
+
+#[test]
+fn german_and_french_dates() {
+    // 2026-10-07 18:00, a Wednesday.
+    let n = 46302.75;
+    assert_eq!(f_in("dddd, d mmmm yyyy", n, Locale::De), "Mittwoch, 7 Oktober 2026");
+    assert_eq!(f_in("dddd d mmmm yyyy", n, Locale::Fr), "mercredi 7 octobre 2026");
+    assert_eq!(f_in("ddd d mmm", n, Locale::De), "Mi 7 Okt");
+    assert_eq!(f_in("ddd d mmm", n, Locale::Fr), "mer. 7 oct.");
+    assert_eq!(f_in("mmmmm", n, Locale::De), "O");
+    assert_eq!(f_in("hh:mm:ss.00", 0.5, Locale::De), "12:00:00,00");
+    // The short date built-ins follow the locale's date order.
+    assert_eq!(f_in("m/d/yyyy", n, Locale::De), "07.10.2026");
+    assert_eq!(f_in("m/d/yyyy", n, Locale::Fr), "07/10/2026");
+    assert_eq!(f_in("m/d/yyyy h:mm", n, Locale::De), "07.10.2026 18:00");
+    assert_eq!(f_in("m/d/yyyy h:mm", n, Locale::Fr), "07/10/2026 18:00");
+    assert_eq!(f_in("m/d/yyyy", n, Locale::En), "10/7/2026");
+    // Other date codes keep their order.
+    assert_eq!(f_in("yyyy-mm-dd", n, Locale::De), "2026-10-07");
+    assert_eq!(f_in("d-mmm-yy", n, Locale::De), "7-Okt-26");
+}
+
+#[test]
+fn text_reads_german_and_french_codes() {
+    let de = |v: Value, code: &str| text_function_in(&v, code, S, Locale::De);
+    let fr = |v: Value, code: &str| text_function_in(&v, code, S, Locale::Fr);
+    assert_eq!(de(Value::Number(1234.5), "#.##0,00").as_deref(), Ok("1.234,50"));
+    assert_eq!(de(Value::Number(46387.0), "TT.MM.JJJJ").as_deref(), Ok("31.12.2026"));
+    assert_eq!(de(Value::Number(46302.0), "TTTT").as_deref(), Ok("Mittwoch"));
+    assert_eq!(de(Value::Number(0.125), "0,0%").as_deref(), Ok("12,5%"));
+    assert_eq!(de(Value::from("1,5"), "0,00").as_deref(), Ok("1,50"));
+    assert_eq!(de(Value::Number(1234.5), "Standard").as_deref(), Ok("1234,5"));
+    assert_eq!(de(Value::Bool(true), "0").as_deref(), Ok("WAHR"));
+    assert_eq!(fr(Value::Number(1234.5), "# ##0,00").as_deref(), Ok("1\u{202F}234,50"));
+    assert_eq!(fr(Value::Number(46387.0), "jj/mm/aaaa").as_deref(), Ok("31/12/2026"));
+    assert_eq!(fr(Value::Number(46387.0), "jjjj j mmmm aaaa").as_deref(), Ok("jeudi 31 décembre 2026"));
+    assert_eq!(fr(Value::from("31/12/2026"), "aaaa").as_deref(), Ok("2026"));
+    assert_eq!(fr(Value::Bool(false), "0").as_deref(), Ok("FAUX"));
 }

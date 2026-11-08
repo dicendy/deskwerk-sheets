@@ -270,3 +270,50 @@ fn only_german_takes_a_non_ascii_letter_after_a_sign_as_a_formula() {
     assert!(enter(&mut app, "-Árbol"));
     assert_eq!(app.session.active().unwrap().wb.active().unwrap().value(CellRef::new(0, 0)), Value::text("-Árbol"));
 }
+
+#[test]
+fn german_and_french_numbers_and_dates_follow_the_language_unless_chosen() {
+    let value = |app: &SheetApp| app.session.active().unwrap().wb.active().unwrap().value(CellRef::new(0, 0));
+    let mut app = app();
+    assert_eq!(app.session.locale(), gridcraft_engine::core::Locale::En);
+    app.run("app.language.set", json!({"language":"de"})).unwrap();
+    assert_eq!(app.session.locale(), gridcraft_engine::core::Locale::De);
+    assert!(enter(&mut app, "31.12.2026"));
+    assert_eq!(value(&app), Value::Number(46387.0));
+    app.begin_edit(None, true);
+    assert_eq!(app.editor.as_ref().unwrap().text, "31.12.2026");
+    app.cancel_edit();
+    assert!(enter(&mut app, "1.234,56"));
+    assert_eq!(value(&app), Value::Number(1234.56));
+    // A chosen locale outlasts a language change and is saved with the preferences.
+    app.run("app.locale.set", json!({"locale":"en"})).unwrap();
+    app.run("app.language.set", json!({"language":"fr"})).unwrap();
+    assert_eq!(app.session.locale(), gridcraft_engine::core::Locale::En);
+    let restored: UiState = serde_json::from_str(&serde_json::to_string(&app.ui).unwrap()).unwrap();
+    assert_eq!(restored.number_locale.as_deref(), Some("en"));
+    assert!(app.run("app.locale.set", json!({"locale":"xx"})).is_err());
+    app.run("app.locale.set", json!({"locale":"auto"})).unwrap();
+    assert_eq!(app.session.locale(), gridcraft_engine::core::Locale::Fr);
+    assert!(enter(&mut app, "31/12/2026"));
+    assert_eq!(value(&app), Value::Number(46387.0));
+}
+
+#[test]
+fn french_entry_display_and_xlsx_roundtrip() {
+    let mut app = app();
+    app.run("app.language.set", json!({"language":"fr"})).unwrap();
+    let typed = "=SIERREUR(RECHERCHEV(1;B1:C2;2;FAUX);#N/A)+nb.si(B1:B2;\">0\")+SOMME(1,5;2,25)+ESTERREUR(#VALEUR!)";
+    assert!(enter(&mut app, typed));
+    let canonical = "IFERROR(VLOOKUP(1,B1:C2,2,FALSE),#N/A)+COUNTIF(B1:B2,\">0\")+SUM(1.5,2.25)+ISERROR(#VALUE!)";
+    assert_eq!(formula(&app), canonical);
+    let saved = app.run("file.save", json!({"format":"xlsx"})).unwrap();
+    app.run("file.open", json!({"name":"fr.xlsx", "base64":saved["base64"]})).unwrap();
+    app.begin_edit(None, true);
+    let shown = "=SIERREUR(RECHERCHEV(1;B1:C2;2;FAUX);#N/A)+NB.SI(B1:B2;\">0\")+SOMME(1,5;2,25)+ESTERREUR(#VALEUR!)";
+    assert_eq!(app.editor.as_ref().unwrap().text, shown);
+    assert!(app.commit_edit(0, 0, false, false));
+    assert_eq!(formula(&app), canonical);
+    // Typed numbers take the decimal comma.
+    assert!(enter(&mut app, "1,5"));
+    assert_eq!(app.session.active().unwrap().wb.active().unwrap().value(CellRef::new(0, 0)), Value::Number(1.5));
+}

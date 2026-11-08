@@ -1278,6 +1278,21 @@ fn text_function() {
 }
 
 #[test]
+fn text_function_follows_the_workbook_locale() {
+    let mut t = T::new();
+    t.wb.set_locale(gridcraft_core::Locale::De);
+    t.set("A1", "=TEXT(1234.5,\"#.##0,00\")");
+    assert_eq!(t.get("A1"), Value::from("1.234,50"));
+    t.set("A2", "=TEXT(46387,\"TT.MM.JJJJ\")");
+    assert_eq!(t.get("A2"), Value::from("31.12.2026"));
+    t.wb.set_locale(gridcraft_core::Locale::Fr);
+    t.set("A3", "=TEXT(1234.5,\"# ##0,00\")");
+    assert_eq!(t.get("A3"), Value::from("1\u{202F}234,50"));
+    t.set("A4", "=TEXT(46387,\"jjjj\")");
+    assert_eq!(t.get("A4"), Value::from("jeudi"));
+}
+
+#[test]
 fn long_operator_chains() {
     let mut t = T::new();
     t.set("A1", "1");

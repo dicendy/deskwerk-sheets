@@ -1,7 +1,7 @@
 # Formula language
 
 View → Interface language is the existing, persisted language preference. Choose **Español**
-for Spanish or **Deutsch** for German formula entry and display. On first run the preference
+for Spanish, **Deutsch** for German or **Français** for French formula entry and display. On first run the preference
 follows the system language. English and the other interface languages currently use the English
 formula table and separators.
 
@@ -30,8 +30,20 @@ arguments and points between array columns (`{1.2;3.4}`): `=WENN(WAHR;SUMME(1,5;
 Error values in formulas are German too: `#WERT!`, `#BEZUG!`, `#ZAHL!`, `#NV`, `#DATEN_ABRUFEN` and
 `#ÜBERLAUF!`; `#NULL!`, `#DIV/0!`, `#NAME?` and `#CALC!` are the same in both. The English spelling
 is still understood when typed. Error values shown as cell results, and table specifiers (`#Alle`,
-`#Daten`), are not translated yet. Typed cell numbers take the decimal comma (`1,5`) but not yet the
-German thousands point: `1.234` is 1.234, and `1.234,5` stays text (Spanish behaves the same).
+`#Daten`), are not translated yet. Typed cell values follow the number locale (File › Options ›
+Number and date format, German by default with Deutsch): `1.234,56`, `31.12.2026`, `12,5 %` and
+`1.234,56 €` are numbers. Spanish takes the decimal comma only (`1.234,5` stays text).
+
+French uses French Excel's names, the 402 that differ from English (`SOMME`, `SI`, `RECHERCHEV`,
+`NB.SI`, `MOYENNE.SI.ENS`, `AUJOURDHUI` …), from the tables of upstream #2310 and #1639
+(`crates/formula/src/input_fr.rs`); `MAX`, `INDEX`, `LET` and the others keep their English
+name. `VRAI` and `FAUX` are the booleans. Separators are as in German: decimal commas, semicolon
+arguments and points between array columns (`{1.2;3.4}`, from Microsoft's French array-constant
+page; not checked in French Excel): `=SI(VRAI;SOMME(1,5;2,25);0)` is 3.75. Error values are
+`#VALEUR!`, `#NOM?`, `#NOMBRE!`, `#NUL!`, `#PROPAGATION!` and `#CHARGEMENT_DONNEES`; `#DIV/0!`,
+`#REF!`, `#N/A` and `#CALC!` are the same in both. An English name still works unless French
+gives it to another function (`TRIM` is French for MIRR, `VAR.P` for VARP). Typed cell values
+follow the French number locale (`1 234,5`, `31/12/2026`).
 
 The cell editor, formula bar, Show Formulas, autocomplete, the Formula ribbon, Insert Function, and argument hints
 use the selected formula language. Common Spanish function help is translated; functions
