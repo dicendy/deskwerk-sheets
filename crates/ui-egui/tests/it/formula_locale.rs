@@ -297,3 +297,23 @@ fn german_and_french_numbers_and_dates_follow_the_language_unless_chosen() {
     assert!(enter(&mut app, "31/12/2026"));
     assert_eq!(value(&app), Value::Number(46387.0));
 }
+
+#[test]
+fn french_entry_display_and_xlsx_roundtrip() {
+    let mut app = app();
+    app.run("app.language.set", json!({"language":"fr"})).unwrap();
+    let typed = "=SIERREUR(RECHERCHEV(1;B1:C2;2;FAUX);#N/A)+nb.si(B1:B2;\">0\")+SOMME(1,5;2,25)+ESTERREUR(#VALEUR!)";
+    assert!(enter(&mut app, typed));
+    let canonical = "IFERROR(VLOOKUP(1,B1:C2,2,FALSE),#N/A)+COUNTIF(B1:B2,\">0\")+SUM(1.5,2.25)+ISERROR(#VALUE!)";
+    assert_eq!(formula(&app), canonical);
+    let saved = app.run("file.save", json!({"format":"xlsx"})).unwrap();
+    app.run("file.open", json!({"name":"fr.xlsx", "base64":saved["base64"]})).unwrap();
+    app.begin_edit(None, true);
+    let shown = "=SIERREUR(RECHERCHEV(1;B1:C2;2;FAUX);#N/A)+NB.SI(B1:B2;\">0\")+SOMME(1,5;2,25)+ESTERREUR(#VALEUR!)";
+    assert_eq!(app.editor.as_ref().unwrap().text, shown);
+    assert!(app.commit_edit(0, 0, false, false));
+    assert_eq!(formula(&app), canonical);
+    // Typed numbers take the decimal comma.
+    assert!(enter(&mut app, "1,5"));
+    assert_eq!(app.session.active().unwrap().wb.active().unwrap().value(CellRef::new(0, 0)), Value::Number(1.5));
+}

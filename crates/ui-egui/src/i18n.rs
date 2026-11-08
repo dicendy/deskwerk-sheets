@@ -192,6 +192,7 @@ impl Language {
         match self {
             Self::Es => FormulaLocale::Es,
             Self::De => FormulaLocale::De,
+            Self::Fr => FormulaLocale::Fr,
             _ => FormulaLocale::En,
         }
     }
@@ -458,7 +459,8 @@ mod tests {
         assert_eq!(Language::De.formula_locale(), FormulaLocale::De);
         assert_eq!(Language::Es.formula_locale(), FormulaLocale::Es);
         assert_eq!(Language::En.formula_locale(), FormulaLocale::En);
-        assert_eq!(Language::Fr.formula_locale(), FormulaLocale::En);
+        assert_eq!(Language::Fr.formula_locale(), FormulaLocale::Fr);
+        assert_eq!(Language::It.formula_locale(), FormulaLocale::En);
     }
 
     #[test]
