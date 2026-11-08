@@ -587,8 +587,8 @@ fn parse_date_local(t: &str, sys: DateSystem, loc: Locale) -> Option<(f64, &'sta
     // German closes a day and month with a dot: `31.12.`
     let body = if loc == Locale::De { t.strip_suffix('.').filter(|b| b.matches('.').count() == 1).unwrap_or(t) } else { t };
     let parts: Vec<&str> = body.split(seps).map(str::trim).collect();
-    match parts.as_slice() {
-        &[a, b, c] => {
+    match *parts.as_slice() {
+        [a, b, c] => {
             if a.len() == 4
                 && let (Some(y), Some(m), Some(d)) = (num(a), num(b), num(c))
             {
@@ -601,7 +601,7 @@ fn parse_date_local(t: &str, sys: DateSystem, loc: Locale) -> Option<(f64, &'sta
                 return valid_ymd(sys, expand_year(c, y), i64::from(m), d).map(|s| (s, "d-mmm-yy"));
             }
         }
-        &[a, b] => {
+        [a, b] => {
             if let (Some(d), Some(m)) = (num(a), num(b)) {
                 if (1..=12).contains(&m) && (1..=31).contains(&d) {
                     return valid_ymd(sys, current_year(), m, d).map(|s| (s, "d-mmm"));
