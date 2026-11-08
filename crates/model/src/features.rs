@@ -562,6 +562,32 @@ impl Default for ChartDataTable {
     }
 }
 
+/// Options of a chart's (primary) value axis, as Excel's Format Axis pane sets them: fixed
+/// bounds, the major unit, a number format of its own. `None` everywhere is Excel's automatic
+/// axis, which the renderer picks from the data and the source cells' format.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ChartAxis {
+    pub min: Option<f64>,
+    pub max: Option<f64>,
+    /// Distance between major tick marks and gridlines.
+    pub major_unit: Option<f64>,
+    /// Label format not linked to the source cells (`numFmt sourceLinked="0"`).
+    pub number_format: Option<String>,
+}
+
+impl ChartAxis {
+    /// The bounds `(min, max)` when set and usable: finite, and `min < max` when both are.
+    pub fn bounds(&self) -> (Option<f64>, Option<f64>) {
+        let min = self.min.filter(|v| v.is_finite());
+        let max = self.max.filter(|v| v.is_finite());
+        match (min, max) {
+            (Some(a), Some(b)) if a >= b => (None, None),
+            b => b,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Chart {
     pub id: u32,
@@ -582,6 +608,9 @@ pub struct Chart {
     /// Pie/doughnut first slice angle in degrees clockwise from 12 o'clock (0–359).
     #[serde(default)]
     pub first_slice_angle: u16,
+    /// The value axis's bounds, unit and number format (read from and written to XLSX).
+    #[serde(default)]
+    pub value_axis: ChartAxis,
     pub x_title: Option<String>,
     pub y_title: Option<String>,
     /// Source range when created from a selection (for Switch Row/Column).
@@ -1120,6 +1149,7 @@ mod tests {
             style: 1,
             hole_size: 75,
             first_slice_angle: 0,
+            value_axis: Default::default(),
             x_title: None,
             y_title: None,
             source: None,
