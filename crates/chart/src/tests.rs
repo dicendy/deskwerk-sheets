@@ -1728,7 +1728,8 @@ fn pie_and_doughnut_slices_can_show_their_percentage() {
     for kind in [ChartKind::Pie, ChartKind::Doughnut] {
         let d = one_series(kind, &[50.0, 25.0, 15.0, 10.0]);
         let mut c = chart(kind);
-        c.title = None;
+        // An empty title, not `None`: a lone series would title the chart with its name.
+        c.title = Some(String::new());
         c.legend = LegendPos::None;
         c.data_labels = false;
         c.data_label_percent = true;
