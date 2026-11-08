@@ -43,6 +43,7 @@ pub(super) fn table_resize(s: &mut Session, p: &Json) -> Result<Json> {
 }
 
 pub(super) fn from_csv(s: &mut Session, p: &Json) -> Result<Json> {
+    let loc = crate::cmd::edit::import_locale(s, "data.fromTextCsv", p)?;
     let bytes = if let Some(t) = str_param(p, "text") {
         t.as_bytes().to_vec()
     } else if let Some(path) = str_param(p, "path") {
@@ -53,45 +54,48 @@ pub(super) fn from_csv(s: &mut Session, p: &Json) -> Result<Json> {
     };
     let text = String::from_utf8_lossy(&bytes);
     // JSON array of objects → rows.
-    let rows: Vec<Vec<Json>> =
-        if text.trim_start().starts_with('[') {
-            let arr: Vec<Json> = serde_json::from_str(&text).map_err(|e| bad("data.getData", e.to_string()))?;
-            let mut keys: Vec<String> = Vec::new();
-            for o in &arr {
-                if let Some(m) = o.as_object() {
-                    for k in m.keys() {
-                        if !keys.contains(k) {
-                            keys.push(k.clone());
-                        }
+    let rows: Vec<Vec<Json>> = if text.trim_start().starts_with('[') {
+        let arr: Vec<Json> = serde_json::from_str(&text).map_err(|e| bad("data.getData", e.to_string()))?;
+        let mut keys: Vec<String> = Vec::new();
+        for o in &arr {
+            if let Some(m) = o.as_object() {
+                for k in m.keys() {
+                    if !keys.contains(k) {
+                        keys.push(k.clone());
                     }
                 }
             }
-            let mut out = vec![keys.iter().map(|k| json!(k)).collect::<Vec<_>>()];
-            for o in &arr {
-                out.push(keys.iter().map(|k| o.get(k).cloned().unwrap_or(Json::Null)).collect());
-            }
-            out
-        } else {
-            let delim = str_param(p, "delimiter")
-                .and_then(|d| d.chars().next())
-                .unwrap_or(if text.lines().next().is_some_and(|l| l.contains('\t')) { '\t' } else { ',' });
-            let opts = gridcraft_xlsx::CsvOptions { delimiter: delim as u8, ..Default::default() };
-            let wb = gridcraft_xlsx::read_csv(&bytes, &opts).map_err(|e| EngineError::Other(e.to_string()))?;
-            let sh = wb.sheet(0).ok_or(EngineError::NoDocument)?;
-            let Some(u) = sh.used_range() else { return Err(EngineError::Other("The file is empty.".into())) };
-            (u.start.row..=u.end.row)
-                .map(|r| {
-                    (u.start.col..=u.end.col)
-                        .map(|c| match sh.value(CellRef::new(r, c)) {
-                            Value::Number(n) => json!(n),
-                            Value::Bool(b) => json!(b),
-                            Value::Empty => Json::Null,
-                            v => json!(v.display()),
-                        })
-                        .collect()
-                })
-                .collect()
+        }
+        let mut out = vec![keys.iter().map(|k| json!(k)).collect::<Vec<_>>()];
+        for o in &arr {
+            out.push(keys.iter().map(|k| o.get(k).cloned().unwrap_or(Json::Null)).collect());
+        }
+        out
+    } else {
+        let delimiter = match str_param(p, "delimiter").and_then(|d| d.chars().next()) {
+            Some(d) => d as u8,
+            // Detected by the reader, which tries `;` first in German and French.
+            None if loc != gridcraft_core::Locale::En => 0,
+            None if text.lines().next().is_some_and(|l| l.contains('\t')) => b'\t',
+            None => b',',
         };
+        let opts = gridcraft_xlsx::CsvOptions { delimiter, locale: loc, ..Default::default() };
+        let wb = gridcraft_xlsx::read_csv(&bytes, &opts).map_err(|e| EngineError::Other(e.to_string()))?;
+        let sh = wb.sheet(0).ok_or(EngineError::NoDocument)?;
+        let Some(u) = sh.used_range() else { return Err(EngineError::Other("The file is empty.".into())) };
+        (u.start.row..=u.end.row)
+            .map(|r| {
+                (u.start.col..=u.end.col)
+                    .map(|c| match sh.value(CellRef::new(r, c)) {
+                        Value::Number(n) => json!(n),
+                        Value::Bool(b) => json!(b),
+                        Value::Empty => Json::Null,
+                        v => json!(v.display()),
+                    })
+                    .collect()
+            })
+            .collect()
+    };
     if rows.is_empty() || rows.len() > 1_048_576 {
         return Err(EngineError::Other("Nothing to import.".into()));
     }

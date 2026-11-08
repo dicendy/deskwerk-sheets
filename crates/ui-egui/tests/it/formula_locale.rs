@@ -317,3 +317,39 @@ fn french_entry_display_and_xlsx_roundtrip() {
     assert!(enter(&mut app, "1,5"));
     assert_eq!(app.session.active().unwrap().wb.active().unwrap().value(CellRef::new(0, 0)), Value::Number(1.5));
 }
+
+fn value(app: &SheetApp, a1: &str) -> Value {
+    app.session.active().unwrap().wb.active().unwrap().value(CellRef::parse(a1).unwrap())
+}
+
+#[test]
+/// German and French read pasted text and opened CSV files in their conventions; English as before.
+fn pasted_text_and_opened_csv_follow_the_language() {
+    let mut app = app();
+    app.paste_external("1.234,56\t1,234.5".into());
+    assert_eq!(value(&app, "A1"), Value::text("1.234,56"));
+    assert_eq!(value(&app, "B1"), Value::Number(1234.5));
+    app.run("app.language.set", json!({"language":"de"})).unwrap();
+    app.run("selection.set", json!({"range":"A2"})).unwrap();
+    app.paste_external("1.234,56\t31.12.2026\t12,5 %".into());
+    assert_eq!(value(&app, "A2"), Value::Number(1234.56));
+    assert_eq!(value(&app, "B2"), Value::Number(46387.0));
+    assert_eq!(value(&app, "C2"), Value::Number(0.125));
+    app.run("app.language.set", json!({"language":"fr"})).unwrap();
+    app.run("selection.set", json!({"range":"A3"})).unwrap();
+    app.paste_external("1\u{202F}234,56\t31/12/2026".into());
+    assert_eq!(value(&app, "A3"), Value::Number(1234.56));
+    assert_eq!(value(&app, "B3"), Value::Number(46387.0));
+
+    // A file from the command line opens before the first frame: it still reads in the language.
+    let dir = std::env::temp_dir().join(format!("gridcraft-locale-csv-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("de.csv");
+    std::fs::write(&path, "Betrag;Datum\n-1.234,56;31.12.2026\n").unwrap();
+    let mut app = self::app();
+    app.ui.language = Language::De;
+    app.open_path(&path.to_string_lossy());
+    assert_eq!(value(&app, "A2"), Value::Number(-1234.56));
+    assert_eq!(value(&app, "B2"), Value::Number(46387.0));
+    std::fs::remove_dir_all(&dir).unwrap();
+}

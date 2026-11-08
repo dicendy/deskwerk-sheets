@@ -133,3 +133,69 @@ fn validation_reads_input_in_the_locale() {
     assert!(crate::cmd::data::check_validation(&d.wb, 0, at, "1,5").is_some());
     assert!(crate::cmd::data::check_validation(&d.wb, 0, at, "1.5").is_none());
 }
+
+#[test]
+fn pasted_text_follows_the_session_locale() {
+    let mut s = s();
+    s.execute("app.locale.set", json!({"locale": "de"})).unwrap();
+    let text = "1.234,56\t31.12.2026\n-1.234,56\t12,5 %\n1.234\t2026-12-31\n";
+    s.execute("edit.paste", json!({"at": "A1", "text": text})).unwrap();
+    assert_eq!(v(&s, "A1"), Value::Number(1234.56));
+    assert_eq!(v(&s, "B1"), Value::Number(46387.0));
+    assert_eq!(v(&s, "A2"), Value::Number(-1234.56));
+    assert_eq!(v(&s, "B2"), Value::Number(0.125));
+    // A dotted group of three is a thousands group in German; ISO dates read in every locale.
+    assert_eq!(v(&s, "A3"), Value::Number(1234.0));
+    assert_eq!(v(&s, "B3"), Value::Number(46387.0));
+    assert_eq!(shown(&s, "B1"), "31.12.2026");
+    // An explicit locale wins over the session's.
+    s.execute("edit.paste", json!({"at": "D1", "text": "1,234.5\t1,5", "locale": "en"})).unwrap();
+    assert_eq!(v(&s, "D1"), Value::Number(1234.5));
+    assert_eq!(v(&s, "E1"), Value::text("1,5"));
+    assert!(s.execute("edit.paste", json!({"at": "D1", "text": "1", "locale": "xx"})).is_err());
+
+    s.execute("app.locale.set", json!({"locale": "fr"})).unwrap();
+    s.execute("edit.paste", json!({"at": "A5", "text": "1\u{202F}234,56\t31/12/2026\t12,5\u{a0}%\t-1\u{a0}234,5\t1.234"})).unwrap();
+    assert_eq!(v(&s, "A5"), Value::Number(1234.56));
+    assert_eq!(v(&s, "B5"), Value::Number(46387.0));
+    assert_eq!(v(&s, "C5"), Value::Number(0.125));
+    assert_eq!(v(&s, "D5"), Value::Number(-1234.5));
+    assert_eq!(v(&s, "E5"), Value::text("1.234"));
+}
+
+#[test]
+fn pasted_text_stays_english_without_a_locale() {
+    let mut s = s();
+    s.execute("edit.paste", json!({"at": "A1", "text": "1,234.5\t1.234,56\t3/4/2026\t2026-12-31"})).unwrap();
+    assert_eq!(v(&s, "A1"), Value::Number(1234.5));
+    assert_eq!(v(&s, "B1"), Value::text("1.234,56"));
+    assert_eq!(v(&s, "C1"), Value::Number(46085.0));
+    assert_eq!(v(&s, "D1"), Value::Number(46387.0));
+}
+
+#[test]
+fn csv_import_follows_the_session_locale() {
+    let mut s = s();
+    s.execute("app.locale.set", json!({"locale": "de"})).unwrap();
+    let csv = "Betrag;Datum;Anteil\n1.234,56;31.12.2026;12,5 %\n-1.234,56;03.04.2026;12,5%\n";
+    s.execute("file.open", json!({"name": "de.csv", "base64": crate::io::base64_encode(csv.as_bytes())})).unwrap();
+    assert_eq!(v(&s, "A1"), Value::text("Betrag"));
+    assert_eq!(v(&s, "A2"), Value::Number(1234.56));
+    assert_eq!(v(&s, "B2"), Value::Number(46387.0));
+    assert_eq!(v(&s, "C2"), Value::Number(0.125));
+    assert_eq!(v(&s, "A3"), Value::Number(-1234.56));
+    assert_eq!(v(&s, "B3"), Value::Number(46115.0));
+    assert_eq!(v(&s, "C3"), Value::Number(0.125));
+
+    // An explicit locale reads in en-US: the comma splits fields.
+    s.execute("file.open", json!({"name": "en.csv", "base64": crate::io::base64_encode(b"x\n1,5\n"), "locale": "en"})).unwrap();
+    assert_eq!(v(&s, "A2"), Value::Number(1.0));
+    assert_eq!(v(&s, "B2"), Value::Number(5.0));
+
+    s.execute("app.locale.set", json!({"locale": "fr"})).unwrap();
+    s.execute("data.fromTextCsv", json!({"text": "Montant;Date\n1 234,56;31/12/2026\n-1\u{202F}234,5;2026-12-31\n"})).unwrap();
+    assert_eq!(v(&s, "A2"), Value::Number(1234.56));
+    assert_eq!(v(&s, "B2"), Value::Number(46387.0));
+    assert_eq!(v(&s, "A3"), Value::Number(-1234.5));
+    assert_eq!(v(&s, "B3"), Value::Number(46387.0));
+}

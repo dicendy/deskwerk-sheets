@@ -962,6 +962,26 @@ mod tests {
         assert_eq!(parse_number_text_local("1,500", DateSystem::D1900, Locale::En), Some(1500.0));
     }
 
+    /// Fields pasted or imported from German and French text, as paste and CSV import read them.
+    #[test]
+    fn pasted_and_imported_fields() {
+        assert_eq!(de("-1.234,56"), num(-1234.56, Some("#,##0.00")));
+        assert_eq!(fr("-1 234,56"), num(-1234.56, Some("#,##0.00")));
+        assert_eq!(fr("-1\u{202F}234,56"), num(-1234.56, Some("#,##0.00")));
+        assert_eq!(fr("-1\u{a0}234,56"), num(-1234.56, Some("#,##0.00")));
+        assert_eq!(fr("12,5\u{202F}%"), num(0.125, Some("0.00%")));
+        assert_eq!(fr("12,5%"), num(0.125, Some("0.00%")));
+        assert_eq!(fr("\u{a0}1\u{202F}234,5\u{a0}").value, Value::Number(1234.5));
+        // A dotted group of three is a thousands group in German, text in French.
+        assert_eq!(de("1.234").value, Value::Number(1234.0));
+        assert_eq!(fr("1.234").value, Value::text("1.234"));
+        // ISO dates read the same in every locale.
+        for loc in [Locale::En, Locale::De, Locale::Fr] {
+            assert_eq!(parse_input_in("2026-12-31", DateSystem::D1900, loc).value, Value::Number(46387.0), "{loc:?}");
+        }
+        assert_eq!(fr("2026-12-31"), num(46387.0, Some("yyyy-mm-dd")));
+    }
+
     #[test]
     fn numbers_stored_as_text() {
         for (text, n) in [

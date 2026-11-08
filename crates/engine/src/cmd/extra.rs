@@ -197,7 +197,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "From Text/CSV",
             ["Data", "Get & Transform Data"],
             None,
-            "{path | text, delimiter?: \",\", sheet?: new sheet name} → imports into a new sheet as a table",
+            "{path | text, delimiter?: \",\", sheet?: new sheet name, locale?: \"en\"|\"de\"|\"fr\" (numbers and dates read as 1.234,56 and 31.12.2026; the session's number locale by default; without a delimiter, de and fr detect `;` first)} → imports into a new sheet as a table",
             has_doc,
             from_csv
         ),
@@ -206,7 +206,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "Get Data",
             ["Data", "Get & Transform Data"],
             None,
-            "{path | text} (CSV/TSV/JSON array of objects) → new sheet table",
+            "{path | text, locale?: \"en\"|\"de\"|\"fr\" (as data.fromTextCsv)} (CSV/TSV/JSON array of objects) → new sheet table",
             has_doc,
             from_csv
         ),
