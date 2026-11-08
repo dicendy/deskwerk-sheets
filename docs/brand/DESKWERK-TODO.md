@@ -38,7 +38,7 @@ After replacing the SVG: run `packaging/icons.sh`, update `assets/app-icon/READM
 - Cargo packages, crate names, module paths and directories: `gridcraft`, `gridcraft-cli`,
   `gridcraft-web`, `gridcraft-*` crates, `apps/gridcraft*` (`cargo -p gridcraft…` keeps working,
   `Cargo.lock` is unchanged).
-- The web build (`gridcraft-web` binary, `gridcraft-web-<version>.zip`) and its page messages
+- The web build (`gridcraft-web` binary; the zip is renamed to `deskwerk-sheets-web-<version>.zip`) and its page messages
   (`gridcraft:ready`, `gridcraft:open`, …), which are a host-page API.
 - `GRIDCRAFT_*` environment variables.
 - Log targets (`gridcraft_*`; the app binary now logs as `deskwerk_sheets`, which the default
@@ -57,8 +57,19 @@ After replacing the SVG: run `packaging/icons.sh`, update `assets/app-icon/READM
 
 ## Release signing
 
-- `docs/releasing.md` lists the signing secrets generically. Deskwerk needs its own Apple
-  Developer ID and Windows signing identity; none is configured.
+- `.github/workflows/release.yml` (tag `v*` or manual run) builds Linux, web, Windows and macOS
+  packages and drafts a GitHub Release. No signing identity is configured yet, so Windows files
+  are unsigned and macOS is ad-hoc signed, not notarized. To sign, add these repository secrets
+  (details in `packaging/RELEASING.md`):
+  - Windows, either `WINDOWS_CERTIFICATE` (base64 `.pfx` code-signing certificate) +
+    `WINDOWS_CERTIFICATE_PASSWORD`, or Azure Trusted Signing: `AZURE_TENANT_ID`,
+    `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`,
+    `AZURE_CERT_PROFILE`.
+  - macOS signing: `APPLE_CERTIFICATE` (base64 `.p12` "Developer ID Application" certificate with
+    key), `APPLE_CERTIFICATE_PASSWORD`, optional `KEYCHAIN_PASSWORD`.
+  - macOS notarization: `APPLE_ID`, `APPLE_PASSWORD` (app-specific password), `APPLE_TEAM_ID`.
+- Not built by CI yet: Linux aarch64/riscv64, Flatpak, FreeBSD, Windows x86/arm64. No Linux
+  package signing (upstream's `LINUX_SIGNING_KEY`); releases carry `SHA256SUMS.txt` only.
 
 ## Updates
 

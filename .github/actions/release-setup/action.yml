@@ -1,0 +1,72 @@
+name: Release setup
+description: >-
+  Checks that a v* tag matches the Cargo.toml version, checks out the pinned craft-fonts (and
+  craft-i18n when craft-i18n.rev exists) and exports the build environment that embeds them.
+  Run after the repository checkout.
+
+outputs:
+  version:
+    description: "[workspace.package] version from Cargo.toml"
+    value: ${{ steps.version.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Version
+      id: version
+      shell: bash
+      run: |
+        version=$(awk '
+          /^\[/ { in_pkg = ($0 == "[workspace.package]"); next }
+          in_pkg && $1 == "version" { gsub(/[" ]/, "", $3); print $3; exit }
+        ' Cargo.toml)
+        [ -n "$version" ] || { echo "::error::no [workspace.package] version in Cargo.toml"; exit 1; }
+        if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "v$version" ]; then
+          echo "::error::tag $GITHUB_REF_NAME does not match Cargo.toml version $version (expected v$version)"
+          exit 1
+        fi
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+
+    # Same pin as ci.yml.
+    - name: Fonts
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        repository: storytold/craft-fonts
+        ref: b076417b5880bd4154bd22f00695b1d28c6bea83
+        path: craft-fonts
+        persist-credentials: false
+
+    - name: Translations pin
+      id: i18n
+      shell: bash
+      run: |
+        if [ -f craft-i18n.rev ]; then echo "rev=$(tr -d '[:space:]' < craft-i18n.rev)" >> "$GITHUB_OUTPUT"; fi
+
+    - name: Translations
+      if: steps.i18n.outputs.rev != ''
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        repository: storytold/craft-i18n
+        ref: ${{ steps.i18n.outputs.rev }}
+        path: craft-i18n
+        persist-credentials: false
+
+    - name: Deskwerk translation patch
+      if: steps.i18n.outputs.rev != ''
+      shell: bash
+      run: |
+        if [ -f .github/i18n/deskwerk.patch ]; then
+          git -C craft-i18n apply --whitespace=nowarn ../.github/i18n/deskwerk.patch
+        fi
+
+    - name: Build environment
+      shell: bash
+      run: |
+        {
+          echo "CRAFT_FONTS_DIR=$GITHUB_WORKSPACE/craft-fonts"
+          echo "CRAFT_FONTS_REQUIRED=1"
+          if [ -d craft-i18n ]; then
+            echo "CRAFT_I18N_DIR=$GITHUB_WORKSPACE/craft-i18n"
+            echo "CRAFT_I18N_REQUIRED=1"
+          fi
+        } >> "$GITHUB_ENV"

@@ -252,7 +252,7 @@ handling again for troubleshooting.
 
 | Build | File | Notes |
 |---|---|---|
-| Static site | `gridcraft-web-<ver>.zip` | Runs in a modern browser; host it on any static server |
+| Static site | `deskwerk-sheets-web-<ver>.zip` | Runs in a modern browser; host it on any static server |
 
 ## License and credits
 
