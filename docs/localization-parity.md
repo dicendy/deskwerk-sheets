@@ -80,7 +80,7 @@ separators, number/date formats, machine translation with agent review, and scri
 | Japanese | ja | 268 (~12%) | no | CJK system-font fallback; IME unverified; no furigana display, but phonetic runs (ふりがな) survive an XLSX open + save | no | menus only | 8–12 h |
 | Japanese | ja | 943 (~43%) | dialogs and messages | CJK system-font fallback; IME unverified; no furigana display | no | menus, File view, dialogs, messages | 3–5 h |
 | Japanese | ja | 268 (~12%) | no | CJK system-font fallback; the theme's East Asian typeface (`<a:ea>`) survives open + save (rendering does not use it yet); IME unverified; no furigana display | no | menus only | 8–12 h |
-| German | de | 266 (~12%) | no | Latin: yes | no | menus only | 4–8 h |
+| German | de | 1,253 (every key the other catalogs have, plus UI-only labels) | dialogs, messages, tooltips | Latin: yes | `;` arguments, decimal comma, 420 function names, error values | menus, File view, dialogs, messages | 2–4 h |
 | Italian | it | 971 (~44%) | dialogs, tooltips, pivot pane | Latin: yes | no | menus, File view, dialogs, pivot pane | 3–5 h |
 | Korean | ko | 266 (~12%) | no | Hangul via the CJK fallback; IME unverified | no | menus only | 6–10 h |
 | Vietnamese | vi | 0 (0%) | no | Latin with stacked diacritics: unverified | no | none | 6–10 h |
@@ -111,6 +111,7 @@ language (none so far) and of localized function names.
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-11-08 | minor | German catalog (`i18n/de.rs`) covers every key the other catalogs translate plus the labels only the running UI showed (window arranging, macro editor steps, Resize Table): 494 → 1,253 keys. Ported from storytold/gridcraft#3034 |
 | 2026-10-31 | minor | German formula entry and display: Deutsch as the interface language selects German function names (420, observed in German Excel for PR #1201), `WAHR`/`FALSCH`, `;` arguments, decimal commas, `.` between array columns and German error values in formulas (`#WERT!`, `#NV`); Spanish and German share one per-language table instead of Spanish-only branches |
 | 2026-10-23 | minor | Missing translations are reported, never a failure: `cargo xtask i18n-report` prints, per language, the strings other catalogs translate and it lacks (plus Spanish function help rows keyed by English the function catalog no longer has) and always passes; `cargo xtask ci` runs it first. Coverage and per-language parity tests and tests of one language's exact wording are gone; UI tests take the expected text from the catalog. Duplicate-key, placeholder, context-prefix and line-shape checks stay |
 | 2026-10-21 | minor | Romanian interface (`ro`, Română): 970 labels covering every key of the other catalogs (`crates/ui-egui/src/i18n/ro.rs`), `ro-*` system locales, the View-tab switcher and `app.language.set`; context keys show no prefix (File › Options test). English formulas and formats; AI-assisted draft pending native-speaker review |
