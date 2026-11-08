@@ -202,6 +202,88 @@ fn shared_legacy_index_match_formulas_remain_scalar_after_xlsx_roundtrip() {
     }
 }
 
+/// Legacy formulas (no `cm`, no array range) as Excel 2013 and LibreOffice write them.
+const LEGACY_ROWS: &str = concat!(
+    r#"<sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>10</v></c><c r="C1"><v>5</v></c></row>"#,
+    r#"<row r="2"><c r="A2"><v>2</v></c><c r="B2"><v>20</v></c><c r="C2"><v>6</v></c>"#,
+    r#"<c r="D2"><f>A1:A3*2</f><v>4</v></c>"#,
+    r#"<c r="E2"><f>C2+A1:A3</f><v>8</v></c>"#,
+    r#"<c r="F2"><f>IF(A1:A3&gt;1,B1:B3,0)</f><v>20</v></c>"#,
+    r#"<c r="G2"><f>SUM(A1:A3)</f><v>6</v></c>"#,
+    r#"<c r="H2"><f>SUMPRODUCT(A1:A3*B1:B3)</f><v>140</v></c>"#,
+    r#"<c r="I2"><f>SUM(A1:A3*B1:B3)</f><v>40</v></c>"#,
+    r#"<c r="J2"><f>VLOOKUP(C2,C1:D3,1,FALSE)</f><v>6</v></c>"#,
+    r#"<c r="K2" t="str"><f>A:A&amp;"/"&amp;B:B</f><v>2/20</v></c>"#,
+    r#"<c r="L2"><f t="array" ref="L2:L4">A1:A3*2</f><v>2</v></c>"#,
+    r#"<c r="M2"><f>SQRT(A1:A3)</f><v>1.4142135623730951</v></c>"#,
+    r#"<c r="N2"><f>A1:A3 A2:B2</f><v>2</v></c>"#,
+    r#"<c r="O2"><f>COUNTIF(A1:A3,A1:A3)</f><v>1</v></c>"#,
+    r#"<c r="P2"><f>SUMPRODUCT(IF(A1:A3&gt;1,B1:B3,0))</f><v>20</v></c></row>"#,
+    r#"<row r="3"><c r="A3"><v>3</v></c><c r="B3"><v>30</v></c><c r="C3"><v>7</v></c></row></sheetData>"#,
+);
+
+/// Excel intersects a multi-cell reference where a legacy formula takes one value; GridCraft
+/// shows (and evaluates) that as `@`. Saving writes the legacy formula back without them.
+#[test]
+fn legacy_formulas_intersect_with_at_and_are_saved_unchanged() {
+    let (wb, _) = read_xlsx(&super::minimal(LEGACY_ROWS, &[], "", "")).unwrap();
+    let sh = wb.sheet(0).unwrap();
+    let text = |a: &str| sh.cell(at(a)).and_then(|c| c.formula.as_ref()).map(|f| f.text.clone()).unwrap();
+    for (address, want) in [
+        ("D2", "@A1:A3*2"),
+        ("E2", "C2+@A1:A3"),
+        ("F2", "IF(@A1:A3>1,@B1:B3,0)"),
+        ("G2", "SUM(A1:A3)"),
+        ("H2", "SUMPRODUCT(A1:A3*B1:B3)"),
+        ("I2", "SUM(@A1:A3*@B1:B3)"),
+        ("J2", "VLOOKUP(C2,C1:D3,1,FALSE)"),
+        ("K2", "@A:A&\"/\"&@B:B"),
+        ("L2", "A1:A3*2"),
+        ("M2", "SQRT(@A1:A3)"),
+        ("N2", "@(A1:A3 A2:B2)"),
+        ("O2", "COUNTIF(A1:A3,@A1:A3)"),
+        ("P2", "SUMPRODUCT(IF(@A1:A3>1,B1:B3,0))"),
+    ] {
+        assert_eq!(text(address), want, "{address}");
+    }
+    assert_eq!(sh.cell(at("L2")).and_then(|c| c.formula.as_ref()).and_then(|f| f.array), Some(range("L2:L4")));
+
+    let saved = write_xlsx(&wb).unwrap();
+    let mut pkg = Package::open(&saved).unwrap();
+    assert!(!pkg.has("xl/metadata.xml"));
+    let sheet = pkg.read_xml("xl/worksheets/sheet1.xml").unwrap().unwrap();
+    for (address, file) in [
+        ("D2", "A1:A3*2"),
+        ("E2", "C2+A1:A3"),
+        ("F2", "IF(A1:A3>1,B1:B3,0)"),
+        ("I2", "SUM(A1:A3*B1:B3)"),
+        ("K2", "A:A&\"/\"&B:B"),
+        ("M2", "SQRT(A1:A3)"),
+        ("N2", "(A1:A3 A2:B2)"),
+        ("O2", "COUNTIF(A1:A3,A1:A3)"),
+        ("P2", "SUMPRODUCT(IF(A1:A3>1,B1:B3,0))"),
+    ] {
+        assert_scalar(&sheet, address);
+        assert_eq!(cell(&sheet, address).child("f").unwrap().text, file, "{address}");
+    }
+    let (back, _) = read_xlsx(&saved).unwrap();
+    let again = back.sheet(0).unwrap();
+    for address in ["D2", "E2", "F2", "I2", "K2", "M2", "N2", "O2", "P2"] {
+        assert_eq!(again.cell(at(address)).and_then(|c| c.formula.as_ref()).map(|f| f.text.clone()), Some(text(address)), "{address}");
+    }
+}
+
+/// A formula that only dynamic-array Excel has is left as it is.
+#[test]
+fn legacy_formulas_with_dynamic_functions_are_left_alone() {
+    let body = r#"<sheetData><row r="1"><c r="A1"><v>1</v></c><c r="D1"><f>_xlfn.LET(_xlpm.x,A1:A3,_xlpm.x*2)</f><v>2</v></c><c r="E1"><f>_xlfn.SINGLE(A1:A3)+A1:A3</f><v>2</v></c></row></sheetData>"#;
+    let (wb, _) = read_xlsx(&super::minimal(body, &[], "", "")).unwrap();
+    let sh = wb.sheet(0).unwrap();
+    let text = |a: &str| sh.cell(at(a)).and_then(|c| c.formula.as_ref()).map(|f| f.text.clone()).unwrap();
+    assert_eq!(text("D1"), "LET(x,A1:A3,x*2)");
+    assert_eq!(text("E1"), "@A1:A3+A1:A3");
+}
+
 #[test]
 fn calculated_table_column_keeps_formula_and_cell_value() {
     let mut wb = Workbook::new();
@@ -333,11 +415,12 @@ fn implicit_intersection_metadata_respects_function_argument_context() {
             ("SUM(A1:A3)", false),
             ("SUMPRODUCT(A1:A3*B1:B3)", false),
             ("SUMPRODUCT(SQRT(A1:A3))", false),
-            // An explicit `@` is written as `_xlfn.SINGLE`, a dynamic-array formula. Dropping it
-            // instead would need the reader to put it back on legacy formulas.
-            ("SQRT(@A1:A3)", true),
-            ("@A1:A3*2", true),
+            // An `@` a legacy formula implies is dropped: the reader puts it back. Any other `@` is
+            // written as `_xlfn.SINGLE`, a dynamic-array formula.
+            ("SQRT(@A1:A3)", false),
+            ("@A1:A3*2", false),
             ("@(A1:A3*2)", true),
+            ("SUM(@A1:A3*B1:B3)", true),
             ("SQRT(INDIRECT(\"A1\"))", false),
             ("SUM(INDIRECT(\"A1:A3\"))", false),
             ("SQRT(INDIRECT(\"A1:A3\"))", true),

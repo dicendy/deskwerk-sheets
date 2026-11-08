@@ -1004,8 +1004,9 @@ fn icon_sets_always_write_one_cfvo_per_icon() {
     assert_eq!(rules, [3, 4, 5]);
 }
 
-/// Files have no `@` operator: Excel writes `@x` as `_xlfn.SINGLE(x)` in a dynamic-array
-/// formula, and reads it back as `@x`.
+/// Files have no `@` operator. Where a legacy formula implies it, Excel writes the formula
+/// without it; any other `@x` is `_xlfn.SINGLE(x)` in a dynamic-array formula. Both read back
+/// as `@x`.
 #[test]
 fn implicit_intersection_is_written_as_single() {
     let mut wb = Workbook::new();
@@ -1015,16 +1016,20 @@ fn implicit_intersection_is_written_as_single() {
     }
     s.cells.set(at("D3"), Cell { value: Value::Number(10.0), ..Cell::formula(Formula::new("@A1:A3*2")) });
     s.cells.set(at("D4"), Cell { value: Value::Number(2.0), ..Cell::formula(Formula::new("A1*2")) });
+    s.cells.set(at("D5"), Cell { value: Value::Number(9.0), ..Cell::formula(Formula::new("SUM(@A1:A3*A1:A3)")) });
     let bytes = write_xlsx(&wb).unwrap();
     let (xml, metadata) = sheet1_xml(&bytes);
-    assert!(xml.contains("<c r=\"D3\" cm=\"1\"><f t=\"array\" ref=\"D3\">_xlfn.SINGLE(A1:A3)*2</f><v>10</v>"), "{xml}");
+    assert!(xml.contains("<c r=\"D3\"><f>A1:A3*2</f><v>10</v>"), "{xml}");
     assert!(xml.contains("<c r=\"D4\"><f>A1*2</f>"), "{xml}");
+    assert!(xml.contains("<c r=\"D5\" cm=\"1\"><f t=\"array\" ref=\"D5\">SUM(_xlfn.SINGLE(A1:A3)*A1:A3)</f><v>9</v>"), "{xml}");
     assert!(!xml.contains('@'), "{xml}");
     assert!(metadata);
     let (back, _) = read_xlsx(&bytes).unwrap();
     let sh = back.sheet(0).unwrap();
-    assert_eq!(sh.cell(at("D3")).and_then(|c| c.formula.as_ref()).map(|f| f.text.as_str()), Some("@A1:A3*2"));
-    assert_eq!(sh.cell(at("D3")).and_then(|c| c.formula.as_ref()).and_then(|f| f.array), None);
+    for (cell, text) in [("D3", "@A1:A3*2"), ("D5", "SUM(@A1:A3*A1:A3)")] {
+        assert_eq!(sh.cell(at(cell)).and_then(|c| c.formula.as_ref()).map(|f| f.text.as_str()), Some(text));
+        assert_eq!(sh.cell(at(cell)).and_then(|c| c.formula.as_ref()).and_then(|f| f.array), None);
+    }
 }
 
 #[test]

@@ -458,6 +458,8 @@ pub fn read_xlsx<'a>(bytes: &'a [u8], known_function: Option<&'a dyn Fn(&str) ->
     }
     // Calls of LAMBDA names are spelled like the names (the parser upper-cases them).
     wb.apply_name_call_case();
+    // Legacy formulas intersect where a dynamic-array formula would spill: say so with `@`.
+    crate::legacy_formula::mark_implicit_intersections(&mut wb);
     wb.styles = cx.styles;
     wb.phonetics = cx.phonetics;
     Ok((wb, cx.report))

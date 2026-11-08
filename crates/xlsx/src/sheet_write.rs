@@ -646,15 +646,18 @@ fn write_sheet_data(s: &mut String, data: SheetCellData<'_>, sid: &dyn Fn(gridcr
         for &(cell_ref, cell) in cells {
             let ov = overrides.get(&cell_ref);
             let ex = extra.get(&cell_ref);
-            let array = dynamic.get(&cell_ref).copied().or_else(|| {
+            let spill = dynamic.get(&cell_ref).copied();
+            let legacy = legacy_cell(workbook, index, cell_ref, cell, spill.is_some());
+            let array = spill.or_else(|| {
                 let f = cell?.formula.as_ref()?;
-                (f.array.is_none() && crate::array_formula::needs_array(workbook, index, cell_ref, f)).then_some(RangeRef::cell(cell_ref))
+                (legacy.is_none() && f.array.is_none() && crate::array_formula::needs_array(workbook, index, cell_ref, f))
+                    .then_some(RangeRef::cell(cell_ref))
             });
             write_cell(
                 s,
                 CellWriteInput {
                     reference: cell_ref,
-                    cell,
+                    cell: legacy.as_ref().or(cell),
                     picture: sheet.cell_pictures.get(&cell_ref),
                     header_override: ov,
                     spill_value: ex,
@@ -667,6 +670,14 @@ fn write_sheet_data(s: &mut String, data: SheetCellData<'_>, sid: &dyn Fn(gridcr
         s.push_str("</row>");
     }
     s.push_str("</sheetData>");
+}
+
+/// `cell` with its formula as the legacy formula to write, where its `@`s are the ones a legacy
+/// formula implies (see [`crate::legacy_formula::legacy_form`]). `None` for a cell that spills.
+fn legacy_cell(workbook: &Workbook, index: usize, at: CellRef, cell: Option<&Cell>, spills: bool) -> Option<Cell> {
+    let cell = cell.filter(|_| !spills)?;
+    let legacy = crate::legacy_formula::legacy_form(workbook, index, at, cell.formula.as_deref()?)?;
+    Some(Cell { formula: Some(std::sync::Arc::new(legacy)), ..cell.clone() })
 }
 
 fn write_sheet_views(s: &mut String, sheet: &Sheet, selected: bool) {
