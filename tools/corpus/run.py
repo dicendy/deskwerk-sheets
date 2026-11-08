@@ -64,12 +64,31 @@ INSPECT_COUNTS = ("images", "shapes", "conditionalFormats", "validations", "comm
 # ---------------------------------------------------------------- processes
 
 
+# A file that makes the app allocate without bound must fail on its own (out of memory shows up
+# as a crash) instead of taking the whole runner down with it. LibreOffice is left unlimited:
+# it reserves a lot of address space it never touches.
+MEM_LIMIT_BYTES = int(os.environ.get("CORPUS_MEM_LIMIT_MB", "2500")) * 1024 * 1024
+
+
+def _limited(argv: list[str]) -> list[str]:
+    # prlimit (util-linux) instead of preexec_fn: the runner forks from worker threads.
+    if "soffice" in os.path.basename(argv[0]) or not shutil.which("prlimit"):
+        return argv
+    return ["prlimit", f"--as={MEM_LIMIT_BYTES}", "--", *argv]
+
+
 def run_proc(argv: list[str], timeout: float, env: dict | None = None, cwd: str | None = None) -> dict:
     """Run argv in its own process group; kill the whole group on timeout."""
     t0 = time.monotonic()
     try:
         p = subprocess.Popen(
-            argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, env=env, cwd=cwd, start_new_session=True
+            _limited(argv),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            stdin=subprocess.DEVNULL,
+            env=env,
+            cwd=cwd,
+            start_new_session=True,
         )
     except OSError as e:
         return {"status": "err", "code": None, "stdout": b"", "stderr": str(e), "seconds": 0.0}
