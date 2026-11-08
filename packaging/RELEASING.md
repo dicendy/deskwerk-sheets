@@ -30,7 +30,7 @@ The packages are kept as workflow artifacts for 7 days.
 | linux | ubuntu-22.04 (glibc 2.35) | `deskwerk-sheets-<v>-linux-x86_64.{AppImage,AppImage.zsync,deb,rpm,tar.gz}` |
 | web | ubuntu-24.04 | `deskwerk-sheets-web-<v>.zip` |
 | windows | windows-2022 | `deskwerk-sheets-<v>-windows-x64.msi`, `deskwerk-sheets-<v>-windows-x64-portable.zip` |
-| macos | macos-14 | `deskwerk-sheets-<v>-macos-universal.dmg`, `deskwerk-sheets-cli-<v>-macos-universal.zip` |
+| macos | macos-15 | `deskwerk-sheets-<v>-macos-universal.dmg`, `deskwerk-sheets-cli-<v>-macos-universal.zip` |
 
 Not built in CI: Linux aarch64/riscv64, Flatpak, FreeBSD, Windows x86/arm64 (the scripts support
 them: `package.sh`, `flatpak-bundle.sh`, `freebsd/package.sh`, `package.ps1 -Arch x86|arm64`).
