@@ -60,7 +60,10 @@ pub fn precedents(wb: &Workbook, sheet: usize, e: &Expr) -> (Vec<Area>, bool) {
             _ => dynamic = true,
         },
         Expr::Call(n, _)
-            if matches!(n.as_str(), "INDIRECT" | "OFFSET" | "NOW" | "TODAY" | "RAND" | "RANDBETWEEN" | "RANDARRAY" | "CELL" | "INFO") =>
+            if matches!(
+                n.as_str(),
+                "INDIRECT" | "OFFSET" | "NOW" | "TODAY" | "RAND" | "RANDBETWEEN" | "RANDARRAY" | "CELL" | "INFO" | "GETPIVOTDATA"
+            ) =>
         {
             dynamic = true
         }
@@ -106,6 +109,7 @@ fn is_special(n: &str) -> bool {
             | "OFFSET"
             | "INDIRECT"
             | "INDEX"
+            | "GETPIVOTDATA"
             | "CELL"
             | "TRIMRANGE"
             | "SUBTOTAL"
@@ -144,6 +148,7 @@ pub const SPECIAL_FUNCTIONS: &[&str] = &[
     "OFFSET",
     "INDIRECT",
     "INDEX",
+    "GETPIVOTDATA",
     "CELL",
     "TRIMRANGE",
     "SUBTOTAL",
