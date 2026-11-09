@@ -240,6 +240,12 @@ fn format_chart(app: &mut SheetApp, ui: &mut Ui) {
         if ui.checkbox(&mut dl, "Data Labels").changed() {
             app.run_or_alert("chart.set", json!({"chart": id, "dataLabels": dl}));
         }
+        if matches!(chart.kind, gridcraft_chart::ChartKind::Pie | gridcraft_chart::ChartKind::Doughnut) {
+            let mut percent = chart.data_label_percent;
+            if ui.checkbox(&mut percent, lang.tr("Show percentage")).changed() {
+                app.run_or_alert("chart.set", json!({"chart": id, "dataLabelPercent": percent}));
+            }
+        }
         let mut gl = chart.gridlines;
         if ui.checkbox(&mut gl, "Gridlines").changed() {
             app.run_or_alert("chart.set", json!({"chart": id, "gridlines": gl}));
@@ -259,6 +265,9 @@ fn format_chart(app: &mut SheetApp, ui: &mut Ui) {
             }
         });
     });
+    if has_value_axis(chart.kind) {
+        ui.collapsing(lang.tr("Value Axis"), |ui| chart_log_scale(app, ui, id, chart.value_axis.log(), lang));
+    }
     ui.collapsing("Data Table", |ui| {
         let supported = chart.supports_data_table();
         let mut on = chart.data_table.is_some();
@@ -353,6 +362,62 @@ fn format_chart(app: &mut SheetApp, ui: &mut Ui) {
             ui.data_mut(|d| d.remove::<(f32, f32)>(draft));
         }
     });
+}
+
+/// Charts drawn on a category axis with a value axis whose scale can be logarithmic.
+fn has_value_axis(kind: gridcraft_chart::ChartKind) -> bool {
+    use gridcraft_chart::ChartKind as K;
+    matches!(
+        kind,
+        K::ColumnClustered
+            | K::ColumnStacked
+            | K::ColumnStacked100
+            | K::BarClustered
+            | K::BarStacked
+            | K::BarStacked100
+            | K::Line
+            | K::LineMarkers
+            | K::LineStacked
+            | K::Area
+            | K::AreaStacked
+            | K::AreaStacked100
+            | K::Combo
+    )
+}
+
+/// The value axis's logarithmic scale: a checkbox (base 10 when turned on) and the base, Excel's
+/// 2–1000. Each change goes through `chart.set`, so it is one undo step and is saved.
+fn chart_log_scale(app: &mut SheetApp, ui: &mut Ui, id: u32, base: Option<f64>, lang: crate::i18n::Language) {
+    let mut on = base.is_some();
+    if ui.checkbox(&mut on, lang.tr("Logarithmic scale")).changed() {
+        app.run_or_alert("chart.set", json!({"chart": id, "logBase": if on { json!(10) } else { Json::Null }}));
+    }
+    let Some(base) = base else { return };
+    ui.horizontal(|ui| {
+        ui.label(lang.tr("Base"));
+        let draft = egui::Id::unique(("gridcraft.chart_log_base_draft", id));
+        if let Some(b) = chart_number(ui, draft, base, 2.0..=1000.0) {
+            app.run_or_alert("chart.set", json!({"chart": id, "logBase": b}));
+        }
+    });
+}
+
+/// A chart number field that keeps the value being typed or dragged in a per-chart draft and
+/// submits it once when the edit ends, like the Size controls. Escape cancels, and a value the
+/// chart already has is not sent again.
+fn chart_number(ui: &mut Ui, draft: egui::Id, value: f64, range: std::ops::RangeInclusive<f64>) -> Option<f64> {
+    let mut current = ui.data_mut(|d| d.get_temp::<f64>(draft)).unwrap_or(value);
+    let r = ui.add(egui::DragValue::new(&mut current).range(range));
+    if r.drag_stopped() || r.lost_focus() {
+        ui.data_mut(|d| d.remove::<f64>(draft));
+        if ui.input(|i| i.key_pressed(egui::Key::Escape)) || current == value { None } else { Some(current) }
+    } else if r.dragged() || r.has_focus() {
+        ui.data_mut(|d| d.insert_temp(draft, current));
+        None
+    } else {
+        ui.data_mut(|d| d.remove::<f64>(draft));
+        None
+    }
 }
 
 /// A chart slider that keeps the value being dragged in a per-chart draft and submits it once

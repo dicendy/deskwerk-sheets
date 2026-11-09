@@ -99,7 +99,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "Chart Properties",
             ["Chart Design"],
             None,
-            "{chart?: id, type?, subtype?, title?, legend?: none|bottom|top|left|right, dataLabels?, gridlines?, dataTable?: bool, dataTableKeys?: bool, dataTableHorizontalBorder?: bool, dataTableVerticalBorder?: bool, dataTableOutline?: bool (data tables: column/bar/line/area and compatible combo charts), quartiles?: exclusive|inclusive, style?, holeSize?, firstSliceAngle?, xTitle?, yTitle?, at?, width?, height?, dx?, dy?}",
+            "{chart?: id, type?, subtype?, title?, legend?: none|bottom|top|left|right, dataLabels?, gridlines?, dataTable?: bool, dataTableKeys?: bool, dataTableHorizontalBorder?: bool, dataTableVerticalBorder?: bool, dataTableOutline?: bool (data tables: column/bar/line/area and compatible combo charts), quartiles?: exclusive|inclusive, style?, holeSize?, firstSliceAngle?, logBase?: 2..1000|null (value axis; null is linear), dataLabelPercent?: bool (pie/doughnut labels show each slice's share), xTitle?, yTitle?, at?, width?, height?, dx?, dy?}",
             has_doc,
             chart_set
         ),
@@ -894,9 +894,11 @@ fn chart_set(s: &mut Session, p: &Json) -> Result<Json> {
             _ => Err(bad("quartiles", "expected exclusive or inclusive")),
         })
         .transpose()?;
+    let scale = AxisLabelParams::parse(p)?;
     edit(s, |cx| {
         let sh = cx.sheet_mut(si)?;
         let Some(c) = sh.charts.get_mut(ci) else { return Ok(Json::Null) };
+        scale.apply(c);
         if let Some(t) = str_param(p, "type") {
             c.kind = chart_kind(t, str_param(p, "subtype").unwrap_or(""));
             if !c.supports_data_table() {
@@ -959,6 +961,37 @@ fn chart_set(s: &mut Session, p: &Json) -> Result<Json> {
         }
         Ok(Json::Null)
     })
+}
+
+/// `chart.set`'s value-axis scale and slice-label options, checked before the edit so a bad value
+/// changes nothing: `logBase` (Excel's 2–1000, or `null` for a linear axis) and `dataLabelPercent`.
+struct AxisLabelParams {
+    log_base: Option<Option<f64>>,
+    percent: Option<bool>,
+}
+
+impl AxisLabelParams {
+    fn parse(p: &Json) -> Result<Self> {
+        let log_base = match p.get("logBase") {
+            None => None,
+            Some(Json::Null) => Some(None),
+            Some(v) => {
+                let base = v.as_f64().filter(|b| (2.0..=1000.0).contains(b));
+                Some(Some(base.ok_or_else(|| bad("logBase", "expected a number from 2 to 1000, or null for a linear axis"))?))
+            }
+        };
+        let percent = p.get("dataLabelPercent").map(|v| v.as_bool().ok_or_else(|| bad("dataLabelPercent", "expected a boolean"))).transpose()?;
+        Ok(Self { log_base, percent })
+    }
+
+    fn apply(&self, c: &mut Chart) {
+        if let Some(base) = self.log_base {
+            c.value_axis.log_base = base;
+        }
+        if let Some(on) = self.percent {
+            c.data_label_percent = on;
+        }
+    }
 }
 
 /// Shared by Chart Properties and Add Chart Element; no separate UI state.
