@@ -29,7 +29,7 @@ Excel's worksheet functions, category by category, against GridCraft's function 
 
 ## Coverage
 
-**Measured: 513 / 523 by name (98.1%); 504 / 523 working (96.4%).**
+**Measured: 514 / 523 by name (98.3%); 505 / 523 working (96.6%).**
 
 | Category | Excel | Ours | Working | % working | Missing |
 |---|---|---|---|---|---|
@@ -38,7 +38,7 @@ Excel's worksheet functions, category by category, against GridCraft's function 
 | Financial | 55 | 55 | 55 | 100% | — |
 | Engineering | 54 | 54 | 54 | 100% | — |
 | Text | 50 | 48 | 48 | 96% | DETECTLANGUAGE, TRANSLATE |
-| Lookup and reference | 40 | 36 | 36 | 90% | GETPIVOTDATA, IMAGE, RTD, TRIMRANGE |
+| Lookup and reference | 40 | 37 | 37 | 93% | IMAGE, RTD, TRIMRANGE |
 | Compatibility | 40 | 40 | 40 | 100% | — |
 | Date and time | 25 | 25 | 25 | 100% | — |
 | Information | 22 | 21 | 21 | 95% | STOCKHISTORY |
@@ -48,9 +48,9 @@ Excel's worksheet functions, category by category, against GridCraft's function 
 | Web | 3 | 3 | 1 | 33% | (WEBSERVICE, FILTERXML are stubs; ENCODEURL works) |
 | Add-in and Automation | 3 | 1 | 1 | 33% | CALL, REGISTER.ID |
 | AI and Python | 2 | 0 | 0 | 0% | COPILOT, PY |
-| **Total** | **523** | **505** | **496** | **94.8%** | 18 missing, 9 stubs |
+| **Total** | **523** | **506** | **497** | **95.0%** | 17 missing, 9 stubs |
 
-By the Excel version that introduced them (working / total): before 2010 346 / 360, 2010
+By the Excel version that introduced them (working / total): before 2010 347 / 360, 2010
 56 / 56, 2013 49 / 51, 2016 1 / 5, 2019 6 / 6, 2021 11 / 11, 2024 22 / 23, Microsoft 365 5 / 11.
 Dynamic-array and LAMBDA-era functions (FILTER, SORT, UNIQUE, XLOOKUP, VSTACK, TAKE, GROUPBY,
 PIVOTBY, REGEXTEST…) are all present.
@@ -66,7 +66,6 @@ This improves series preparation; it does not change the model-fitting or season
 |---|---|---|---|
 | FORECAST.ETS family (4) | yes | 4–6 h | AAA exponential smoothing with seasonality detection; needed for Forecast Sheet too |
 | ODDFPRICE, ODDFYIELD, ODDLPRICE, ODDLYIELD | yes | 2–4 h | Odd first/last period bond maths |
-| GETPIVOTDATA | yes | 2–3 h | Needs the pivot engine's result cache; also the "Generate GetPivotData" option |
 | IMAGE | yes | 3–5 h | Pictures in cells (see PR #105); fetching URLs needs a privacy decision |
 | CUBE* (7), WEBSERVICE, FILTERXML | partly | 4–8 h | FILTERXML can work offline; CUBE needs an OLAP/data-model source |
 | TRANSLATE, DETECTLANGUAGE, STOCKHISTORY, COPILOT, PY | no (cloud) | — | Microsoft cloud services; open equivalents only by owner decision |

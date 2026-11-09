@@ -66,6 +66,7 @@ impl<'h> Evaluator<'h> {
             "OFFSET" => self.offset(args),
             "INDIRECT" => self.indirect(args),
             "INDEX" => self.index(args),
+            "GETPIVOTDATA" => self.get_pivot_data(args),
             "XLOOKUP" => self.xlookup(args),
             "CELL" => self.cell_info(args),
             "TRIMRANGE" => self.trimrange(args),

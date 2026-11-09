@@ -15,6 +15,7 @@ mod array;
 mod call;
 mod format;
 mod lambda;
+mod pivot_data;
 mod reference_fns;
 mod special;
 
