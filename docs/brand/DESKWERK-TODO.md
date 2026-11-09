@@ -90,9 +90,9 @@ new title, legend position or type within column/bar/line/area is patched in pla
 rebuilt; surface charts are kept byte for byte (shown as lines); pie/doughnut percentage labels;
 a logarithmic primary value axis; secondary line/area/column groups keep their kind. Still open:
 
-- No UI for the new model fields: `ChartAxis.log_base` and `Chart.data_label_percent` are read,
-  drawn and saved, but no Format Axis pane or Data Labels option sets them yet (nor a
-  `chart.set` command parameter).
+- `ChartAxis.log_base` and `Chart.data_label_percent` are set from the Format Chart pane (Value
+  Axis ▸ Logarithmic scale, Elements ▸ Show percentage) and `chart.set {logBase, dataLabelPercent}`;
+  the other value-axis options (bounds, major unit, number format) still have no UI.
 - Other edits of a kept chart (colours, axis options, data labels, combo or pie type changes)
   still write the chart from the model and lose its formatting.
 - Log scale is drawn on the primary axis of category charts only; scatter/bubble and the

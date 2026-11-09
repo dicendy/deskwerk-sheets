@@ -3265,6 +3265,56 @@ fn chart_set_doughnut_hole_and_angle() {
     assert_eq!((c.kind, c.hole_size, c.first_slice_angle), (gridcraft_model::ChartKind::Doughnut, 25, 180));
 }
 
+fn first_chart(s: &Session) -> gridcraft_model::Chart {
+    s.doc().unwrap().wb.active().unwrap().charts[0].clone()
+}
+
+#[test]
+fn chart_set_log_base_is_validated_undone_and_saved() {
+    let mut s = s();
+    chart_data(&mut s);
+    s.execute("insert.chart", json!({"type": "column", "range": "A1:B7"})).unwrap();
+    assert_eq!(first_chart(&s).value_axis.log_base, None);
+    s.execute("chart.set", json!({"logBase": 2})).unwrap();
+    assert_eq!(first_chart(&s).value_axis.log_base, Some(2.0));
+    // A base outside Excel's 2–1000 (or not a number) fails and changes nothing, title included.
+    let before = first_chart(&s);
+    for base in [json!(1), json!(1001), json!("10"), json!(true)] {
+        assert!(s.execute("chart.set", json!({"logBase": base, "title": "Changed"})).is_err(), "{base}");
+    }
+    assert_eq!(first_chart(&s), before);
+    s.execute("chart.set", json!({"logBase": null})).unwrap();
+    assert_eq!(first_chart(&s).value_axis.log_base, None);
+    s.execute("edit.undo", json!({})).unwrap();
+    assert_eq!(first_chart(&s).value_axis.log_base, Some(2.0));
+    s.execute("edit.undo", json!({})).unwrap();
+    assert_eq!(first_chart(&s).value_axis.log_base, None);
+    s.execute("edit.redo", json!({})).unwrap();
+    assert_eq!(first_chart(&s).value_axis.log_base, Some(2.0));
+    reopen(&mut s);
+    assert_eq!(first_chart(&s).value_axis.log_base, Some(2.0));
+}
+
+#[test]
+fn chart_set_percent_labels_are_validated_undone_and_saved() {
+    let mut s = s();
+    chart_data(&mut s);
+    s.execute("insert.chart", json!({"type": "pie", "range": "A1:B7"})).unwrap();
+    assert!(!first_chart(&s).data_label_percent);
+    s.execute("chart.set", json!({"dataLabelPercent": true})).unwrap();
+    assert!(first_chart(&s).data_label_percent);
+    let before = first_chart(&s);
+    assert!(s.execute("chart.set", json!({"dataLabelPercent": "yes", "title": "Changed"})).is_err());
+    assert_eq!(first_chart(&s), before);
+    s.execute("edit.undo", json!({})).unwrap();
+    assert!(!first_chart(&s).data_label_percent);
+    s.execute("edit.redo", json!({})).unwrap();
+    assert!(first_chart(&s).data_label_percent);
+    reopen(&mut s);
+    let c = first_chart(&s);
+    assert_eq!((c.kind, c.data_labels, c.data_label_percent), (gridcraft_model::ChartKind::Pie, false, true));
+}
+
 #[test]
 fn scatter_of_two_columns_is_one_series_with_the_first_as_x() {
     let mut s = s();
