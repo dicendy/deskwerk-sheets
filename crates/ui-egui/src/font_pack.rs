@@ -289,7 +289,7 @@ struct Registry {
     local_api: bool,
     local: Option<Vec<LocalFace>>,
     local_access_wanted: bool,
-    list: Option<((u64, bool), Arc<Vec<(String, bool)>>)>,
+    list: Option<((u64, bool), FontList)>,
 }
 
 fn registry() -> std::sync::MutexGuard<'static, Registry> {
@@ -437,10 +437,13 @@ fn installed(name: &str) -> bool {
     }
 }
 
+/// [`font_list`]'s rows: a font name, and whether [`substituted`] marks it.
+pub type FontList = Arc<Vec<(String, bool)>>;
+
 /// The font list: the Office and open font names ([`crate::ribbon::FONTS`]), then the families of
 /// this computer's fonts once they are read, A–Z; each with whether [`substituted`] marks it.
 /// Cached until the next [`generation`].
-pub fn font_list() -> Arc<Vec<(String, bool)>> {
+pub fn font_list() -> FontList {
     let mut reg = registry();
     // The desktop catalog of installed fonts may finish after the list was first built.
     let key = (reg.generation, crate::fonts::scan_done());
