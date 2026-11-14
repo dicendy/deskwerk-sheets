@@ -15,6 +15,51 @@ The original assets and the UI's bundled egui font inputs are listed in ATTRIBUT
 Builds made with craft-fonts (CRAFT_FONTS_DIR) also embed the fonts listed there under the SIL Open
 Font License 1.1.
 
+The web build serves a font pack from apps/gridcraft-web/fonts (copied next to index.html as
+fonts/). Every file is unmodified from its pinned upstream source, listed with its sha256 in
+fonts/MANIFEST.tsv, and distributed under the licence below, whose full text (with the copyright
+and any Reserved Font Names) ships beside it in fonts/licenses/:
+
+- Anton: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/Anton-LICENSE.txt
+- Caladea: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/Caladea-LICENSE.txt
+- Carlito: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/Carlito-LICENSE.txt
+- Comic Neue: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/ComicNeue-LICENSE.txt
+- DejaVu Sans: Bitstream Vera Fonts licence + Arev Fonts licence (DejaVu), full text in apps/gridcraft-web/fonts/licenses/DejaVuSans-LICENSE.txt
+- DejaVu Sans Condensed: Bitstream Vera Fonts licence + Arev Fonts licence (DejaVu), full text in apps/gridcraft-web/fonts/licenses/DejaVuSansCondensed-LICENSE.txt
+- DejaVu Sans Mono: Bitstream Vera Fonts licence + Arev Fonts licence (DejaVu), full text in apps/gridcraft-web/fonts/licenses/DejaVuSansMono-LICENSE.txt
+- Didact Gothic: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/DidactGothic-LICENSE.txt
+- EB Garamond: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/EBGaramond-LICENSE.txt
+- Fira Sans: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/FiraSans-LICENSE.txt
+- Gelasio: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/Gelasio-LICENSE.txt
+- Inconsolata: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/Inconsolata-LICENSE.txt
+- Inter: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/Inter-LICENSE.txt
+- Lato: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/Lato-LICENSE.txt
+- Lexend: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/Lexend-LICENSE.txt
+- Liberation Mono: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/LiberationMono-LICENSE.txt
+- Liberation Sans: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/LiberationSans-LICENSE.txt
+- Liberation Serif: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/LiberationSerif-LICENSE.txt
+- Libre Franklin: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/LibreFranklin-LICENSE.txt
+- Lora: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/Lora-LICENSE.txt
+- Merriweather: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/Merriweather-LICENSE.txt
+- Montserrat: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/Montserrat-LICENSE.txt
+- Noto Sans: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/NotoSans-LICENSE.txt
+- Noto Serif: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/NotoSerif-LICENSE.txt
+- Nunito: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/Nunito-LICENSE.txt
+- Open Sans: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/OpenSans-LICENSE.txt
+- Oswald: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/Oswald-LICENSE.txt
+- PT Sans: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/PTSans-LICENSE.txt
+- PT Sans Narrow: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/PTSansNarrow-LICENSE.txt
+- PT Serif: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/PTSerif-LICENSE.txt
+- Playfair Display: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/PlayfairDisplay-LICENSE.txt
+- Poppins: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/Poppins-LICENSE.txt
+- Raleway: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/Raleway-LICENSE.txt
+- Roboto: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/Roboto-LICENSE.txt
+- Roboto Mono: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/RobotoMono-LICENSE.txt
+- Roboto Slab: Apache License 2.0, full text in apps/gridcraft-web/fonts/licenses/RobotoSlab-LICENSE.txt
+- Selawik: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/Selawik-LICENSE.txt
+- Source Sans 3: SIL Open Font License 1.1, full text in apps/gridcraft-web/fonts/licenses/SourceSans3-LICENSE.txt
+
+
 
 The UI's egui-icons.ttf subset and emoji-icon-font.ttf fallback are provided by epaint_default_fonts
 and registered through egui's default font definitions. They derive from emoji-icon-font by
