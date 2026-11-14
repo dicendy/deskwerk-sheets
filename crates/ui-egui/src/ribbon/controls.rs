@@ -188,8 +188,11 @@ fn combo_head(ui: &mut Ui, text: Option<(&mut String, egui::Id)>, open_now: bool
         });
     }
     let mut lower = String::new();
+    let mut typed = false;
     if let Some((text, text_id)) = text {
         let te = ui.add(egui::TextEdit::singleline(text).id(text_id).desired_width(220.0).hint_text("Type to filter…"));
+        // Typing highlights the first match, as in Excel (not whatever row the old one clamps to).
+        typed = te.changed();
         if open_now && !te.has_focus() {
             ui.ctx().memory_mut(|m| m.request_focus(text_id));
             // Select all once focus lands so typing replaces the filter.
@@ -203,7 +206,7 @@ fn combo_head(ui: &mut Ui, text: Option<(&mut String, egui::Id)>, open_now: bool
         lower = text.to_lowercase();
     }
     let filtered: Vec<usize> = items.iter().enumerate().filter(|(_, (_, d))| d.to_lowercase().contains(&lower)).map(|(i, _)| i).collect();
-    let mut sel = sel;
+    let mut sel = if typed { 0 } else { sel };
     if !filtered.is_empty() {
         let n = filtered.len() as i32;
         sel = sel.clamp(0, n - 1);
