@@ -139,6 +139,16 @@ pub fn show(app: &mut SheetApp, ui: &mut egui::Ui) {
                 let read_only = active_spill_anchor(app).is_some();
                 let info = if app.editor.is_some() {
                     editor_widget(app, &mut child, id, font.clone(), true, inner.width(), inner.height())
+                } else if !read_only && active_python(app).is_none() {
+                    // Clicking the field around the text starts editing in the bar, the caret at
+                    // the end. Registered before the text, which takes the presses on itself.
+                    if ui.interact(field, id.with("click"), Sense::click()).clicked() {
+                        app.begin_edit(None, true);
+                    }
+                    let text = active_input(app);
+                    let shown = app.session.active().map(|d| (d.uid, d.wb.active_sheet(), d.selection.active.row, d.selection.active.col));
+                    let lines = view_field(app, &mut child, ViewField { id, font: font.clone(), color: t.text, text: &text, shown });
+                    EditorInfo { lines, caret: None }
                 } else {
                     // Show the active cell's content (a Python cell's code in the code editor's
                     // colours); clicking starts editing in the bar.
@@ -179,6 +189,64 @@ pub fn show(app: &mut SheetApp, ui: &mut egui::Ui) {
         });
     layout.handle = resize_handle(app, ui, panel.response.rect, row_h, most);
     ui.ctx().data_mut(|d| d.insert_temp(BarLayout::id(), layout));
+}
+
+/// What [`view_field`] shows: the active cell's content, outside an edit.
+struct ViewField<'a> {
+    id: egui::Id,
+    font: FontId,
+    color: egui::Color32,
+    text: &'a str,
+    /// The cell shown: each cell's view starts at its top, the offset is kept per cell.
+    shown: Option<(u64, usize, u32, u32)>,
+}
+
+/// The active cell's content in the bar outside an edit, as a read-only field with the editor's
+/// id. A press on it starts editing in the bar with the caret where it was pressed, and a drag
+/// that began there goes on selecting in the editor (egui keeps a drag on the id it started on),
+/// so typing replaces only the selected text, as in Excel. Without this the text was a selectable
+/// label: a drag selected text the keyboard never reached, and typing replaced the whole cell.
+/// Returns the content's line count.
+fn view_field(app: &mut SheetApp, ui: &mut egui::Ui, view: ViewField<'_>) -> usize {
+    let ViewField { id, font, color, text, shown } = view;
+    let width = ui.available_width();
+    let max_height = ui.available_height();
+    let font2 = font.clone();
+    let mut layouter = move |ui: &egui::Ui, buf: &dyn egui::TextBuffer, wrap_width: f32| {
+        ui.fonts_mut(|f| f.layout_job(egui::text::LayoutJob::simple(buf.as_str().to_owned(), font2.clone(), color, wrap_width)))
+    };
+    let mut buffer = text;
+    let output = egui::ScrollArea::vertical()
+        .id_salt(id.with(("view", shown)))
+        .max_height(max_height.max(1.0))
+        .auto_shrink([false, true])
+        .show(ui, |ui| show_edit(TextEdit::multiline(&mut buffer), ui, id, font, width, &mut layouter))
+        .inner;
+    let lines = output.galley.rows.len();
+    let resp = output.response.response.clone().accessible_name(app.ui.language.tr("Formula Bar").to_string());
+    // The press itself starts the edit (not its release), so the drag it begins and the keys
+    // typed while the button is held already go to the editor. A click from assistive technology
+    // has no press.
+    let pressed = resp.is_pointer_button_down_on() && ui.input(|i| i.pointer.any_pressed());
+    if (!pressed && !resp.clicked()) || app.editor.is_some() {
+        return lines;
+    }
+    let range = TextEdit::load_state(ui.ctx(), id).and_then(|s| s.cursor.char_range());
+    app.begin_edit(None, true);
+    if let (Some(ed), Some(r)) = (app.editor.as_mut().filter(|e| e.from_formula_bar && !e.python), range) {
+        // A legacy array formula shows in braces the edit doesn't have.
+        let shift = usize::from(text.starts_with('{') && !ed.text.starts_with('{'));
+        let len = ed.text.chars().count();
+        let at = |c: egui::text::CCursor| -> usize {
+            let i: usize = c.index.into();
+            i.saturating_sub(shift).min(len)
+        };
+        ed.caret = at(r.primary);
+        ed.anchor = at(r.secondary);
+        ed.keep_selection = true;
+        ed.sync_caret = false;
+    }
+    lines
 }
 
 /// The most lines the bar takes in a window `window_h` tall with `room` left under the ribbon:
@@ -1065,11 +1133,94 @@ mod spill_tests {
             assert!(h.state().editor.is_none());
             select(h.state_mut(), "A1");
             h.run_steps(3);
-            h.get_by_label("=SEQUENCE(3)").click();
+            h.get_by_label("Formula Bar").click();
             h.run_steps(3);
             h.check_accessibility();
             assert!(h.state().editor.as_ref().is_some_and(|e| e.from_formula_bar));
         }
+    }
+
+    fn bar_harness(app: SheetApp) -> egui_kittest::Harness<'static, SheetApp> {
+        let mut fonts_ready = false;
+        let mut h = egui_kittest::Harness::builder().with_size(vec2(900.0, 100.0)).build_ui_state(
+            move |ui, app: &mut SheetApp| {
+                if !fonts_ready {
+                    ui.ctx().set_fonts(theme::font_definitions());
+                    fonts_ready = true;
+                    return;
+                }
+                show(app, ui);
+            },
+            app,
+        );
+        h.run_steps(3);
+        h
+    }
+
+    /// Where the caret goes after `prefix` in the formula bar's view of the active cell.
+    fn after(h: &egui_kittest::Harness<'_, SheetApp>, prefix: &str) -> egui::Pos2 {
+        use egui_kittest::kittest::Queryable as _;
+        let rect = h.get_by_label("Formula Bar").rect();
+        let w = h.ctx.fonts_mut(|f| f.layout_no_wrap(prefix.to_owned(), theme::ui_font(13.0), egui::Color32::BLACK).size().x);
+        pos2(rect.left() + w, rect.top() + 6.0)
+    }
+
+    #[test]
+    /// A drag over the formula bar's text, outside an edit, starts editing in the bar with that
+    /// text selected: typing replaces only it, Esc gives the cell back unchanged, as in Excel.
+    fn a_drag_in_the_formula_bar_selects_text_in_the_edit() {
+        let mut app = app();
+        set(&mut app, "A1", "=SUM(B:B)");
+        select(&mut app, "A1");
+        let mut h = bar_harness(app);
+        assert!(h.state().editor.is_none());
+        let (from, to) = (after(&h, "=SUM(B:B"), after(&h, "=SUM("));
+        h.hover_at(from);
+        h.step();
+        h.drag_at(from);
+        h.step();
+        // The press starts the edit, in the formula bar.
+        assert!(h.state().editor.as_ref().is_some_and(|e| e.from_formula_bar));
+        for step in 1..=4 {
+            h.hover_at(from + (to - from) * (step as f32 / 4.0));
+            h.step();
+        }
+        h.drop_at(to);
+        h.run_steps(2);
+        let ed = h.state().editor.as_ref().expect("still editing");
+        assert_eq!((ed.anchor.min(ed.caret), ed.anchor.max(ed.caret)), (5, 8), "B:B is selected");
+        h.event(egui::Event::Text("A:A".into()));
+        h.run_steps(2);
+        assert_eq!(h.state().editor.as_ref().map(|e| e.text.as_str()), Some("=SUM(A:A)"));
+        h.key_press(Key::Escape);
+        h.run_steps(2);
+        assert!(h.state().editor.is_none());
+        assert_eq!(active_input(h.state()), "=SUM(B:B)");
+    }
+
+    #[test]
+    /// A click in the formula bar's text puts the caret there: typing inserts, Enter commits.
+    fn a_click_in_the_formula_bar_places_the_caret() {
+        let mut app = app();
+        set(&mut app, "A1", "=SUM(B:B)");
+        select(&mut app, "A1");
+        let mut h = bar_harness(app);
+        let at = after(&h, "=SUM(B:B)");
+        h.hover_at(at);
+        h.step();
+        h.drag_at(at);
+        h.step();
+        h.drop_at(at);
+        h.run_steps(2);
+        h.event(egui::Event::Text("+1".into()));
+        h.run_steps(2);
+        assert_eq!(h.state().editor.as_ref().map(|e| e.text.as_str()), Some("=SUM(B:B)+1"));
+        h.key_press(Key::Enter);
+        h.run_steps(2);
+        assert!(h.state().editor.is_none());
+        let sh = h.state().session.active().unwrap().wb.active().unwrap();
+        let a1 = sh.cell(gridcraft_engine::core::CellRef::parse("A1").unwrap()).unwrap();
+        assert_eq!(a1.input_text(), "=SUM(B:B)+1");
     }
 }
 

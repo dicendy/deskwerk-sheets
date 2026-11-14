@@ -129,28 +129,100 @@ pub(super) fn display_text(
     (f.text, f.color.map(numfmt_color), f.numeric, f.fill)
 }
 
-pub(crate) fn wrapped_cell_text_y(valign: VAlign, rect: Rect, gh: f32, z: f32) -> f32 {
-    let pad_v = 1.5 * z;
-    let y_top = rect.top() + pad_v;
-    // Not clamped to `y_top`: text taller than the row overflows upward (Bottom) or both ways
-    // (Center), and the cell's clip rect trims it, so Middle and Bottom stay distinct from Top.
-    let y_bottom = rect.bottom() - gh - pad_v;
-    match valign {
-        VAlign::Top => y_top,
-        VAlign::Center | VAlign::Justify | VAlign::Distributed => (y_top + y_bottom) / 2.0,
-        VAlign::Bottom => y_bottom,
+/// How Excel's line of a cell font differs from the one egui lays out, in em. egui puts the
+/// baseline at the font's (hhea or typo) ascent and the line gap below the text; Excel lays a cell
+/// line out with the font's Windows metrics, the baseline at `usWinAscent`, so the gap is above
+/// the text. For Calibri (and its metric-compatible stand-in Carlito) the line is equally tall
+/// (1.22 em) but Excel's baseline is 0.2 em lower: drawn at egui's, top-aligned text touched the
+/// gridline above it.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(crate) struct LineBox {
+    /// Excel's baseline below egui's.
+    pub(crate) lift: f32,
+    /// Excel's line height less egui's row height.
+    pub(crate) extra: f32,
+}
+
+impl LineBox {
+    /// The line box of the face in a font file, or `None` when the file has no usable metrics.
+    pub(crate) fn of_font(bytes: &[u8], index: u32) -> Option<LineBox> {
+        use skrifa::MetadataProvider as _;
+        use skrifa::raw::TableProvider as _;
+        let font = skrifa::FontRef::from_index(bytes, index).ok()?;
+        let m = font.metrics(skrifa::instance::Size::unscaled(), skrifa::instance::LocationRef::default());
+        let em = f32::from(m.units_per_em);
+        let os2 = font.os2().ok()?;
+        let (win_ascent, win_descent) = (f32::from(os2.us_win_ascent()), f32::from(os2.us_win_descent()));
+        if em < 16.0 || win_ascent <= 0.0 || [m.ascent, m.descent, m.leading].iter().any(|v| !v.is_finite()) {
+            return None;
+        }
+        let lift = (win_ascent - m.ascent) / em;
+        let extra = (win_ascent + win_descent - (m.ascent - m.descent + m.leading)) / em;
+        // A broken table must not throw the text out of its cell.
+        (lift.abs() <= 1.0 && extra.abs() <= 1.0).then_some(LineBox { lift, extra })
+    }
+
+    /// The line box of the first face of `family` in the context's fonts (cached per face).
+    pub(crate) fn of_family(ctx: &egui::Context, family: &egui::FontFamily) -> LineBox {
+        use std::collections::HashMap;
+        use std::sync::{Mutex, OnceLock};
+        static CACHE: OnceLock<Mutex<HashMap<(String, usize), LineBox>>> = OnceLock::new();
+        let cache = CACHE.get_or_init(Default::default);
+        ctx.fonts(|f| {
+            let defs = f.definitions();
+            let Some((key, data)) = defs.families.get(family).and_then(|keys| keys.first()).and_then(|k| defs.font_data.get(k).map(|d| (k, d)))
+            else {
+                return LineBox::default();
+            };
+            let bytes: &[u8] = AsRef::<[u8]>::as_ref(&*data.font);
+            let id = (key.clone(), bytes.len());
+            if let Some(lb) = cache.lock().ok().and_then(|c| c.get(&id).copied()) {
+                return lb;
+            }
+            let lb = LineBox::of_font(bytes, data.index).unwrap_or_default();
+            if let Ok(mut c) = cache.lock() {
+                c.insert(id, lb);
+            }
+            lb
+        })
+    }
+
+    /// In pixels, for a font `size` px.
+    pub(crate) fn at(self, size: f32) -> LineBox {
+        LineBox { lift: self.lift * size, extra: self.extra * size }
     }
 }
 
-pub(crate) fn cell_text_y(valign: VAlign, rect: Rect, gh: f32, z: f32) -> f32 {
-    let top_inset = 1.0 * z;
-    let y_top = rect.top() - top_inset;
-    let y_bottom = (rect.bottom() - gh - 0.5 * z).max(y_top);
-    match valign {
-        VAlign::Top => y_top,
-        VAlign::Center | VAlign::Justify | VAlign::Distributed => (y_top + y_bottom) / 2.0,
-        VAlign::Bottom => y_bottom,
-    }
+/// Room Excel leaves between a cell's edge and its line box, at 100%.
+const TEXT_PAD_V: f32 = 1.0;
+
+/// The top of a galley `gh` tall whose lines sit in `rect` as Excel's would. `line` is the font's
+/// [`LineBox`] in pixels: Excel's lines of this galley are `gh + line.extra` tall, and their
+/// glyphs are `line.lift` lower in them than in the galley.
+fn text_y(valign: VAlign, rect: Rect, gh: f32, z: f32, line: LineBox, clamp: bool) -> f32 {
+    let pad = TEXT_PAD_V * z;
+    let tall = (gh + line.extra).max(0.0);
+    let top = rect.top() + pad;
+    let bottom = rect.bottom() - pad - tall;
+    let bottom = if clamp { bottom.max(top) } else { bottom };
+    let box_top = match valign {
+        VAlign::Top => top,
+        VAlign::Center | VAlign::Justify | VAlign::Distributed => (top + bottom) / 2.0,
+        VAlign::Bottom => bottom,
+    };
+    box_top + line.lift
+}
+
+/// The top of wrapped text `gh` tall in `rect`. Not clamped to the top: text taller than the row
+/// overflows upward (Bottom) or both ways (Center), and the cell's clip rect trims it, so Middle and
+/// Bottom stay distinct from Top.
+pub(crate) fn wrapped_cell_text_y(valign: VAlign, rect: Rect, gh: f32, z: f32, line: LineBox) -> f32 {
+    text_y(valign, rect, gh, z, line, false)
+}
+
+/// The top of one line of text `gh` tall in `rect`. A line taller than the row starts at its top.
+pub(crate) fn cell_text_y(valign: VAlign, rect: Rect, gh: f32, z: f32, line: LineBox) -> f32 {
+    text_y(valign, rect, gh, z, line, true)
 }
 
 /// Where to put a `TextShape` holding a galley of `size` turned by `angle` (egui radians, so

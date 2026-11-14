@@ -229,21 +229,22 @@ fn german_context_menus_have_no_two_items_alike() {
 #[test]
 fn cell_text_y_moves_monotonically_in_standard_and_tall_rows() {
     let rect_std = Rect::from_min_max(pos2(0.0, 0.0), pos2(100.0, 20.0));
-    let gh = 18.5;
+    // A line a little shorter than the row less Excel's pixel of padding at each edge.
+    let gh = 17.0;
     let z = 1.0;
 
-    let y_top_std = cell_text_y(VAlign::Top, rect_std, gh, z);
-    let y_center_std = cell_text_y(VAlign::Center, rect_std, gh, z);
-    let y_bottom_std = cell_text_y(VAlign::Bottom, rect_std, gh, z);
+    let y_top_std = cell_text_y(VAlign::Top, rect_std, gh, z, LineBox::default());
+    let y_center_std = cell_text_y(VAlign::Center, rect_std, gh, z, LineBox::default());
+    let y_bottom_std = cell_text_y(VAlign::Bottom, rect_std, gh, z, LineBox::default());
 
     assert!(y_top_std < y_center_std, "Top ({y_top_std}) must be higher than Center ({y_center_std})");
     assert!(y_center_std < y_bottom_std, "Center ({y_center_std}) must be higher than Bottom ({y_bottom_std})");
 
     // Verify tall row (e.g. 40px)
     let rect_tall = Rect::from_min_max(pos2(0.0, 0.0), pos2(100.0, 40.0));
-    let y_top_tall = cell_text_y(VAlign::Top, rect_tall, gh, z);
-    let y_center_tall = cell_text_y(VAlign::Center, rect_tall, gh, z);
-    let y_bottom_tall = cell_text_y(VAlign::Bottom, rect_tall, gh, z);
+    let y_top_tall = cell_text_y(VAlign::Top, rect_tall, gh, z, LineBox::default());
+    let y_center_tall = cell_text_y(VAlign::Center, rect_tall, gh, z, LineBox::default());
+    let y_bottom_tall = cell_text_y(VAlign::Bottom, rect_tall, gh, z, LineBox::default());
 
     assert!(y_top_tall < y_center_tall, "Top ({y_top_tall}) must be higher than Center ({y_center_tall})");
     assert!(y_center_tall < y_bottom_tall, "Center ({y_center_tall}) must be higher than Bottom ({y_bottom_tall})");
@@ -255,16 +256,16 @@ fn wrapped_cell_text_y_positions_correctly_and_safeguards_overflow() {
     let gh = 30.0;
     let z = 1.0;
 
-    let y_top = wrapped_cell_text_y(VAlign::Top, rect, gh, z);
-    let y_center = wrapped_cell_text_y(VAlign::Center, rect, gh, z);
-    let y_bottom = wrapped_cell_text_y(VAlign::Bottom, rect, gh, z);
+    let y_top = wrapped_cell_text_y(VAlign::Top, rect, gh, z, LineBox::default());
+    let y_center = wrapped_cell_text_y(VAlign::Center, rect, gh, z, LineBox::default());
+    let y_bottom = wrapped_cell_text_y(VAlign::Bottom, rect, gh, z, LineBox::default());
 
     assert!(y_top < y_center);
     assert!(y_center < y_bottom);
 
     // Overflow case: gh exceeds rect height; Top still starts inside the cell.
     let gh_overflow = 60.0;
-    let y_top_ovf = wrapped_cell_text_y(VAlign::Top, rect, gh_overflow, z);
+    let y_top_ovf = wrapped_cell_text_y(VAlign::Top, rect, gh_overflow, z, LineBox::default());
     assert!(y_top_ovf >= rect.top());
 }
 
@@ -273,13 +274,57 @@ fn wrapped_cell_text_y_keeps_vertical_alignment_when_text_is_taller_than_the_row
     // A default-height row holding three wrapped lines.
     let rect = Rect::from_min_max(pos2(0.0, 0.0), pos2(100.0, 20.0));
     let (gh, z) = (60.0, 1.0);
-    let y_top = wrapped_cell_text_y(VAlign::Top, rect, gh, z);
-    let y_center = wrapped_cell_text_y(VAlign::Center, rect, gh, z);
-    let y_bottom = wrapped_cell_text_y(VAlign::Bottom, rect, gh, z);
+    let y_top = wrapped_cell_text_y(VAlign::Top, rect, gh, z, LineBox::default());
+    let y_center = wrapped_cell_text_y(VAlign::Center, rect, gh, z, LineBox::default());
+    let y_bottom = wrapped_cell_text_y(VAlign::Bottom, rect, gh, z, LineBox::default());
     // Taller text overflows upward for Bottom and both ways for Center (the cell clips it).
-    assert!((y_top - 1.5).abs() < 0.01, "Top starts at the top edge, got {y_top}");
+    assert!((y_top - 1.0).abs() < 0.01, "Top starts at the top edge, got {y_top}");
     assert!((y_center + gh / 2.0 - rect.center().y).abs() < 0.01, "Center is centred, got {y_center}");
-    assert!((y_bottom + gh - (rect.bottom() - 1.5)).abs() < 0.01, "Bottom ends at the bottom edge, got {y_bottom}");
+    assert!((y_bottom + gh - (rect.bottom() - 1.0)).abs() < 0.01, "Bottom ends at the bottom edge, got {y_bottom}");
+}
+
+/// Calibri's metrics (Carlito has the same): 2048 units to the em, hhea ascender 1536,
+/// descender -512 and line gap 452 (what egui lays out with), Windows ascent 1950 and descent
+/// 550 (what Excel lays out with).
+fn calibri_line_box() -> LineBox {
+    let em = 2048.0;
+    LineBox { lift: (1950.0 - 1536.0) / em, extra: (1950.0 + 550.0 - (1536.0 + 512.0 + 452.0)) / em }
+}
+
+#[test]
+fn calibri_11_sits_on_excels_baseline_in_every_vertical_alignment() {
+    // 11 pt at 100% in a default 20 px row: egui's line is 17.9 px, its baseline 11 px down.
+    let size = 11.0 * 96.0 / 72.0;
+    let (ascent, gh) = ((1536.0 / 2048.0 * size), (2500.0 / 2048.0 * size));
+    let line = calibri_line_box().at(size);
+    // The line fits the default row with Excel's pixel of padding at either edge.
+    assert!(gh + line.extra <= 20.0 - 2.0, "{gh} + {}", line.extra);
+    let rect = Rect::from_min_max(pos2(0.0, 100.0), pos2(64.0, 120.0));
+    for v in [VAlign::Top, VAlign::Center, VAlign::Bottom] {
+        for (what, y) in [("one line", cell_text_y(v, rect, gh, 1.0, line)), ("wrapped", wrapped_cell_text_y(v, rect, gh, 1.0, line))] {
+            let baseline = y + ascent - rect.top();
+            // Excel: the baseline at 1 px padding + the 14 px Windows ascent, whatever the alignment.
+            assert!((baseline - 15.0).abs() < 0.5, "{v:?} {what}: baseline {baseline} px below the row's top");
+            // Accented capitals (about 0.9 em above the baseline) clear the gridline above.
+            assert!(baseline - 0.9 * size >= 1.0, "{v:?} {what}: glyphs reach {} px", baseline - 0.9 * size);
+        }
+    }
+    // Wrapped lines in a tall row: the first one is placed the same way, not pressed to the top.
+    let tall = Rect::from_min_max(pos2(0.0, 0.0), pos2(64.0, 105.0));
+    let top = wrapped_cell_text_y(VAlign::Top, tall, 4.0 * gh, 1.0, line);
+    assert!((top + ascent - 15.0).abs() < 0.5, "first wrapped line's baseline at {}", top + ascent);
+    // Without the font's metrics, the old egui line box is used as is.
+    assert!((cell_text_y(VAlign::Top, rect, gh, 1.0, LineBox::default()) - (rect.top() + 1.0)).abs() < 0.01);
+}
+
+#[test]
+fn line_box_of_a_font_file() {
+    // Ubuntu (egui's default face) has its Windows ascent equal to its hhea ascent.
+    let lb = LineBox::of_font(epaint_default_fonts::UBUNTU_LIGHT, 0).expect("metrics");
+    assert!(lb.lift.abs() < 0.1 && lb.extra.abs() < 0.2, "{lb:?}");
+    assert_eq!(LineBox::of_font(b"not a font", 0), None);
+    assert_eq!(LineBox::of_font(&[], 0), None);
+    assert_eq!(calibri_line_box().at(0.0), LineBox::default());
 }
 
 /// The screen box of a galley of `size` drawn at `pos` turned by `angle` about `pos`, as egui
