@@ -338,32 +338,54 @@ pub(crate) fn normalized(s: &str) -> String {
 
 /// A number format that shows `n` exactly as `shown` ("Rp10,000.00" for 10000 →
 /// `"Rp"#,##0.00`), inferred from the text around the digits. `None` unless the format renders
-/// `shown` back character for character.
+/// `shown` back character for character. en-US; see [`format_for_in`].
+#[cfg(test)]
 pub(crate) fn format_for(shown: &str, n: f64) -> Option<String> {
+    format_for_in(shown, n, gridcraft_core::Locale::En)
+}
+
+/// [`format_for`] for text shown in `loc`'s conventions: German "Rp10.000,00" and French
+/// "Rp10 000,00" are `"Rp"#,##0.00` too (the code is stored en-US, as in an `.xlsx` file).
+pub(crate) fn format_for_in(shown: &str, n: f64, loc: gridcraft_core::Locale) -> Option<String> {
     let shown = normalized(shown);
     let start = shown.find(|c: char| c.is_ascii_digit())?;
     let end = shown.rfind(|c: char| c.is_ascii_digit()).map(|i| i + 1)?;
     let core = shown.get(start..end)?;
     let mut prefix = shown.get(..start)?.to_string();
     let suffix = shown.get(end..)?;
-    if core.chars().any(|c| !(c.is_ascii_digit() || c == ',' || c == '.')) {
+    let decimal = loc.decimal();
+    // French groups with a (narrow) no-break space, which `normalized` made a plain space.
+    let group = match loc {
+        gridcraft_core::Locale::Fr => ' ',
+        _ => loc.group(),
+    };
+    if core.chars().any(|c| !(c.is_ascii_digit() || c == group || c == decimal)) {
         return None;
     }
     if n < 0.0 {
         // A one-section format shows the minus sign itself, in front of everything.
         prefix = prefix.strip_prefix('-')?.to_string();
     }
-    let decimals = core.split_once('.').map_or(0, |(_, f)| f.len());
+    let decimals = core.split_once(decimal).map_or(0, |(_, f)| f.len());
     let mut code = String::new();
     let quote = |s: &str| if s.is_empty() { String::new() } else { format!("\"{}\"", s.replace('"', "")) };
     code.push_str(&quote(&prefix));
-    code.push_str(if core.contains(',') { "#,##0" } else { "0" });
+    code.push_str(if core.contains(group) { "#,##0" } else { "0" });
     if decimals > 0 {
         code.push('.');
         code.push_str(&"0".repeat(decimals.min(30)));
     }
     code.push_str(&quote(suffix));
-    let rendered = gridcraft_numfmt::text_function(&gridcraft_core::Value::number(n), &code, gridcraft_core::date::DateSystem::D1900).ok()?;
+    // The code is en-US (as stored), shown in `loc`'s separators: `TEXT()` would read the code
+    // itself in the locale's notation.
+    let value = gridcraft_core::Value::number(n);
+    let rendered = match loc {
+        gridcraft_core::Locale::En => gridcraft_numfmt::text_function(&value, &code, gridcraft_core::date::DateSystem::D1900).ok()?,
+        _ => {
+            gridcraft_numfmt::format_value_in(&value, &gridcraft_numfmt::NumberFormat::parse(&code), gridcraft_core::date::DateSystem::D1900, loc)
+                .text
+        }
+    };
     (normalized(&rendered) == shown).then_some(code)
 }
 
@@ -466,5 +488,17 @@ mod tests {
         assert_eq!(format_for("10.000,00 €", 10000.0), None, "comma decimals don't render back in en-US");
         assert_eq!(format_for("-Rp5", -5.0).as_deref(), Some("\"Rp\"0"));
         assert_eq!(format_for("12 EUR", 12.0).as_deref(), Some("0\" EUR\""));
+    }
+
+    #[test]
+    fn infers_a_format_from_german_and_french_text() {
+        use gridcraft_core::Locale;
+        assert_eq!(format_for_in("Rp10.000,00", 10000.0, Locale::De).as_deref(), Some("\"Rp\"#,##0.00"));
+        assert_eq!(format_for_in("10.000,50 kr", 10000.5, Locale::De).as_deref(), Some("#,##0.00\" kr\""));
+        assert_eq!(format_for_in("Rp10\u{202F}000,00", 10000.0, Locale::Fr).as_deref(), Some("\"Rp\"#,##0.00"));
+        assert_eq!(format_for_in("Rp10\u{a0}000,00", 10000.0, Locale::Fr).as_deref(), Some("\"Rp\"#,##0.00"));
+        // en-US grouping doesn't render back in German.
+        assert_eq!(format_for_in("Rp10,000.00", 10000.0, Locale::De), None);
+        assert_eq!(format_for_in("Rp10,000.00", 10000.0, Locale::En).as_deref(), Some("\"Rp\"#,##0.00"));
     }
 }

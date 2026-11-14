@@ -4,6 +4,7 @@ use super::{
     Cell, CellRef, Clipboard, EngineError, Json, RangeRef, Result, Session, Value, bad, bool_param, cell_param_on, edit, json, ok, str_param,
     target_ranges, target_sheet,
 };
+use gridcraft_core::Locale;
 
 // ---------------------------------------------------------------- clipboard
 
@@ -324,9 +325,11 @@ fn paste_text(s: &mut Session, p: &Json, text: &str) -> Result<Json> {
         for (ri, row) in rows.iter().enumerate() {
             for (ci, v) in row.iter().enumerate() {
                 let Some(c) = at.offset(ri as i64, ci as i64) else { continue };
+                let before = cx.wb.sheet(sheet).map(|sh| sh.style_id(c)).unwrap_or_default();
                 let mut cell = input_to_cell_in(v, sheet, c, &mut cx.wb, loc).unwrap_or_else(|_| Some(Cell::value(Value::text(v.as_str()))));
                 if let Some(cl) = cell.as_mut() {
-                    numeric_from_html(cl, v, html.get(ri).and_then(|r| r.get(ci)), &mut cx.wb);
+                    let source = HtmlSource { field: v, cell: html.get(ri).and_then(|r| r.get(ci)), style: before, loc };
+                    numeric_from_html(cl, &source, &mut cx.wb);
                 }
                 let sh = cx.sheet_mut(sheet)?;
                 match cell {
@@ -347,22 +350,42 @@ fn paste_text(s: &mut Session, p: &Json, text: &str) -> Result<Json> {
     Ok(json!({"rows": h, "cols": w}))
 }
 
-/// A pasted cell that came out as text ("Rp10,000.00" isn't en-US input) becomes the number the
-/// source recorded for it in its HTML, with a format that shows the same text when one can be
-/// inferred and the cell has none. The HTML cell must show the same text as the tab-separated
-/// field, so HTML that belongs to another copy (or a table laid out differently) changes nothing.
-fn numeric_from_html(cell: &mut Cell, field: &str, html: Option<&crate::clip_html::HtmlCell>, wb: &mut gridcraft_model::Workbook) {
-    let Some(hc) = html else { return };
+/// What the clipboard's HTML says about one pasted field: the field's text, the HTML cell at its
+/// position, the style the target cell had before the paste, and the locale the text was read in.
+struct HtmlSource<'a> {
+    field: &'a str,
+    cell: Option<&'a crate::clip_html::HtmlCell>,
+    style: gridcraft_model::StyleId,
+    loc: Locale,
+}
+
+/// The number the source recorded for a pasted cell in its HTML (`x:num`, `sdval`) wins over the
+/// cell's text, when the HTML cell shows the same text as the tab-separated field (HTML that
+/// belongs to another copy, or a table laid out differently, changes nothing):
+/// - a cell that came out as text ("Rp10,000.00" isn't input in any locale) becomes that number,
+///   with a format that shows the same text when one can be inferred and the cell has none;
+/// - a cell read as another number keeps the source's (an en-US page's "1.5" is 1.5, not the
+///   German 1 May; "1.23" shown for 1.23456 keeps its digits), with the style the target cell
+///   had, since the format the text suggested belongs to the misread value.
+fn numeric_from_html(cell: &mut Cell, src: &HtmlSource<'_>, wb: &mut gridcraft_model::Workbook) {
+    let Some(hc) = src.cell else { return };
     let Some(n) = hc.num else { return };
-    if cell.formula.is_some() || !matches!(cell.value, Value::Text(_)) || wb.styles.get(cell.style).num_fmt.as_str() == "@" {
+    if cell.formula.is_some() || wb.styles.get(cell.style).num_fmt.as_str() == "@" {
         return;
     }
-    if crate::clip_html::normalized(&hc.text) != crate::clip_html::normalized(field) {
+    if crate::clip_html::normalized(&hc.text) != crate::clip_html::normalized(src.field) {
         return;
+    }
+    match cell.value {
+        Value::Text(_) => {}
+        // The same number, up to the last digits of a time or a long fraction.
+        Value::Number(read) if (read - n).abs() <= 1e-12 * read.abs().max(n.abs()) => return,
+        Value::Number(_) => cell.style = src.style,
+        _ => return,
     }
     cell.value = Value::number(n);
     if wb.styles.get(cell.style).num_fmt.as_str() == "General"
-        && let Some(code) = crate::clip_html::format_for(field, n)
+        && let Some(code) = crate::clip_html::format_for_in(src.field, n, src.loc)
     {
         cell.style = wb.styles.derive(cell.style, |s| s.num_fmt = gridcraft_model::NumFmt::new(&code));
     }

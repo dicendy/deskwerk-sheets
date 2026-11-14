@@ -1234,6 +1234,8 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
         "— VBA project (preserved, not run)" => "— VBA-Projekt (erhalten, nicht ausgeführt)",
         "— {steps} steps" => "— {steps} Schritte",
         "€ Euro" => "€ Euro",
+        "€ German (Germany)" => "€ Deutsch (Deutschland)",
+        "€ French (France)" => "€ Französisch (Frankreich)",
         "Split tabs" => "Blattregister teilen",
         "Click to copy" => "Zum Kopieren klicken",
         "Constraint Operator" => "Operator der Nebenbedingung",

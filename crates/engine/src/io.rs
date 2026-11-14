@@ -311,7 +311,7 @@ fn read_plain(name: &str, bytes: &[u8], csv_as_text: bool, loc: gridcraft_core::
         })?;
         return Ok((wb, report.warnings));
     }
-    if let Some(read) = read_html_table(name, kind, bytes, csv_as_text) {
+    if let Some(read) = read_html_table(name, kind, bytes, csv_as_text, loc) {
         return read;
     }
     match kind {
@@ -382,8 +382,15 @@ const HTML_SNIFF_BYTES: usize = 64 << 10;
 /// HTML saved as `.xls` (#3166). Excel opens its table as a sheet (after warning that the format
 /// and extension don't match): the cells read like typed input (or as text with `csv_as_text`),
 /// header cells (`<th>`) are bold and centred, and the sheet takes the name the page gives it
-/// (`<x:Name>`) or the file's. `None` when the bytes aren't such a page.
-fn read_html_table(name: &str, kind: Option<FileKind>, bytes: &[u8], csv_as_text: bool) -> Option<Result<(Workbook, Vec<String>)>> {
+/// (`<x:Name>`) or the file's. The cells' text reads in `loc`'s conventions, as a CSV file does
+/// (`1.234,56`, `31.12.2026` in German). `None` when the bytes aren't such a page.
+fn read_html_table(
+    name: &str,
+    kind: Option<FileKind>,
+    bytes: &[u8],
+    csv_as_text: bool,
+    loc: gridcraft_core::Locale,
+) -> Option<Result<(Workbook, Vec<String>)>> {
     // Every other text file (CSV, TSV, JSON) passes through here: look at the start only, and decode
     // the whole file once it is known to be a page within the size a text import takes.
     if matches!(kind, Some(FileKind::Json)) || bytes.len() > gridcraft_xlsx::MAX_CSV_BYTES {
@@ -415,9 +422,10 @@ fn read_html_table(name: &str, kind: Option<FileKind>, bytes: &[u8], csv_as_text
             .iter()
             .map(|cell| {
                 // The number the page recorded (`x:num`) only when values are read; as text, the
-                // cell keeps the text it shows.
+                // cell keeps the text it shows. It is written with the locale's decimal separator
+                // (never grouped), so the reader takes it back as that number.
                 let field = match cell.num.filter(|_| !csv_as_text) {
-                    Some(n) => gridcraft_core::number_to_text(n),
+                    Some(n) => gridcraft_core::number_to_text(n).replace('.', &loc.decimal().to_string()),
                     // Whitespace is already collapsed; non-breaking spaces stay, as in Excel.
                     None => cell.text.clone(),
                 };
@@ -427,7 +435,7 @@ fn read_html_table(name: &str, kind: Option<FileKind>, bytes: &[u8], csv_as_text
         tsv.push_str(&fields.join("\t"));
         tsv.push('\n');
     }
-    let opts = gridcraft_xlsx::CsvOptions { delimiter: b'\t', parse_values: !csv_as_text, ..Default::default() };
+    let opts = gridcraft_xlsx::CsvOptions { delimiter: b'\t', parse_values: !csv_as_text, locale: loc, ..Default::default() };
     let read = gridcraft_xlsx::read_csv_with_report(tsv.as_bytes(), &opts).map_err(|e| EngineError::Other(e.to_string()));
     Some(read.map(|(mut wb, report)| {
         wb.csv_delimiter = None;
