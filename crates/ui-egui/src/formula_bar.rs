@@ -1192,6 +1192,13 @@ mod spill_tests {
         h.event(egui::Event::Text("A:A".into()));
         h.run_steps(2);
         assert_eq!(h.state().editor.as_ref().map(|e| e.text.as_str()), Some("=SUM(A:A)"));
+        // The first Esc closes the function list "A" opened, if any, as in Excel; the next one
+        // cancels the edit.
+        if h.state().editor.as_ref().is_some_and(|e| !e.autocomplete.is_empty() || e.completion.is_some()) {
+            h.key_press(Key::Escape);
+            h.run_steps(2);
+            assert!(h.state().editor.as_ref().is_some_and(|e| e.autocomplete.is_empty() && e.completion.is_none()));
+        }
         h.key_press(Key::Escape);
         h.run_steps(2);
         assert!(h.state().editor.is_none());
