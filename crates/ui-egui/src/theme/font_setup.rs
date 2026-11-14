@@ -493,9 +493,13 @@ fn font_definitions_impl(language: crate::i18n::Language, used: &[String], syste
     }
     // Installed workbook fonts, so a cell's chosen font actually renders in it.
     if system {
-        for family in crate::fonts::installed_among(used) {
-            bound.extend(crate::fonts::bind_family(&mut fonts, &family));
+        let installed = crate::fonts::installed_among(used);
+        for family in &installed {
+            bound.extend(crate::fonts::bind_family(&mut fonts, family));
         }
+        // The web build's fonts: this computer's (Local Font Access), else the font pack's
+        // stand-in, bound under the workbook's name. Nothing while the pack is off (native).
+        bound.extend(crate::font_pack::bind_used(&mut fonts, used, &installed));
     }
     // Interface text (formula bar, name box, dialogs) falls back to the cell font before the
     // script faces: whatever a cell can draw, the formula bar can draw too, even where no script

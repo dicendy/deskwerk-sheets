@@ -1307,6 +1307,8 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
         }
         "Couldn't save {name}: {error}" => "{name} konnte nicht gespeichert werden: {error}",
         "Couldn't open {name}: {error}" => "{name} konnte nicht geöffnet werden: {error}",
+        "Shown with a similar font; the file keeps “{name}”." => "Wird mit einer ähnlichen Schrift angezeigt; in der Datei bleibt »{name}«.",
+        "Use this computer's fonts" => "Schriftarten dieses Computers verwenden",
         _ => return None,
     })
 }

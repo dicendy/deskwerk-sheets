@@ -8,7 +8,7 @@
 //! [`theme::font_definitions`](crate::theme::font_definitions) assembles.
 //!
 //! Native only: on wasm there are no system fonts, every function here reports "nothing", and the
-//! font list is the standard [`crate::ribbon::FONTS`] set.
+//! fonts come from [`crate::font_pack`] instead (which reuses [`bind_faces_with`]).
 
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -76,8 +76,7 @@ pub fn system_font_dirs() -> Vec<PathBuf> {
 }
 
 /// Weight implied by a style name (`"Bold"` → 700, `"Light"` → 300).
-#[cfg(not(target_arch = "wasm32"))]
-fn style_weight(style: &str) -> f32 {
+pub(crate) fn style_weight(style: &str) -> f32 {
     let s: String = style.chars().filter(|c| c.is_alphanumeric()).flat_map(char::to_lowercase).collect();
     const TABLE: &[(&str, f32)] = &[
         ("hairline", 100.0),
@@ -105,8 +104,7 @@ impl Face {
 }
 
 /// Whether a style name reads as italic or oblique.
-#[cfg(not(target_arch = "wasm32"))]
-fn style_italic(style: &str) -> bool {
+pub(crate) fn style_italic(style: &str) -> bool {
     let s: String = style.chars().filter(|c| c.is_alphanumeric()).flat_map(char::to_lowercase).collect();
     s.contains("italic") || s.contains("oblique")
 }
@@ -213,9 +211,10 @@ pub fn start_scan() {
     });
 }
 
-/// Whether the background scan has finished.
+/// Whether the background scan has finished. Always on wasm, which has no scan: there the fonts
+/// come from [`crate::font_pack`], and the app rebinds as they arrive.
 pub fn scan_done() -> bool {
-    CATALOG.get().is_some()
+    cfg!(target_arch = "wasm32") || CATALOG.get().is_some()
 }
 
 /// The faces of one installed family, by any of its names, regular-weight first (the order roles
@@ -320,6 +319,23 @@ fn face_key(face: &Face) -> String {
 /// Each role's chain ends with egui's default proportional fonts, so glyphs the installed font
 /// lacks (emoji, a stray script) still render.
 pub fn bind_faces(fonts: &mut egui::FontDefinitions, family: &str, faces: &[Face]) -> Vec<String> {
+    let read = |face: &Face| {
+        let bytes = std::fs::read(&face.path).ok()?;
+        let mut fd = egui::FontData::from_owned(bytes);
+        fd.index = face.index;
+        Some(fd)
+    };
+    bind_faces_with(fonts, family, faces, &read)
+}
+
+/// [`bind_faces`] with the font data from `load` instead of the face's file: the font pack
+/// and local fonts arrive as bytes. A face `load` has no data for is skipped like an unreadable file.
+pub fn bind_faces_with(
+    fonts: &mut egui::FontDefinitions,
+    family: &str,
+    faces: &[Face],
+    load: &dyn Fn(&Face) -> Option<egui::FontData>,
+) -> Vec<String> {
     if faces.is_empty() {
         return Vec::new();
     }
@@ -335,9 +351,7 @@ pub fn bind_faces(fonts: &mut egui::FontDefinitions, family: &str, faces: &[Face
                 continue;
             }
             if !fonts.font_data.contains_key(&key) {
-                let Ok(bytes) = std::fs::read(&face.path) else { continue };
-                let mut fd = egui::FontData::from_owned(bytes);
-                fd.index = face.index;
+                let Some(fd) = load(face) else { continue };
                 fonts.font_data.insert(key.clone(), std::sync::Arc::new(fd));
             }
             chain.push(key);
@@ -351,6 +365,19 @@ pub fn bind_faces(fonts: &mut egui::FontDefinitions, family: &str, faces: &[Face
         bound.push(role);
     }
     bound
+}
+
+/// The faces that draw a family's four cell roles (see [`bind_faces`]), regular first, each once.
+pub(crate) fn role_faces(faces: &[Face]) -> Vec<Face> {
+    let mut out: Vec<Face> = Vec::new();
+    for (bold, italic) in [(false, false), (true, false), (false, true), (true, true)] {
+        if let Some(f) = pick_face(faces, bold, italic)
+            && !out.iter().any(|o| o.path == f.path && o.index == f.index)
+        {
+            out.push(f.clone());
+        }
+    }
+    out
 }
 
 /// Bind every installed face of `family`, found by any of its names (see [`bind_faces`]).

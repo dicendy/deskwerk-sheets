@@ -43,7 +43,7 @@ fn text_inputs(h: &Harness) -> Vec<egui::Rect> {
 
 /// The bottom of the Font list's ninth row, if that row is on screen.
 fn ninth_row_bottom(h: &Harness) -> Option<f32> {
-    h.query_by_label("Garamond").map(|n| n.rect().bottom())
+    h.query_by_label(gridcraft_ui_egui::ribbon::FONTS[8]).map(|n| n.rect().bottom())
 }
 
 #[test]

@@ -93,6 +93,19 @@ pub(crate) enum ComboResult {
     None,
     /// A row was applied: clicked or Enter on the highlighted row.
     Picked(String),
+    /// The [`ComboExtras::action`] row was clicked.
+    Action,
+}
+
+/// Optional extras of a combo list (the font list's).
+#[derive(Clone, Copy, Default)]
+pub(crate) struct ComboExtras<'a> {
+    /// Per item: draw a faint "≈" at the row's end (a font drawn by a stand-in).
+    pub marked: &'a [bool],
+    /// The tooltip of a marked row, from its value.
+    pub tip: Option<&'a dyn Fn(&str) -> String>,
+    /// A command row under the list, after a separator (e.g. "Use this computer's fonts").
+    pub action: Option<&'a str>,
 }
 
 /// Excel-style dropdown: a filter field (type to narrow the list) plus arrow/Enter selection.
@@ -106,7 +119,20 @@ pub(crate) fn editable_combo(
     items: &[(&str, String)],
     forced: bool,
 ) -> ComboResult {
-    combo_popup(ui, anchor, salt, current_value, items, ComboPopupOptions { forced, filter: true, under: None })
+    editable_combo_with(ui, anchor, salt, current_value, items, forced, ComboExtras::default())
+}
+
+/// [`editable_combo`] with marked rows, their tooltip and a command row (see [`ComboExtras`]).
+pub(crate) fn editable_combo_with(
+    ui: &mut Ui,
+    anchor: &egui::Response,
+    salt: &'static str,
+    current_value: &str,
+    items: &[(&str, String)],
+    forced: bool,
+    extras: ComboExtras<'_>,
+) -> ComboResult {
+    combo_popup(ui, anchor, salt, current_value, items, ComboPopupOptions { forced, filter: true, under: None, extras })
 }
 
 /// The dropdown of [`editable_combo`] without the filter field: the whole list, picked by click or
@@ -120,7 +146,14 @@ pub(super) fn list_combo(
     current_value: &str,
     items: &[(&str, String)],
 ) -> ComboResult {
-    combo_popup(ui, anchor, salt, current_value, items, ComboPopupOptions { forced: false, filter: false, under: Some(under) })
+    combo_popup(
+        ui,
+        anchor,
+        salt,
+        current_value,
+        items,
+        ComboPopupOptions { forced: false, filter: false, under: Some(under), extras: ComboExtras::default() },
+    )
 }
 
 /// What the header of a combo popup hands to its list: the rows to show and the highlighted one.
@@ -132,10 +165,11 @@ struct ComboHead {
     enter: bool,
 }
 
-struct ComboPopupOptions {
+struct ComboPopupOptions<'a> {
     forced: bool,
     filter: bool,
     under: Option<Rect>,
+    extras: ComboExtras<'a>,
 }
 
 /// Arrow and Enter keys (taken out of the input so a filter field never sees them), the filter
@@ -154,8 +188,11 @@ fn combo_head(ui: &mut Ui, text: Option<(&mut String, egui::Id)>, open_now: bool
         });
     }
     let mut lower = String::new();
+    let mut typed = false;
     if let Some((text, text_id)) = text {
         let te = ui.add(egui::TextEdit::singleline(text).id(text_id).desired_width(220.0).hint_text("Type to filter…"));
+        // Typing highlights the first match, as in Excel (not whatever row the old one clamps to).
+        typed = te.changed();
         if open_now && !te.has_focus() {
             ui.ctx().memory_mut(|m| m.request_focus(text_id));
             // Select all once focus lands so typing replaces the filter.
@@ -169,7 +206,7 @@ fn combo_head(ui: &mut Ui, text: Option<(&mut String, egui::Id)>, open_now: bool
         lower = text.to_lowercase();
     }
     let filtered: Vec<usize> = items.iter().enumerate().filter(|(_, (_, d))| d.to_lowercase().contains(&lower)).map(|(i, _)| i).collect();
-    let mut sel = sel;
+    let mut sel = if typed { 0 } else { sel };
     if !filtered.is_empty() {
         let n = filtered.len() as i32;
         sel = sel.clamp(0, n - 1);
@@ -183,8 +220,8 @@ fn combo_head(ui: &mut Ui, text: Option<(&mut String, egui::Id)>, open_now: bool
     ComboHead { filtered, sel, down, up, enter }
 }
 
-/// The rows of a combo popup. Returns the picked value and the highlighted row.
-fn combo_rows(ui: &mut Ui, head: ComboHead, items: &[(&str, String)], row_w: f32) -> (Option<String>, i32) {
+/// The rows of a combo popup. Returns what was picked and the highlighted row.
+fn combo_rows(ui: &mut Ui, head: ComboHead, items: &[(&str, String)], row_w: f32, extras: ComboExtras<'_>) -> (ComboResult, i32) {
     let ComboHead { filtered, mut sel, down, up, enter } = head;
     let mut picked = None;
     if enter && !filtered.is_empty() {
@@ -194,6 +231,7 @@ fn combo_rows(ui: &mut Ui, head: ComboHead, items: &[(&str, String)], row_w: f32
     for (pos, i) in filtered.iter().enumerate() {
         let (value, disp) = &items[*i];
         let row = ui.add(egui::Button::selectable(pos as i32 == sel, egui::RichText::new(disp)).min_size(vec2(row_w, 20.0)));
+        let row = if extras.marked.get(*i).copied().unwrap_or(false) { mark_row(ui, row, value, extras.tip) } else { row };
         if (down || up) && pos as i32 == sel && !ui.clip_rect().contains_rect(row.rect) {
             row.scroll_to_me(Some(if down { egui::Align::Max } else { egui::Align::Min }));
         }
@@ -204,10 +242,33 @@ fn combo_rows(ui: &mut Ui, head: ComboHead, items: &[(&str, String)], row_w: f32
             sel = pos as i32;
         }
     }
-    if picked.is_some() {
+    let action = extras.action.is_some_and(|label| action_row(ui, label, row_w));
+    if picked.is_some() || action {
         ui.close();
     }
-    (picked, sel)
+    let result = match picked {
+        Some(value) => ComboResult::Picked(value),
+        None if action => ComboResult::Action,
+        None => ComboResult::None,
+    };
+    (result, sel)
+}
+
+/// Marks a row drawn by a stand-in: a faint "≈" at its end, and the tooltip.
+fn mark_row(ui: &Ui, row: egui::Response, value: &str, tip: Option<&dyn Fn(&str) -> String>) -> egui::Response {
+    let color = ui.visuals().weak_text_color();
+    let at = pos2(row.rect.right() - 8.0, row.rect.center().y);
+    ui.painter().text(at, egui::Align2::RIGHT_CENTER, "≈", egui::FontId::proportional(12.0), color);
+    match tip {
+        Some(tip) => row.on_hover_text(tip(value)),
+        None => row,
+    }
+}
+
+/// The command row under a combo list; whether it was clicked.
+fn action_row(ui: &mut Ui, label: &str, row_w: f32) -> bool {
+    ui.separator();
+    ui.add(egui::Button::new(label).frame_when_inactive(false).min_size(vec2(row_w, 20.0))).clicked()
 }
 
 fn combo_popup(
@@ -216,9 +277,9 @@ fn combo_popup(
     salt: &'static str,
     current_value: &str,
     items: &[(&str, String)],
-    options: ComboPopupOptions,
+    options: ComboPopupOptions<'_>,
 ) -> ComboResult {
-    let ComboPopupOptions { forced, filter, under } = options;
+    let ComboPopupOptions { forced, filter, under, extras } = options;
     let popup_id = egui::Popup::default_response_id(anchor);
     let state_id = anchor.id.with(salt).with("__combo_state");
     let mut st = ui.data_mut(|d| d.get_temp::<ComboState>(state_id)).unwrap_or_default();
@@ -254,20 +315,18 @@ fn combo_popup(
     let shown = if filter {
         menu.show_ui_with_header(
             |ui| combo_head(ui, Some((&mut st.text, text_id)), open_now, sel0, items),
-            |ui, head| combo_rows(ui, head, items, row_w),
+            |ui, head| combo_rows(ui, head, items, row_w, extras),
         )
     } else {
         menu.show_ui(|ui| {
             let head = combo_head(ui, None, open_now, sel0, items);
-            combo_rows(ui, head, items, row_w)
+            combo_rows(ui, head, items, row_w, extras)
         })
     };
     let mut result = ComboResult::None;
     if let Some((picked, sel)) = shown {
         st.sel = sel;
-        if let Some(value) = picked {
-            result = ComboResult::Picked(value);
-        }
+        result = picked;
     }
     ui.data_mut(|d| d.insert_temp(state_id, st));
     result

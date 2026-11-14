@@ -553,7 +553,7 @@ fn editable_combos_filter_by_typing_and_move_by_arrows() {
     h.run_steps(3); // let the filter field gain focus
     events(&mut h, [Event::Text("arial".into())]);
     h.run_steps(3);
-    // "arial" matches Arial only — Georgia must be filtered out of the list.
+    // "arial" matches Arial and Arial Narrow — Georgia must be filtered out of the list.
     assert_eq!(h.query_all_by_label("Georgia").count(), 0, "typing must narrow the list");
     assert!(h.query_all_by_label("Arial").count() >= 1, "the match must stay visible");
     key(&mut h, Key::Enter);
@@ -563,7 +563,7 @@ fn editable_combos_filter_by_typing_and_move_by_arrows() {
     assert_eq!(h.query_all_by_label("Arial").count(), 1, "Enter must apply Arial and close the popup");
     assert_eq!(h.query_all_by_label("Georgia").count(), 0);
 
-    // Arrows alone move through the full list: Calibri -> Cambria -> Candara -> Consolas.
+    // Arrows alone move through the full list: Calibri -> Calibri Light -> Cambria -> Candara.
     let mut h = harness(blank());
     sequence(&mut h, &[Key::H, Key::F, Key::F], false);
     h.run_steps(3);
@@ -573,7 +573,7 @@ fn editable_combos_filter_by_typing_and_move_by_arrows() {
     key(&mut h, Key::Enter);
     h.run_steps(3);
     assert!(h.state().message.is_none() && h.state().toast.is_none());
-    assert_eq!(h.query_all_by_label("Consolas").count(), 1, "Down x3 from Calibri must land on Consolas");
+    assert_eq!(h.query_all_by_label("Candara").count(), 1, "Down x3 from Calibri must land on Candara");
 
     // Size combo: type a custom size not in the list, Enter applies it.
     let mut h = harness(blank());
@@ -643,9 +643,9 @@ fn every_sequence_terminates_without_panicking() {
 }
 
 /// The font list's highlight is a position in the filtered rows (#1365): with "ar" typed the rows
-/// are Aptos Narrow, Arial, Candara, Garamond, and the highlight starts on the current font's
-/// row (index 3, clamped to the filtered list). Down twice lands on the second row, Arial. Clearing
-/// the filter brings the other fonts back.
+/// are Aptos Narrow, Arial, Arial Narrow, Candara, EB Garamond, Garamond; typing highlights the
+/// first of them, and Down moves to the second filtered row, Arial (Calibri's full-list index 6
+/// plays no part). Clearing the filter brings the other fonts back.
 #[test]
 fn font_dropdown_highlight_follows_the_filtered_rows() {
     let mut h = harness(blank());
@@ -654,7 +654,6 @@ fn font_dropdown_highlight_follows_the_filtered_rows() {
     events(&mut h, [Event::Text("ar".into())]);
     h.run_steps(3);
     assert_eq!(h.query_all_by_label("Georgia").count(), 0, "typing must narrow the list");
-    key(&mut h, Key::ArrowDown);
     key(&mut h, Key::ArrowDown);
     key(&mut h, Key::Enter);
     h.run_steps(3);

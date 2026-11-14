@@ -32,12 +32,16 @@ impl SheetApp {
         names
     }
 
-    /// The open workbooks' (uid, revision), folded: [`Self::used_fonts`] changes only with it.
-    fn fonts_key(&self) -> (u64, u64) {
-        self.session
+    /// The open workbooks' (uid, revision), folded, and the font pack's generation:
+    /// [`Self::used_fonts`] changes only with the first two, what the web build can bind for them
+    /// only with the third.
+    fn fonts_key(&self) -> (u64, u64, u64) {
+        let (uid, rev) = self
+            .session
             .documents()
             .iter()
-            .fold((0u64, 0u64), |(uid, rev), d| (uid.wrapping_mul(31).wrapping_add(d.uid), rev.wrapping_mul(31).wrapping_add(d.revision)))
+            .fold((0u64, 0u64), |(uid, rev), d| (uid.wrapping_mul(31).wrapping_add(d.uid), rev.wrapping_mul(31).wrapping_add(d.revision)));
+        (uid, rev, crate::font_pack::generation())
     }
 
     /// Installs the text-width closure once, on the first frame.
@@ -86,12 +90,13 @@ impl SheetApp {
         self.fonts_set = true;
         // The rebuilt set has no workbook fonts yet: bind them again once it is active.
         self.fonts_bound.clear();
-        self.fonts_seen = (0, 0);
+        self.fonts_seen = (0, 0, 0);
         self.fonts_han = Some(theme::HanOrder::of(self.ui.language));
         ctx.request_repaint();
     }
 
-    /// Binds the workbook's installed fonts once the background scan has finished. Adding fonts
+    /// Binds the workbook's installed fonts once the background scan has finished (on the web: the
+    /// font pack's and this computer's, again each time a file arrives). Adding fonts
     /// re-applies the font set, which egui activates at the next pass, so skip this frame's paint
     /// (same one-frame cost as startup). Only when an open workbook changed.
     fn rebind_workbook_fonts(&mut self, ctx: &egui::Context) {
@@ -100,8 +105,9 @@ impl SheetApp {
             return;
         }
         let used = self.used_fonts();
+        let pack_changed = seen.2 != self.fonts_seen.2;
         self.fonts_seen = seen;
-        if used == self.fonts_bound {
+        if used == self.fonts_bound && !pack_changed {
             return;
         }
         ctx.set_fonts(theme::font_definitions_with(self.ui.language, &used));
