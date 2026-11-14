@@ -139,7 +139,7 @@ pub fn show(app: &mut SheetApp, ui: &mut egui::Ui) {
                 let read_only = active_spill_anchor(app).is_some();
                 let info = if app.editor.is_some() {
                     editor_widget(app, &mut child, id, font.clone(), true, inner.width(), inner.height())
-                } else if !read_only && active_python(app).is_none() {
+                } else if !read_only && active_python(app).is_none() && !active_is_picture(app) {
                     // Clicking the field around the text starts editing in the bar, the caret at
                     // the end. Registered before the text, which takes the presses on itself.
                     if ui.interact(field, id.with("click"), Sense::click()).clicked() {
@@ -223,7 +223,9 @@ fn view_field(app: &mut SheetApp, ui: &mut egui::Ui, view: ViewField<'_>) -> usi
         .show(ui, |ui| show_edit(TextEdit::multiline(&mut buffer), ui, id, font, width, &mut layouter))
         .inner;
     let lines = output.galley.rows.len();
-    let resp = output.response.response.clone().accessible_name(app.ui.language.tr("Formula Bar").to_string());
+    // Read out as its content, as the label it replaces was; an empty bar by its name.
+    let name = if text.is_empty() { app.ui.language.tr("Formula Bar").to_string() } else { text.to_owned() };
+    let resp = output.response.response.clone().accessible_name(name);
     // The press itself starts the edit (not its release), so the drag it begins and the keys
     // typed while the button is held already go to the editor. A click from assistive technology
     // has no press.
@@ -317,6 +319,13 @@ pub(crate) fn active_python(app: &SheetApp) -> Option<(usize, gridcraft_engine::
     let a = sh.merge_at(d.selection.active).map(|m| m.start).unwrap_or(d.selection.active);
     let at = sh.spill_anchor(a).unwrap_or(a);
     sh.cell(at).and_then(|c| c.py.clone()).map(|py| (d.wb.active_sheet(), at, py))
+}
+
+/// Whether the active cell holds a picture: the bar names it, and there is nothing to edit.
+fn active_is_picture(app: &SheetApp) -> bool {
+    app.session.active().is_some_and(|d| {
+        d.wb.active().is_some_and(|sh| sh.cell_pictures.contains_key(&sh.merge_at(d.selection.active).map(|m| m.start).unwrap_or(d.selection.active)))
+    })
 }
 
 fn active_input(app: &SheetApp) -> String {
@@ -1133,7 +1142,7 @@ mod spill_tests {
             assert!(h.state().editor.is_none());
             select(h.state_mut(), "A1");
             h.run_steps(3);
-            h.get_by_label("Formula Bar").click();
+            h.get_by_label("=SEQUENCE(3)").click();
             h.run_steps(3);
             h.check_accessibility();
             assert!(h.state().editor.as_ref().is_some_and(|e| e.from_formula_bar));
@@ -1157,10 +1166,11 @@ mod spill_tests {
         h
     }
 
-    /// Where the caret goes after `prefix` in the formula bar's view of the active cell.
-    fn after(h: &egui_kittest::Harness<'_, SheetApp>, prefix: &str) -> egui::Pos2 {
+    /// Where the caret goes after `prefix` in the formula bar's view of the active cell, which
+    /// shows (and is read out as) `content`.
+    fn after(h: &egui_kittest::Harness<'_, SheetApp>, content: &str, prefix: &str) -> egui::Pos2 {
         use egui_kittest::kittest::Queryable as _;
-        let rect = h.get_by_label("Formula Bar").rect();
+        let rect = h.get_by_label(content).rect();
         let w = h.ctx.fonts_mut(|f| f.layout_no_wrap(prefix.to_owned(), theme::ui_font(13.0), egui::Color32::BLACK).size().x);
         pos2(rect.left() + w, rect.top() + 6.0)
     }
@@ -1174,7 +1184,7 @@ mod spill_tests {
         select(&mut app, "A1");
         let mut h = bar_harness(app);
         assert!(h.state().editor.is_none());
-        let (from, to) = (after(&h, "=SUM(B:B"), after(&h, "=SUM("));
+        let (from, to) = (after(&h, "=SUM(B:B)", "=SUM(B:B"), after(&h, "=SUM(B:B)", "=SUM("));
         h.hover_at(from);
         h.step();
         h.drag_at(from);
@@ -1212,7 +1222,7 @@ mod spill_tests {
         set(&mut app, "A1", "=SUM(B:B)");
         select(&mut app, "A1");
         let mut h = bar_harness(app);
-        let at = after(&h, "=SUM(B:B)");
+        let at = after(&h, "=SUM(B:B)", "=SUM(B:B)");
         h.hover_at(at);
         h.step();
         h.drag_at(at);
