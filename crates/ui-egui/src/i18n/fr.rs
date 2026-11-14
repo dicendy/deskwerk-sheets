@@ -1330,6 +1330,8 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
         }
         "Couldn't save {name}: {error}" => "Impossible d'enregistrer {name} : {error}",
         "Couldn't open {name}: {error}" => "Impossible d'ouvrir {name} : {error}",
+        "Shown with a similar font; the file keeps “{name}”." => "Affichée avec une police similaire ; le fichier conserve « {name} ».",
+        "Use this computer's fonts" => "Utiliser les polices de cet ordinateur",
         _ => return None,
     })
 }

@@ -20,11 +20,14 @@
 //! over HTTP, telling the framing page with `postMessage` (`remote`); it wins over the host modes.
 //! `?chrome=none|notitlebar|nofiletab` leaves the title bar and/or the File tab undrawn for a host
 //! that embeds the sheet in its own window (see `Chrome`). Preferences (theme, interface size,
-//! editing options…) are kept in `localStorage` (`prefs`).
+//! editing options…) are kept in `localStorage` (`prefs`). Fonts come from the font pack in `fonts/`
+//! next to `index.html` and, where the browser allows, from the user's computer (`fonts`).
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 #[cfg(any(target_arch = "wasm32", test))]
 mod api;
+#[cfg(target_arch = "wasm32")]
+mod fonts;
 #[cfg(target_arch = "wasm32")]
 mod host;
 #[cfg(any(target_arch = "wasm32", test))]

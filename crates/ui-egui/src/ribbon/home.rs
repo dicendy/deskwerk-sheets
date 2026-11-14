@@ -1,6 +1,6 @@
 use super::controls::{
-    ComboResult, act, active_style, anchor_keytip, control_keytip, editable_combo, invoke, keytip, list_combo, menu_items, popup_command, sep,
-    theme_colors,
+    ComboExtras, ComboResult, act, active_style, anchor_keytip, control_keytip, editable_combo, editable_combo_with, invoke, keytip, list_combo,
+    menu_items, popup_command, sep, theme_colors,
 };
 use super::galleries::{cell_style_gallery, table_gallery};
 use super::{
@@ -582,27 +582,83 @@ fn font_combo(app: &mut SheetApp, ui: &mut Ui, st: &Style) {
     let resp = ui.add_sized([150.0, 24.0], egui::Button::new(egui::RichText::new(&name).font(theme::ui_font(12.5))));
     control_keytip(app, ui, &resp, "home.fontName");
     let forced = invoke(app, "home.fontName");
-    let items: Vec<(&str, String)> = FONTS.iter().map(|f| (*f, f.to_string())).collect();
-    if let ComboResult::Picked(value) = editable_combo(ui, &resp, "font", &name, &items, forced) {
-        act(app, "home.fontName", json!({"name": value}));
+    let lang = app.ui.language;
+    let resp = if crate::font_pack::substituted(&name) { resp.on_hover_text(substitute_tip(lang, &name)) } else { resp };
+    let list = crate::font_pack::font_list();
+    let items: Vec<(&str, String)> = list.iter().map(|(f, _)| (f.as_str(), f.clone())).collect();
+    let marked: Vec<bool> = list.iter().map(|(_, m)| *m).collect();
+    let tip: &dyn Fn(&str) -> String = &|value| substitute_tip(lang, value);
+    let action = crate::font_pack::local_access_offered().then(|| lang.tr(crate::font_pack::USE_LOCAL_FONTS));
+    let extras = ComboExtras { marked: &marked, tip: Some(tip), action };
+    match editable_combo_with(ui, &resp, "font", &name, &items, forced, extras) {
+        ComboResult::Picked(value) => act(app, "home.fontName", json!({"name": value})),
+        ComboResult::Action => crate::font_pack::request_local_access(),
+        ComboResult::None => {}
     }
 }
 
+/// The tooltip of a font name drawn by a stand-in: the workbook keeps the name.
+fn substitute_tip(lang: crate::i18n::Language, name: &str) -> String {
+    lang.tr(crate::font_pack::SUBSTITUTE_TIP).replace("{name}", name)
+}
+
+/// The font list: Excel's fonts (each drawn by itself where installed, else by its stand-in from
+/// [`crate::font_pack::SUBSTITUTES`]) and the popular open fonts of the web build's font pack, A–Z.
 pub const FONTS: &[&str] = &[
     "Aptos",
+    "Aptos Display",
     "Aptos Narrow",
     "Arial",
+    "Arial Narrow",
+    "Book Antiqua",
     "Calibri",
+    "Calibri Light",
     "Cambria",
     "Candara",
+    "Century Gothic",
+    "Comic Neue",
+    "Comic Sans MS",
     "Consolas",
+    "Constantia",
+    "Corbel",
+    "Courier",
     "Courier New",
+    "EB Garamond",
+    "Franklin Gothic Book",
+    "Franklin Gothic Medium",
     "Garamond",
     "Georgia",
     "Helvetica",
     "Helvetica Neue",
+    "Impact",
+    "Inter",
+    "Lato",
+    "Lexend",
+    "Lora",
+    "Lucida Console",
+    "Lucida Sans Unicode",
+    "Merriweather",
+    "Microsoft Sans Serif",
+    "Montserrat",
+    "Noto Sans",
+    "Noto Serif",
+    "Nunito",
+    "Open Sans",
+    "Oswald",
+    "Palatino",
+    "Palatino Linotype",
+    "Playfair Display",
+    "Poppins",
+    "PT Sans",
+    "PT Serif",
+    "Raleway",
+    "Roboto",
+    "Roboto Mono",
+    "Roboto Slab",
     "Segoe UI",
+    "Source Sans 3",
     "Tahoma",
+    "Times",
     "Times New Roman",
     "Trebuchet MS",
     "Verdana",

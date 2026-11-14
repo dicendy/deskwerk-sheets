@@ -5,7 +5,7 @@ use gridcraft_ui_egui::{Inbox, Services, SheetApp};
 use wasm_bindgen::JsCast as _;
 use wasm_bindgen::JsValue;
 
-const CANVAS_ID: &str = "gridcraft_canvas";
+pub(crate) const CANVAS_ID: &str = "gridcraft_canvas";
 const LOADING_ID: &str = "gridcraft_loading";
 
 /// Starts the eframe web runner for the GridCraft canvas. It adjusts the WebGPU device limits to the adapter's, optionally selects the WebGL backend from the query string, and builds the shell with the requested sample or host bridge, browser language rules, stored preferences and the loading/error page state.
@@ -100,6 +100,8 @@ pub fn start() {
                     crate::prefs::restore(&mut app, stored_ui.as_deref(), stored_prefs.as_deref());
                     let mut prefs = crate::prefs::PrefsSync::new(stored_ui, stored_prefs);
                     SheetApp::setup_context_for_language(&cc.egui_ctx, false, app.ui.language);
+                    // The font pack and this computer's fonts (`fonts`).
+                    crate::fonts::start(&cc.egui_ctx);
                     if let Some(bridge) = &app_bridge {
                         prefs.keep_user_name(app.session.prefs.user_name.clone());
                         if let Some(author) = query_param("author") {
@@ -190,6 +192,7 @@ impl eframe::App for WebShell {
             });
         }
         self.app.logic(ctx);
+        crate::fonts::pump(ctx);
         if let Some(remote) = &self.remote {
             remote.sync(&mut self.app);
         }

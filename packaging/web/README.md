@@ -10,6 +10,7 @@ static site in `deskwerk-sheets-web-<version>/`:
 | `gridcraft-web-<hash>.js` | wasm-bindgen glue (generated, ES module) |
 | `gridcraft-web-<hash>_bg.wasm` | The app (compresses to roughly a third with gzip/Brotli) |
 | `_headers`, `.htaccess` | Sample header rules for Netlify/Cloudflare Pages and Apache |
+| `fonts/` | The font pack: open fonts that draw the Office fonts a workbook names (Carlito for Calibri, Liberation for Arial/Times New Roman/Courier New, …) and popular open fonts, with `MANIFEST.tsv` (source, sha256, licence) and the licence texts in `fonts/licenses/`. About 46 MB in all (23 MB gzipped), but only Carlito (2.7 MB, 1.2 MB gzipped) loads at startup; every other file is fetched when a workbook or the user picks its font. |
 
 There is no server-side code. Upload the folder's contents anywhere that serves static files.
 
@@ -29,7 +30,12 @@ hash, so they can be cached forever. Only `index.html` needs revalidation.
   download to roughly a third. You can also precompress (`brotli -k *.wasm`) and let
   the server send `Content-Encoding: br`.
 - **Caching:** `Cache-Control: public, max-age=31536000, immutable` on the hashed `.wasm` and
-  `.js` files, and `no-cache` on `index.html`.
+  `.js` files, and `no-cache` on `index.html`. The font files keep their names; the app asks for
+  them as `fonts/<file>?v=<sha256 prefix>`, so a long `max-age` on `fonts/` is safe too. Serve
+  `.ttf` as `font/ttf` and compress it (it halves).
+- **Fonts stay on your server:** the app fetches fonts only from `fonts/` next to `index.html`
+  (never from Google Fonts or another CDN). Where the browser offers Local Font Access (Chrome,
+  Edge), the font list also offers the user's own installed fonts, which then win over the pack.
 - **HTTPS:** WebGPU (and the clipboard) only work in a secure context, which means `https://`
   or `http://localhost`. Over plain HTTP elsewhere, the app falls back to WebGL2.
 - **No special isolation headers:** GridCraft doesn't use `SharedArrayBuffer`, so it doesn't
@@ -44,7 +50,9 @@ location /gridcraft/ {
     types { application/wasm wasm; text/javascript js; text/html html; }
     gzip on;
     gzip_types application/wasm text/javascript text/html;
+    types { font/ttf ttf; }
     location ~* \.(wasm|js)$ { add_header Cache-Control "public, max-age=31536000, immutable"; }
+    location ~* \.ttf$ { add_header Cache-Control "public, max-age=2592000"; }
     location ~* index\.html$ { add_header Cache-Control "no-cache"; }
 }
 ```
@@ -148,6 +156,12 @@ As with the parent bridge, the app starts with an empty workbook instead of a sa
 `?author=` on the page's URL names the user for new notes and comments. The `data-host` value
 must be exactly `page`; anything else is ignored, and the app runs as a standalone page with
 downloads.
+
+The app fetches its fonts from `fonts/` beside the script it was loaded from (a
+`<link>`/`<script>` whose URL contains `gridcraft-web`), else beside the page. When the page
+imports the module from elsewhere, say where the folder is with `data-fonts-base` on the canvas:
+`<canvas id="gridcraft_canvas" data-host="page" data-fonts-base="/static/gridcraft/">` loads
+`/static/gridcraft/fonts/…`.
 
 The messages and both transports are the shared contract of [`craft-web-host`](https://github.com/storytold/craft-libs/tree/main/crates/web-host) (storytold/craft-libs#420), the same for every Craft app: its README lists every message, including `saved`, with the compatibility notes. In `gridcraft:ready`, `version` is the contract's (`"1"`) and `appVersion` is this app's release. GridCraft reads bytes, so a host sends `bytes`, not a `File`.
 

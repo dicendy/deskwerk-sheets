@@ -37,6 +37,7 @@ pub mod doc_windows;
 pub mod editor;
 pub mod equation;
 mod floating_pictures;
+pub mod font_pack;
 pub mod fonts;
 pub mod form_controls;
 pub mod formula_bar;
@@ -275,9 +276,9 @@ pub struct SheetApp {
     prepared_fonts: bool,
     /// Workbook fonts bound into the current font set; a change rebinds (installed fonts only).
     fonts_bound: Vec<String>,
-    /// The open workbooks' (uid, revision), folded, that `fonts_bound` was computed for, so the
-    /// style tables are walked only when a workbook changes.
-    fonts_seen: (u64, u64),
+    /// The open workbooks' (uid, revision), folded, and the font pack's generation, that `fonts_bound`
+    /// was computed for, so the style tables are walked only when a workbook or the pack changes.
+    fonts_seen: (u64, u64, u64),
     /// Set while a font-set change is pending activation: skip this frame's paint, like the
     /// startup `fonts_ready` gate (egui applies new definitions at the next pass).
     fonts_rebind: bool,

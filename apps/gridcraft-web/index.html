@@ -8,6 +8,8 @@
   <title>Deskwerk Sheets</title>
   <link data-trunk rel="icon" href="../../assets/app-icon/gridcraft.ico" />
   <link data-trunk rel="rust" data-bin="gridcraft-web" data-wasm-opt="z" data-weak-refs />
+  <!-- The font pack (gridcraft_ui_egui::font_pack): fetched from here, never from a font CDN. -->
+  <link data-trunk rel="copy-dir" href="fonts" />
   <style>
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #f3f3f3; }
     #gridcraft_canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }

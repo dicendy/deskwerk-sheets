@@ -643,8 +643,9 @@ fn every_sequence_terminates_without_panicking() {
 }
 
 /// The font list's highlight is a position in the filtered rows (#1365): with "ar" typed the rows
-/// are Aptos Narrow, Arial, Candara, Garamond, and the highlight starts on the current font's
-/// row (index 3, clamped to the filtered list). Down twice lands on the second row, Arial. Clearing
+/// are Aptos Narrow, Arial, Arial Narrow, Candara, EB Garamond, Garamond, and the highlight starts
+/// on the current font's row (Calibri, index 6, clamped to the filtered list's last row). Down
+/// twice wraps to the second row, Arial. Clearing
 /// the filter brings the other fonts back.
 #[test]
 fn font_dropdown_highlight_follows_the_filtered_rows() {
