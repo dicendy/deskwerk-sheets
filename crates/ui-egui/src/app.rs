@@ -194,6 +194,8 @@ impl SheetApp {
             ctx.request_repaint();
             return;
         }
+        // Keys a burst of typing left for this pass go ahead of its own input (see `held_keys`).
+        crate::held_keys::release(&ctx);
         let t0 = now_ms();
         // A script may have switched windows since the last frame.
         self.follow_active_window();

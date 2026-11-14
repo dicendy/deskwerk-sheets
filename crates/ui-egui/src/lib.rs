@@ -43,6 +43,7 @@ pub mod formula_bar;
 mod formula_locale;
 pub mod function_library;
 pub mod grid;
+mod held_keys;
 pub mod i18n;
 pub mod icons;
 pub mod keymap;
