@@ -514,12 +514,16 @@ pub fn editor_widget(app: &mut SheetApp, ui: &mut egui::Ui, id: egui::Id, font: 
         // field now, after the caret, instead of being lost to a field that has no focus yet.
         // Not in a pass with a click (a double-click that opens the edit): egui takes the focus
         // from a field the click was not on, and the field is new under the pointer. Then it
-        // takes the focus after it is shown, as before.
+        // takes the focus after it is shown, as before. Nor in the pass after a modal (a
+        // validation alert) closed: egui still blocks the field this pass and would drop the focus.
         let click = ui.input(|i| i.pointer.any_pressed() || i.pointer.any_released());
-        if ed.request_focus && !click {
+        let layer = ui.layer_id();
+        let blocked = !ui.memory(|m| m.allows_interaction(layer));
+        let early = ed.request_focus && !click && !blocked;
+        if early {
             ui.memory_mut(|m| m.request_focus(id));
         }
-        focus_after_show = ed.request_focus && click;
+        focus_after_show = ed.request_focus && !early;
         ed.request_focus = false;
         // Closing a dialog that changed nothing (Cancel) gives the selection back as it was.
         let range = if ed.keep_selection && !ed.sync_caret {

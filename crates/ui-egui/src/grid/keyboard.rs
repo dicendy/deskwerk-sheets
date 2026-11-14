@@ -34,10 +34,7 @@ pub(super) fn keyboard(app: &mut SheetApp, ctx: &egui::Context, resp: &egui::Res
     });
     let events = grid_events(app, ctx, sh);
     // A shortcut key that also types a character (Shift+Space sends Text(" ")) must not start an edit.
-    let shortcut_pressed = events.iter().any(|(_, e)| {
-        matches!(e, egui::Event::Key { pressed: true, modifiers: m, key, .. }
-            if !m.alt && (m.ctrl || m.command || (m.shift && *key == egui::Key::Space)))
-    });
+    let shortcut_text = shortcut_text(&events);
     let page = ((geo.cells.height() / geo.z) / sh.default_row_height).floor().max(1.0) as i64;
     // Alt shortcuts type their character too on Windows and Linux (Alt+= sends Text("=")): once
     // a shortcut ran, that text must not start an edit over what it just did.
@@ -57,7 +54,7 @@ pub(super) fn keyboard(app: &mut SheetApp, ctx: &egui::Context, resp: &egui::Res
             // PRIMARY middle-click paste belongs to egui's TextEdit; the grid has no caret to
             // insert text at, so a middle click on a cell is deliberately not a paste.
             egui::Event::MiddleClickPaste { .. } => {}
-            egui::Event::Text(_) if shortcut_pressed || shortcut_ran => {}
+            egui::Event::Text(_) if shortcut_ran || shortcut_text.contains(&at) => {}
             egui::Event::Text(text) if text.chars().all(|c| !c.is_control()) && !text.is_empty() => {
                 app.begin_edit(Some(text), false);
                 if let Some(ed) = app.editor.as_mut() {
@@ -83,13 +80,31 @@ pub(super) fn keyboard(app: &mut SheetApp, ctx: &egui::Context, resp: &egui::Res
             // A shortcut that opened its own edit (Alt+= AutoSum with nothing to sum) also typed
             // its character, which is not part of the edit. (Before `drop_handled`, which shifts
             // the indices.)
-            if shortcut_pressed || shortcut_ran {
+            if shortcut_ran {
                 crate::held_keys::drop_text_after(ctx, at);
             }
             crate::held_keys::drop_handled(ctx, at, false);
             return;
         }
     }
+}
+
+/// The text events a shortcut key typed along with its press (Shift+Space sends Text(" ")): the
+/// ones right before or after a Ctrl, Cmd or Shift+Space press (browsers send the text first,
+/// native windows after the key). Other text in the same pass is typing and starts an edit.
+fn shortcut_text(events: &[(usize, egui::Event)]) -> Vec<usize> {
+    let shortcut = |e: &(usize, egui::Event)| {
+        matches!(&e.1, egui::Event::Key { pressed: true, modifiers: m, key, .. }
+            if !m.alt && (m.ctrl || m.command || (m.shift && *key == egui::Key::Space)))
+    };
+    let mut out = Vec::new();
+    for (i, (at, e)) in events.iter().enumerate() {
+        let near = |j: Option<usize>| j.and_then(|j| events.get(j)).is_some_and(shortcut);
+        if matches!(e, egui::Event::Text(_)) && (near(i.checked_sub(1)) || near(i.checked_add(1))) {
+            out.push(*at);
+        }
+    }
+    out
 }
 
 /// A key press on the grid that no keymap shortcut took: moves, Enter and Tab, editing keys and
