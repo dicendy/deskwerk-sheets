@@ -80,6 +80,12 @@ pub(super) fn keyboard(app: &mut SheetApp, ctx: &egui::Context, resp: &egui::Res
         // F2, Ctrl+Enter or Backspace opened the cell editor: the keys typed after it in this pass
         // are the editor's, not the grid's (a character would otherwise replace the edit).
         if app.editor.is_some() {
+            // A shortcut that opened its own edit (Alt+= AutoSum with nothing to sum) also typed
+            // its character, which is not part of the edit. (Before `drop_handled`, which shifts
+            // the indices.)
+            if shortcut_pressed || shortcut_ran {
+                crate::held_keys::drop_text_after(ctx, at);
+            }
             crate::held_keys::drop_handled(ctx, at, false);
             return;
         }

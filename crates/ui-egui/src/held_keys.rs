@@ -96,6 +96,19 @@ pub(crate) fn drop_handled(ctx: &egui::Context, last: usize, including: bool) {
     });
 }
 
+/// Drops from this pass's input the text typed after `last` (an index into
+/// `InputState::events`): the character a shortcut key types along with its command.
+pub(crate) fn drop_text_after(ctx: &egui::Context, last: usize) {
+    ctx.input_mut(|i| {
+        let mut n = 0usize;
+        i.events.retain(|ev| {
+            let after = n > last;
+            n += 1;
+            !(after && matches!(ev, Event::Text(_)))
+        });
+    });
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
