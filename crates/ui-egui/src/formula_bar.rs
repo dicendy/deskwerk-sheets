@@ -507,13 +507,19 @@ pub fn editor_widget(app: &mut SheetApp, ui: &mut egui::Ui, id: egui::Id, font: 
         ed.keep_selection = true;
     }
     let synced = mine && !dialog_open && (ed.request_focus || ed.sync_caret);
+    let mut focus_after_show = false;
     if synced {
         // Take the focus and place the caret before the field reads this pass's input: the keys
         // typed in the pass that opened the edit (after the one that started it) go into the
         // field now, after the caret, instead of being lost to a field that has no focus yet.
-        if ed.request_focus {
+        // Not in a pass with a click (a double-click that opens the edit): egui takes the focus
+        // from a field the click was not on, and the field is new under the pointer. Then it
+        // takes the focus after it is shown, as before.
+        let click = ui.input(|i| i.pointer.any_pressed() || i.pointer.any_released());
+        if ed.request_focus && !click {
             ui.memory_mut(|m| m.request_focus(id));
         }
+        focus_after_show = ed.request_focus && click;
         ed.request_focus = false;
         // Closing a dialog that changed nothing (Cancel) gives the selection back as it was.
         let range = if ed.keep_selection && !ed.sync_caret {
@@ -556,6 +562,9 @@ pub fn editor_widget(app: &mut SheetApp, ui: &mut egui::Ui, id: egui::Id, font: 
     // Both editors are text inputs without a visible label next to them: name the one being shown.
     let accessible_name = (if on_sheet { app.ui.language.tr("Cell Editor") } else { app.ui.language.tr("Formula Bar") }).to_string();
     let resp = output.response.response.clone().accessible_name(accessible_name);
+    if focus_after_show {
+        resp.request_focus();
+    }
     if !synced && (resp.clicked() || resp.gained_focus()) {
         // Clicking into the other editor moves editing there.
         ed.from_formula_bar = id == egui::Id::unique("gridcraft.formula_bar");
