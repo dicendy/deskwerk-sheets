@@ -59,3 +59,15 @@ fn locale_independent_built_ins_keep_their_id() {
         assert_eq!(back, builtin_format(builtin).unwrap());
     }
 }
+
+#[test]
+fn euro_accounting_format_round_trips_as_its_code() {
+    // The Accounting Number Format button's code in German and French (`ACCOUNTING_EUR` in
+    // gridcraft-numfmt): no built-in id, so a custom <numFmt> that reads back character for
+    // character, as Excel and LibreOffice write and read it.
+    let code = "_-* #,##0.00\\ \"€\"_-;\\-* #,##0.00\\ \"€\"_-;_-* \"-\"??\\ \"€\"_-;_-@_-";
+    let (id, xml, back) = round_trip(code);
+    assert!(id >= 164, "written as built-in id {id}");
+    assert!(xml.contains(&format!("<numFmt numFmtId=\"{id}\" formatCode=\"_-* #,##0.00\\ &quot;€&quot;_-;")), "{xml}");
+    assert_eq!(back, code);
+}

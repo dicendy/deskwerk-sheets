@@ -1055,6 +1055,25 @@ fn german_and_french_separators() {
 }
 
 #[test]
+fn accounting_button_format_follows_the_locale() {
+    // en-US keeps the dollar format (built-in 44); German and French apply the euro accounting
+    // format their Excel does, shown with the locale's separators and the symbol after the number.
+    assert_eq!(builtin_format(44), Some(accounting_format(Locale::En)));
+    let euro = accounting_format(Locale::De);
+    assert_eq!(euro, ACCOUNTING_EUR);
+    assert_eq!(accounting_format(Locale::Fr), euro);
+    assert_eq!(f_in(euro, 1234.5, Locale::De).trim(), "1.234,50 €");
+    assert_eq!(f_in(euro, -1234.5, Locale::De).trim(), "-1.234,50 €");
+    assert_eq!(f_in(euro, 1234.5, Locale::Fr).trim(), "1\u{202F}234,50 €");
+    assert_eq!(f_in(euro, -0.5, Locale::Fr).trim(), "-0,50 €");
+    let zero = f_in(euro, 0.0, Locale::De);
+    assert!(zero.trim().starts_with('-') && zero.trim().ends_with('€') && !zero.contains('0'), "{zero:?}");
+    // The number is pushed right by a space fill, as in Excel's accounting formats.
+    let out = format_value_in(&Value::Number(1234.5), &NumberFormat::parse(euro), S, Locale::De);
+    assert_eq!(out.fill.map(|(c, _)| c), Some(' '));
+}
+
+#[test]
 fn german_and_french_dates() {
     // 2026-10-07 18:00, a Wednesday.
     let n = 46302.75;

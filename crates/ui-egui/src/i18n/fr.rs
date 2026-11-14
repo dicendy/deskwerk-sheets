@@ -1247,6 +1247,8 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
         "— VBA project (preserved, not run)" => "— Projet VBA (conservé, non exécuté)",
         "— {steps} steps" => "— {steps} étapes",
         "€ Euro" => "€ Euro",
+        "€ German (Germany)" => "€ Allemand (Allemagne)",
+        "€ French (France)" => "€ Français (France)",
         "Open Hyperlink" => "Ouvrir le lien hypertexte",
         "Display options for this workbook" => "Options d'affichage de ce classeur",
         "Edit Hyperlink" => "Modifier le lien hypertexte",

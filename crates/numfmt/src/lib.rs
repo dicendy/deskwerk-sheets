@@ -16,7 +16,7 @@ use gridcraft_core::{CellError, DateSystem, Locale, Value};
 
 pub use builtin::{builtin_format, builtin_id};
 pub use decimal::{format_general_fit, format_general_fit_in};
-pub use local::canonical_format_code;
+pub use local::{ACCOUNTING_EUR, accounting_format, canonical_format_code};
 
 use parse::{DatePart, SecKind, Section, Tok};
 use render::Out;

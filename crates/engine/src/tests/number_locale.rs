@@ -199,3 +199,106 @@ fn csv_import_follows_the_session_locale() {
     assert_eq!(v(&s, "A3"), Value::Number(-1234.5));
     assert_eq!(v(&s, "B3"), Value::Number(46387.0));
 }
+
+#[test]
+fn accounting_and_currency_take_the_locale_currency() {
+    // The Accounting Number Format button applied the dollar format in German and French too.
+    // It follows the number locale now, as Excel's follows the system currency, and the euro
+    // code it applies is written to and read from XLSX unchanged.
+    let fmt = |s: &Session, a: &str| {
+        let d = s.doc().unwrap();
+        let sh = d.wb.active().unwrap();
+        d.wb.styles.get(sh.style_id(CellRef::parse(a).unwrap())).num_fmt.as_str().to_string()
+    };
+    // The accounting fill shows as spaces; the number and the symbol are what matter here.
+    let bare = |s: &Session, a: &str| shown(s, a).replace(' ', "");
+    let mut s = s();
+    s.execute("range.setValues", json!({"range": "A1", "values": [[1234.5, 1234.5], [-1234.5, 0.5]]})).unwrap();
+    s.execute("app.locale.set", json!({"locale": "de"})).unwrap();
+    s.execute("home.accounting", json!({"range": "A1:A2"})).unwrap();
+    s.execute("home.numberFormat", json!({"range": "B1", "format": "Currency"})).unwrap();
+    s.execute("home.numberFormat", json!({"range": "B2", "format": "Accounting"})).unwrap();
+    assert_eq!(fmt(&s, "A1"), gridcraft_numfmt::ACCOUNTING_EUR);
+    assert_eq!(fmt(&s, "B2"), gridcraft_numfmt::ACCOUNTING_EUR);
+    assert_eq!(bare(&s, "A1"), "1.234,50€");
+    assert_eq!(bare(&s, "A2"), "-1.234,50€");
+    assert_eq!(shown(&s, "B1"), "1.234,50 €");
+    assert_eq!(bare(&s, "B2"), "0,50€");
+    super::reopen(&mut s);
+    assert_eq!(fmt(&s, "A1"), gridcraft_numfmt::ACCOUNTING_EUR);
+    assert_eq!(v(&s, "A1"), Value::Number(1234.5));
+    assert_eq!(bare(&s, "A1"), "1.234,50€");
+    assert_eq!(shown(&s, "B1"), "1.234,50 €");
+    // French shows the same code with its own separators.
+    s.execute("app.locale.set", json!({"locale": "fr"})).unwrap();
+    assert_eq!(bare(&s, "A1"), "1\u{202F}234,50€");
+    s.execute("home.accounting", json!({"range": "C1"})).unwrap();
+    assert_eq!(fmt(&s, "C1"), gridcraft_numfmt::ACCOUNTING_EUR);
+    // An explicit symbol still wins, and en-US keeps the dollar format (built-in 44).
+    s.execute("home.accounting", json!({"range": "C2", "symbol": "L"})).unwrap();
+    assert!(fmt(&s, "C2").contains("\"L\""), "{}", fmt(&s, "C2"));
+    s.execute("app.locale.set", json!({"locale": "en"})).unwrap();
+    s.execute("home.accounting", json!({"range": "D1"})).unwrap();
+    s.execute("home.numberFormat", json!({"range": "D2", "format": "Currency"})).unwrap();
+    assert_eq!(Some(fmt(&s, "D1").as_str()), gridcraft_numfmt::builtin_format(44));
+    assert_eq!(fmt(&s, "D2"), "\"$\"#,##0.00");
+}
+
+#[test]
+fn pasted_html_tables_follow_the_session_locale() {
+    // A table copied from a German web page or German Excel: the text flavour reads in the
+    // session's locale as plain text does, and the HTML's recorded numbers (x:num, sdval) still
+    // win, also over a German reading of an en-US page's text.
+    let mut s = s();
+    s.execute("app.locale.set", json!({"locale": "de"})).unwrap();
+    let text = "1.234,56\t31.12.2026\tRp10.000,00\t1.5\t1,23\n";
+    let html = r#"<table><tr><td>1.234,56</td><td x:num="46387">31.12.2026</td><td x:num="10000">Rp10.000,00</td>
+        <td x:num="1.5">1.5</td><td x:num="1.23456">1,23</td></tr></table>"#;
+    s.execute("edit.paste", json!({"at": "A1", "text": text, "html": html})).unwrap();
+    assert_eq!(v(&s, "A1"), Value::Number(1234.56));
+    assert_eq!(v(&s, "B1"), Value::Number(46387.0));
+    assert_eq!(shown(&s, "B1"), "31.12.2026");
+    // Not a number in any locale: the recorded one, with a format that shows the same text.
+    assert_eq!(v(&s, "C1"), Value::Number(10000.0));
+    assert_eq!(shown(&s, "C1"), "Rp10.000,00");
+    // "1.5" reads as 1 May in German; the page recorded 1.5, which wins without the date format.
+    assert_eq!(v(&s, "D1"), Value::Number(1.5));
+    assert_eq!(shown(&s, "D1"), "1,5");
+    // The recorded number keeps all its digits; the shown ones decide the format.
+    assert_eq!(v(&s, "E1"), Value::Number(1.23456));
+    assert_eq!(shown(&s, "E1"), "1,23");
+
+    // Without recorded numbers (a plain web page), the text alone reads in the locale.
+    s.execute("app.locale.set", json!({"locale": "fr"})).unwrap();
+    let html = "<table><tr><td>1\u{202F}234,5</td><td>31/12/2026</td></tr></table>";
+    s.execute("edit.paste", json!({"at": "A3", "text": "1\u{202F}234,5\t31/12/2026", "html": html})).unwrap();
+    assert_eq!(v(&s, "A3"), Value::Number(1234.5));
+    assert_eq!(v(&s, "B3"), Value::Number(46387.0));
+}
+
+#[test]
+fn html_table_files_follow_the_session_locale() {
+    // A web page opened as a workbook (an "Export to Excel" .xls that is HTML) reads its cells in
+    // the session's locale, as a CSV file does; recorded numbers stay those numbers.
+    let mut s = s();
+    s.execute("app.locale.set", json!({"locale": "de"})).unwrap();
+    let page = "<html><body><table><tr><th>Betrag</th><th>Datum</th><th>Wert</th></tr>\
+        <tr><td>1.234,56</td><td>31.12.2026</td><td x:num=\"1.5\">1,50</td></tr>\
+        <tr><td>-1.234,56</td><td>03.04.2026</td><td x:num=\"-2.25E-3\">-0,00225</td></tr></table></body></html>";
+    s.execute("file.open", json!({"name": "export.xls", "base64": crate::io::base64_encode(page.as_bytes())})).unwrap();
+    assert_eq!(v(&s, "A1"), Value::text("Betrag"));
+    assert_eq!(v(&s, "A2"), Value::Number(1234.56));
+    assert_eq!(v(&s, "B2"), Value::Number(46387.0));
+    assert_eq!(v(&s, "C2"), Value::Number(1.5));
+    assert_eq!(v(&s, "A3"), Value::Number(-1234.56));
+    assert_eq!(v(&s, "B3"), Value::Number(46115.0));
+    assert_eq!(v(&s, "C3"), Value::Number(-0.00225));
+    assert_eq!(shown(&s, "B2"), "31.12.2026");
+
+    s.execute("app.locale.set", json!({"locale": "fr"})).unwrap();
+    let page = "<table><tr><td>1&nbsp;234,5</td><td>31/12/2026</td><td x:num=\"0.25\">0,25</td></tr></table>";
+    s.execute("file.open", json!({"name": "export.html", "base64": crate::io::base64_encode(page.as_bytes())})).unwrap();
+    assert_eq!(v(&s, "A1"), Value::Number(1234.5));
+    assert_eq!(v(&s, "B1"), Value::Number(46387.0));
+    assert_eq!(v(&s, "C1"), Value::Number(0.25));
+}

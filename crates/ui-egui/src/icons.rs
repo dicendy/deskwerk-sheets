@@ -58,6 +58,8 @@ pub enum Icon {
     Wrap,
     Merge,
     Currency,
+    /// The Accounting Number Format button in a German or French number locale.
+    CurrencyEuro,
     Percent,
     Comma,
     DecInc,
@@ -422,6 +424,7 @@ fn paint_with(p: &Painter, rect: Rect, icon: Icon, c: Color32, pal: &Palette) {
             g.poly(&[(13.0, 8.0), (10.5, 6.5), (10.5, 9.5)], blue);
         }
         Icon::Currency => g.text(8.0, 8.5, "$", 12.0, c, (false, false)),
+        Icon::CurrencyEuro => g.text(8.0, 8.5, "€", 12.0, c, (false, false)),
         Icon::Percent => g.text(8.0, 8.5, "%", 11.0, c, (false, false)),
         Icon::Comma => g.text(8.0, 7.0, ",", 14.0, c, (true, false)),
         Icon::DecInc => {

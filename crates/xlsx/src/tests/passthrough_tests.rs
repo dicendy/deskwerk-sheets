@@ -1207,10 +1207,17 @@ fn an_edited_kept_chart_is_written_from_the_model() {
 
 #[test]
 fn a_surface_chart_is_kept_byte_for_byte() {
+    // The 3D surface and the 2D contour (Excel views a 2D surface from above).
+    for (group, rot_x) in [("surface3DChart", 15), ("surfaceChart", 90)] {
+        surface_chart_round_trips(group, rot_x);
+    }
+}
+
+fn surface_chart_round_trips(group: &str, rot_x: u8) {
     use gridcraft_model::ChartKind;
     let chart = format!(
         r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<c:chartSpace xmlns:c="{NS_C}" xmlns:a="{NS_A}" xmlns:r="{NS_R}"><c:chart><c:autoTitleDeleted val="1"/><c:view3D><c:rotX val="15"/><c:rotY val="20"/><c:rAngAx val="0"/></c:view3D><c:plotArea><c:layout/><c:surface3DChart><c:wireframe val="0"/><c:ser><c:idx val="0"/><c:order val="0"/><c:tx><c:strRef><c:f>Data!$B$1</c:f></c:strRef></c:tx><c:spPr><a:solidFill><a:srgbClr val="70AD47"/></a:solidFill></c:spPr><c:cat><c:strRef><c:f>Data!$A$2:$A$4</c:f></c:strRef></c:cat><c:val><c:numRef><c:f>Data!$B$2:$B$4</c:f></c:numRef></c:val></c:ser><c:bandFmts/><c:axId val="1"/><c:axId val="2"/><c:axId val="3"/></c:surface3DChart><c:catAx><c:axId val="1"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="b"/><c:crossAx val="2"/></c:catAx><c:valAx><c:axId val="2"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="l"/><c:crossAx val="1"/></c:valAx><c:serAx><c:axId val="3"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="b"/><c:crossAx val="2"/></c:serAx></c:plotArea><c:legend><c:legendPos val="r"/><c:overlay val="0"/></c:legend><c:plotVisOnly val="1"/></c:chart></c:chartSpace>"#
+<c:chartSpace xmlns:c="{NS_C}" xmlns:a="{NS_A}" xmlns:r="{NS_R}"><c:chart><c:autoTitleDeleted val="1"/><c:view3D><c:rotX val="{rot_x}"/><c:rotY val="20"/><c:rAngAx val="0"/></c:view3D><c:plotArea><c:layout/><c:{group}><c:wireframe val="0"/><c:ser><c:idx val="0"/><c:order val="0"/><c:tx><c:strRef><c:f>Data!$B$1</c:f></c:strRef></c:tx><c:spPr><a:solidFill><a:srgbClr val="70AD47"/></a:solidFill></c:spPr><c:cat><c:strRef><c:f>Data!$A$2:$A$4</c:f></c:strRef></c:cat><c:val><c:numRef><c:f>Data!$B$2:$B$4</c:f></c:numRef></c:val></c:ser><c:bandFmts/><c:axId val="1"/><c:axId val="2"/><c:axId val="3"/></c:{group}><c:catAx><c:axId val="1"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="b"/><c:crossAx val="2"/></c:catAx><c:valAx><c:axId val="2"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="l"/><c:crossAx val="1"/></c:valAx><c:serAx><c:axId val="3"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="b"/><c:crossAx val="2"/></c:serAx></c:plotArea><c:legend><c:legendPos val="r"/><c:overlay val="0"/></c:legend><c:plotVisOnly val="1"/></c:chart></c:chartSpace>"#
     );
     let (wb, rep) = read_xlsx(&embedded_chart_package(&chart, CHART_RELS)).unwrap();
     assert!(!rep.warnings.iter().any(|w| w.contains("chart")), "{:?}", rep.warnings);
@@ -1225,7 +1232,7 @@ fn a_surface_chart_is_kept_byte_for_byte() {
     titled.sheet_mut(0).unwrap().charts[0].title = Some("Terrain".into());
     let u = Unpacked::new(&write_xlsx(&titled).unwrap());
     let written = u.text(&written_chart(&u));
-    assert!(written.contains("<c:surface3DChart><c:wireframe") && written.contains("<a:t>Terrain</a:t>"), "{written}");
+    assert!(written.contains(&format!("<c:{group}><c:wireframe")) && written.contains("<a:t>Terrain</a:t>"), "{written}");
     // Another type is written from the model.
     let mut columns = wb.clone();
     columns.sheet_mut(0).unwrap().charts[0].kind = ChartKind::ColumnClustered;

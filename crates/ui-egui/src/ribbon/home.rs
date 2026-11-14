@@ -13,6 +13,8 @@ const ACCOUNTING_SYMBOLS: &[(&str, &str)] = &[
     ("$ English (United States)", "_(\"$\"* #,##0.00_);_(\"$\"* \\(#,##0.00\\);_(\"$\"* \"-\"??_);_(@_)"),
     ("£ English (United Kingdom)", "_-[$£-809]* #,##0.00_-;-[$£-809]* #,##0.00_-;_-[$£-809]* \"-\"??_-;_-@_-"),
     ("€ Euro", "_-[$€-x-euro2] * #,##0.00_-;-[$€-x-euro2] * #,##0.00_-;_-[$€-x-euro2] * \"-\"??_-;_-@_-"),
+    ("€ German (Germany)", gridcraft_engine::numfmt::ACCOUNTING_EUR),
+    ("€ French (France)", gridcraft_engine::numfmt::ACCOUNTING_EUR),
     ("¥ Japanese", "_-[$¥-411]* #,##0_-;-[$¥-411]* #,##0_-;_-[$¥-411]* \"-\"_-;_-@_-"),
     ("¥ Chinese (PRC)", "_-[$¥-804]* #,##0.00_-;-[$¥-804]* #,##0.00_-;_-[$¥-804]* \"-\"??_-;_-@_-"),
     ("₹ English (India)", "_-[$₹-4009]* #,##0.00_-;-[$₹-4009]* #,##0.00_-;_-[$₹-4009]* \"-\"??_-;_-@_-"),
@@ -328,7 +330,9 @@ pub(super) fn home(app: &mut SheetApp, ui: &mut Ui) {
     ui.vertical(|ui| {
         number_combo(app, ui, &st);
         ui.horizontal(|ui| {
-            let (c, ca) = split_button(ui, Icon::Currency, None, "Accounting Number Format");
+            // The button applies the number locale's currency (`home.accounting`), so it shows its symbol.
+            let currency = if app.session.locale() == gridcraft_engine::core::Locale::En { Icon::Currency } else { Icon::CurrencyEuro };
+            let (c, ca) = split_button(ui, currency, None, "Accounting Number Format");
             control_keytip(app, ui, &ca, "home.accounting");
             if c {
                 act(app, "home.accounting", json!({}));
@@ -686,7 +690,7 @@ fn number_combo(app: &mut SheetApp, ui: &mut Ui, st: &Style) {
     let items: Vec<(&str, String)> = names
         .iter()
         .map(|n| {
-            let code = gridcraft_engine::cmd::format::format_code_for(n);
+            let code = gridcraft_engine::cmd::format::format_code_for_in(n, app.session.locale());
             let preview = app.session.active().map(|d| gridcraft_engine::display::format(&sample, code, &d.wb).text).unwrap_or_default();
             (*n, format!("{:<12}   {preview}", lang.tr(n)))
         })
@@ -812,5 +816,22 @@ mod accounting_symbol_tests {
             let symbol = tag.trim_start_matches("[$").split('-').next().unwrap_or_default();
             assert_eq!(out.fill.map(|(c, at)| (c, out.text[..at].trim_start())), Some((' ', symbol)), "{label}");
         }
+    }
+
+    #[test]
+    fn accounting_dropdown_offers_the_german_and_french_euro_format() {
+        // The format the button applies in a German or French number locale is in the list too.
+        for label in ["€ German (Germany)", "€ French (France)"] {
+            let code = ACCOUNTING_SYMBOLS.iter().find(|(l, _)| *l == label).map(|(_, c)| *c);
+            assert_eq!(code, Some(gridcraft_engine::numfmt::ACCOUNTING_EUR), "{label}");
+        }
+        let code = gridcraft_engine::numfmt::ACCOUNTING_EUR;
+        let de = gridcraft_engine::numfmt::format_value_in(
+            &Value::Number(1234.5),
+            &NumberFormat::parse(code),
+            DateSystem::D1900,
+            gridcraft_engine::core::Locale::De,
+        );
+        assert_eq!(de.text.trim(), "1.234,50 €");
     }
 }

@@ -215,10 +215,15 @@ pub fn specs() -> Vec<CommandSpec> {
 const ACCOUNTING: &str = "_(\"$\"* #,##0.00_);_(\"$\"* \\(#,##0.00\\);_(\"$\"* \"-\"??_);_(@_)";
 const COMMA: &str = "_(* #,##0.00_);_(* \\(#,##0.00\\);_(* \"-\"??_);_(@_)";
 
-/// Accounting Number Format with the currency symbol to use (Excel's own button takes the system
-/// currency; `symbol` is how the control channel picks another one, e.g. `"L"` for lempiras).
+/// Accounting Number Format with the currency symbol to use. Like Excel's own button, which takes
+/// the system currency, it follows the session's number locale without one: the dollar format in
+/// en-US, the euro format German and French Excel apply (`1.234,50 €`). `symbol` is how the
+/// control channel picks another one, e.g. `"L"` for lempiras.
 fn accounting(s: &mut Session, p: &Json) -> Result<Json> {
-    let symbol = str_param(p, "symbol").unwrap_or("$");
+    let Some(symbol) = str_param(p, "symbol") else {
+        let code = gridcraft_numfmt::accounting_format(s.locale());
+        return set_fmt(s, p, code);
+    };
     // The symbol goes into a quoted literal: a quote or a backslash would end it, and a control
     // character would reach the format's text as-is.
     if symbol.contains(['"', '\\']) || symbol.chars().any(char::is_control) {
@@ -705,7 +710,19 @@ fn merge(s: &mut Session, p: &Json, how: &str) -> Result<Json> {
     ok()
 }
 
-/// Ribbon format names → codes.
+/// Ribbon format names → codes in the session's number locale: German and French take the euro
+/// for Currency and Accounting (`1.234,50 €`), as their Excel does; everything else is
+/// [`format_code_for`].
+pub fn format_code_for_in(name: &str, loc: gridcraft_core::Locale) -> &str {
+    match (name, loc) {
+        (_, gridcraft_core::Locale::En) => format_code_for(name),
+        ("Currency", _) => "#,##0.00\\ \"€\"",
+        ("Accounting", _) => gridcraft_numfmt::accounting_format(loc),
+        _ => format_code_for(name),
+    }
+}
+
+/// Ribbon format names → codes (en-US).
 pub fn format_code_for(name: &str) -> &str {
     match name {
         "General" => "General",
@@ -727,7 +744,7 @@ pub fn format_code_for(name: &str) -> &str {
 fn number_format(s: &mut Session, p: &Json) -> Result<Json> {
     let code = str_param(p, "code")
         .map(str::to_string)
-        .or_else(|| str_param(p, "format").map(|f| format_code_for(f).to_string()))
+        .or_else(|| str_param(p, "format").map(|f| format_code_for_in(f, s.locale()).to_string()))
         .ok_or_else(|| bad("home.numberFormat", "missing `format` or `code`"))?;
     set_fmt(s, p, &code)
 }

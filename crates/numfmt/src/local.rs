@@ -22,6 +22,20 @@ pub(crate) fn short_date(fmt: &NumberFormat, loc: Locale) -> Option<NumberFormat
     Some(NumberFormat::parse_cached(code))
 }
 
+/// The euro accounting format a German or French Excel applies with its Accounting Number Format
+/// button, as it is stored in an `.xlsx` file: the symbol after the number, the minus in front,
+/// a dash for zero. Shown in the locale's separators (`1.234,50 €`, `1 234,50 €`).
+pub const ACCOUNTING_EUR: &str = "_-* #,##0.00\\ \"€\"_-;\\-* #,##0.00\\ \"€\"_-;_-* \"-\"??\\ \"€\"_-;_-@_-";
+
+/// The format the Accounting Number Format button applies in `loc`: the US dollar format
+/// (built-in 44) in en-US, [`ACCOUNTING_EUR`] in German and French.
+pub fn accounting_format(loc: Locale) -> &'static str {
+    match loc {
+        Locale::En => "_(\"$\"* #,##0.00_);_(\"$\"* \\(#,##0.00\\);_(\"$\"* \"-\"??_);_(@_)",
+        Locale::De | Locale::Fr => ACCOUNTING_EUR,
+    }
+}
+
 /// Numeric text as `TEXT()` converts it: en-US reads it as before, German and French with the
 /// locale's separators and day-first dates.
 pub(crate) fn number_text(t: &str, sys: DateSystem, loc: Locale) -> Option<f64> {
