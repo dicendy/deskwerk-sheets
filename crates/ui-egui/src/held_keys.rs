@@ -109,18 +109,22 @@ mod tests {
         Event::Text(s.into())
     }
 
+    /// Runs one pass over `events`; the pass's font textures are dropped (there is no renderer).
+    fn pass(ctx: &egui::Context, events: Vec<Event>, mut f: impl FnMut(&mut egui::Ui)) {
+        let mut output = ctx.run_ui(egui::RawInput { events, ..Default::default() }, &mut f);
+        output.textures_delta.clear();
+    }
+
     #[test]
     fn keys_after_the_first_command_key_wait_for_the_next_pass_in_order() {
         let ctx = egui::Context::default();
         let typed = vec![text("a"), text("b"), key(Key::Enter, Modifiers::NONE), key(Key::S, Modifiers::COMMAND), text("c")];
-        let input = egui::RawInput { events: typed, ..Default::default() };
-        let _ = ctx.run_ui(input, |ui| {
+        pass(&ctx, typed, |ui| {
             hold_after_first_command_key(ui.ctx());
             let now = ui.input(|i| i.events.clone());
             assert_eq!(now, vec![text("a"), text("b"), key(Key::Enter, Modifiers::NONE)]);
         });
-        let input = egui::RawInput { events: vec![text("d")], ..Default::default() };
-        let _ = ctx.run_ui(input, |ui| {
+        pass(&ctx, vec![text("d")], |ui| {
             release(ui.ctx());
             let now = ui.input(|i| i.events.clone());
             assert_eq!(now, vec![key(Key::S, Modifiers::COMMAND), text("c"), text("d")]);
@@ -131,8 +135,7 @@ mod tests {
     fn plain_typing_is_not_held() {
         let ctx = egui::Context::default();
         let typed = vec![text("a"), key(Key::Backspace, Modifiers::NONE), text("b")];
-        let input = egui::RawInput { events: typed.clone(), ..Default::default() };
-        let _ = ctx.run_ui(input, |ui| {
+        pass(&ctx, typed.clone(), |ui| {
             hold_after_first_command_key(ui.ctx());
             assert_eq!(ui.input(|i| i.events.clone()), typed);
         });
@@ -143,8 +146,7 @@ mod tests {
         let ctx = egui::Context::default();
         let pos = egui::pos2(1.0, 1.0);
         let typed = vec![key(Key::ArrowDown, Modifiers::NONE), Event::PointerMoved(pos), text("W"), text("o")];
-        let input = egui::RawInput { events: typed, ..Default::default() };
-        let _ = ctx.run_ui(input, |ui| {
+        pass(&ctx, typed, |ui| {
             drop_handled(ui.ctx(), 2, true);
             assert_eq!(ui.input(|i| i.events.clone()), vec![Event::PointerMoved(pos), text("o")]);
         });
