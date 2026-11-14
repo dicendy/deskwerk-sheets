@@ -467,6 +467,12 @@ pub fn editor_widget(app: &mut SheetApp, ui: &mut egui::Ui, id: egui::Id, font: 
     // Keys the editor handles itself (before the TextEdit sees them), only where it has focus.
     let focused = ui.ctx().memory(|m| m.focused());
     let has_focus = focused == Some(id) || (mine && (ed.request_focus || focused.is_none()));
+    // A burst of typing in one slow pass: the editor acts on it up to the first key that can end
+    // the edit (Enter, Tab, a shortcut), and what was typed after that waits for the next pass,
+    // where the next cell or the grid gets it in order.
+    if mine && has_focus && app.dialog.is_none() && app.message.is_none() {
+        crate::held_keys::hold_after_first_command_key(ui.ctx());
+    }
     let EditorKeyOutcome { action, arrow, cancel, to_python } = editor_shortcuts(app, ui, id, &mut ed, mine, has_focus);
     // The text widget.
     let refs = formula_refs(&ed.text, ed.locale);
@@ -501,13 +507,44 @@ pub fn editor_widget(app: &mut SheetApp, ui: &mut egui::Ui, id: egui::Id, font: 
         ed.keep_selection = true;
     }
     let synced = mine && !dialog_open && (ed.request_focus || ed.sync_caret);
+    let mut focus_after_show = false;
+    if synced {
+        // Take the focus and place the caret before the field reads this pass's input: the keys
+        // typed in the pass that opened the edit (after the one that started it) go into the
+        // field now, after the caret, instead of being lost to a field that has no focus yet.
+        // Not in a pass with a click (a double-click that opens the edit): egui takes the focus
+        // from a field the click was not on, and the field is new under the pointer. Then it
+        // takes the focus after it is shown, as before. Nor in the pass after a modal (a
+        // validation alert) closed: egui still blocks the field this pass and would drop the focus.
+        let click = ui.input(|i| i.pointer.any_pressed() || i.pointer.any_released());
+        let layer = ui.layer_id();
+        let blocked = !ui.memory(|m| m.allows_interaction(layer));
+        let early = ed.request_focus && !click && !blocked;
+        if early {
+            ui.memory_mut(|m| m.request_focus(id));
+        }
+        focus_after_show = ed.request_focus && !early;
+        ed.request_focus = false;
+        // Closing a dialog that changed nothing (Cancel) gives the selection back as it was.
+        let range = if ed.keep_selection && !ed.sync_caret {
+            egui::text::CCursorRange::two(egui::text::CCursor::new(ed.anchor), egui::text::CCursor::new(ed.caret))
+        } else {
+            ed.anchor = ed.caret;
+            egui::text::CCursorRange::one(egui::text::CCursor::new(ed.caret))
+        };
+        ed.sync_caret = false;
+        ed.keep_selection = false;
+        let mut state = TextEdit::load_state(ui.ctx(), id).unwrap_or_default();
+        state.cursor.set_char_range(Some(range));
+        state.store(ui.ctx(), id);
+    }
     let edit = if multiline || ed.text.contains('\n') { TextEdit::multiline(&mut ed.text) } else { TextEdit::singleline(&mut ed.text) };
     let edit = edit.interactive(!dialog_open);
     let caret_index = ed.caret;
     // The in-cell editor grows with its text and never scrolls, so the field keeps its whole width
     // for the text (a scroll area would take the bar's width off it and wrap the text narrower
     // than the cell does). The formula bar shows its lines and scrolls past them.
-    let mut output = if on_sheet {
+    let output = if on_sheet {
         show_edit(edit, ui, id, font, width, &mut layouter)
     } else {
         egui::ScrollArea::vertical()
@@ -529,32 +566,16 @@ pub fn editor_widget(app: &mut SheetApp, ui: &mut egui::Ui, id: egui::Id, font: 
     // Both editors are text inputs without a visible label next to them: name the one being shown.
     let accessible_name = (if on_sheet { app.ui.language.tr("Cell Editor") } else { app.ui.language.tr("Formula Bar") }).to_string();
     let resp = output.response.response.clone().accessible_name(accessible_name);
-    if synced {
-        if ed.request_focus {
-            resp.request_focus();
-        }
-        ed.request_focus = false;
-        // Closing a dialog that changed nothing (Cancel) gives the selection back as it was.
-        let range = if ed.keep_selection && !ed.sync_caret {
-            egui::text::CCursorRange::two(egui::text::CCursor::new(ed.anchor), egui::text::CCursor::new(ed.caret))
-        } else {
-            ed.anchor = ed.caret;
-            egui::text::CCursorRange::one(egui::text::CCursor::new(ed.caret))
-        };
-        ed.sync_caret = false;
-        ed.keep_selection = false;
-        output.state.cursor.set_char_range(Some(range));
-        output.state.store(ui.ctx(), id);
-    } else if resp.clicked() || resp.gained_focus() {
+    if focus_after_show {
+        resp.request_focus();
+    }
+    if !synced && (resp.clicked() || resp.gained_focus()) {
         // Clicking into the other editor moves editing there.
         ed.from_formula_bar = id == egui::Id::unique("gridcraft.formula_bar");
         ed.enter_mode = false;
         app.session.mode = gridcraft_engine::Mode::Edit;
     }
-    if !synced
-        && !dialog_open
-        && let Some(r) = output.cursor_range
-    {
+    if !dialog_open && let Some(r) = output.cursor_range {
         ed.caret = r.primary.index.into();
         ed.anchor = r.secondary.index.into();
     }
