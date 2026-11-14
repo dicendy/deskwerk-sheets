@@ -11,7 +11,7 @@
 use egui::{Event, Key};
 
 fn held_id(ctx: &egui::Context) -> egui::Id {
-    egui::Id::new("deskwerk.held_keys").with(ctx.viewport_id())
+    egui::Id::unique("deskwerk.held_keys").with(ctx.viewport_id())
 }
 
 /// Keyboard input, as opposed to pointer, touch and window events (which egui has already
