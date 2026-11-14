@@ -288,7 +288,9 @@ fn wrapped_cell_text_y_keeps_vertical_alignment_when_text_is_taller_than_the_row
 /// 550 (what Excel lays out with).
 fn calibri_line_box() -> LineBox {
     let em = 2048.0;
-    LineBox { lift: (1950.0 - 1536.0) / em, extra: (1950.0 + 550.0 - (1536.0 + 512.0 + 452.0)) / em }
+    let (hhea_ascent, hhea_descent, hhea_gap) = (1536.0, 512.0, 452.0);
+    let (win_ascent, win_descent) = (1950.0, 550.0);
+    LineBox { lift: (win_ascent - hhea_ascent) / em, extra: (win_ascent + win_descent - (hhea_ascent + hhea_descent + hhea_gap)) / em }
 }
 
 #[test]
