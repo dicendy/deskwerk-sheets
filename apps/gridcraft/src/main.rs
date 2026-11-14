@@ -12,6 +12,7 @@
 #[cfg(target_os = "macos")]
 mod apple_events;
 mod control_server;
+mod font_pack;
 #[cfg(any(target_os = "windows", target_os = "macos", test))]
 mod graphics;
 mod logging;
@@ -43,6 +44,7 @@ impl eframe::App for App {
             apple_events::poll(&self.3, &mut self.0, ctx);
         }
         self.0.logic(ctx);
+        font_pack::pump(ctx);
         self.1.logic(&mut self.0, ctx);
         if ctx.input(|input| input.viewport().close_requested()) && self.0.printing.busy() {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
@@ -391,6 +393,7 @@ fn main() -> eframe::Result<()> {
                     return Err("the app was already created".into());
                 };
                 SheetApp::setup_context_for_language(&cc.egui_ctx, app.ui.dark, app.ui.language);
+                font_pack::start(&cc.egui_ctx);
                 if let Some(port) = control_port {
                     match control_server::start(port, control_token.clone(), cc.egui_ctx.clone()) {
                         Ok(rx) => app.control_rx = Some(rx),

@@ -328,7 +328,7 @@ pub fn bind_faces(fonts: &mut egui::FontDefinitions, family: &str, faces: &[Face
     bind_faces_with(fonts, family, faces, &read)
 }
 
-/// [`bind_faces`] with the font data from `load` instead of the face's file: the web build's pack
+/// [`bind_faces`] with the font data from `load` instead of the face's file: the font pack
 /// and local fonts arrive as bytes. A face `load` has no data for is skipped like an unreadable file.
 pub fn bind_faces_with(
     fonts: &mut egui::FontDefinitions,

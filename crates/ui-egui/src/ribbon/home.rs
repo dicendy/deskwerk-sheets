@@ -603,7 +603,7 @@ fn substitute_tip(lang: crate::i18n::Language, name: &str) -> String {
 }
 
 /// The font list: Excel's fonts (each drawn by itself where installed, else by its stand-in from
-/// [`crate::font_pack::SUBSTITUTES`]) and the popular open fonts of the web build's font pack, A–Z.
+/// [`crate::font_pack::SUBSTITUTES`]) and the popular open fonts of the font pack, A–Z.
 pub const FONTS: &[&str] = &[
     "Aptos",
     "Aptos Display",

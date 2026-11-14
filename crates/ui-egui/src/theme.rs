@@ -7,9 +7,10 @@
 //! `CRAFT_FONTS_DIR` also embeds the permitted OFL craft-fonts faces (barred Adobe/Source/Noto CJK
 //! families never enter it, and a web build keeps only its explicit allowlist). Native builds opt
 //! into craft-fonts' OFL LXGW Chinese face, so a host without a Han system face still draws Chinese
-//! interface text. The web build adds its font pack ([`crate::font_pack`]): open stand-ins for the
-//! Office fonts and popular open fonts, served beside the web app (not compiled in) and bound under
-//! the workbook's font names; those are the only font files in this repo.
+//! interface text. The web build and the desktop app add the font pack ([`crate::font_pack`]): open
+//! stand-ins for the Office fonts and popular open fonts, served beside the web app or embedded in
+//! the desktop app (not in this crate), and bound under the workbook's font names; those are the
+//! only font files in this repo.
 //!
 //! Chrome colours belong in [`Tokens`], each with a light and a dark value; colours
 //! drawn on the sheet keep their light value in both themes, because the sheet stays white. The

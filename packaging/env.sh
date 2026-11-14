@@ -56,10 +56,14 @@ copy_docs() {
   return
 }
 
-# Builds made with craft-fonts (CRAFT_FONTS_DIR, set by the release workflow) embed its fonts, so
-# the package carries their licences as OFL-<family-dir>.txt. Nothing without CRAFT_FONTS_DIR.
+# Every build carries the font pack (apps/gridcraft-web/fonts: served by the web build, embedded
+# in the desktop app), so every package carries its licences in font-licences/ with its manifest.
+# Builds made with craft-fonts (CRAFT_FONTS_DIR, set by the release workflow) embed its fonts too,
+# so the package also carries their licences as OFL-<family-dir>.txt.
 copy_font_licences() {
   local dest="$1" f
+  mkdir -p "$dest/font-licences"
+  cp "$ROOT"/apps/gridcraft-web/fonts/licenses/*.txt "$ROOT/apps/gridcraft-web/fonts/MANIFEST.tsv" "$dest/font-licences/"
   [[ -n "${CRAFT_FONTS_DIR:-}" ]] || return 0
   for f in "$CRAFT_FONTS_DIR"/fonts/*/OFL.txt; do
     if [[ -f "$f" ]]; then cp "$f" "$dest/OFL-$(basename "$(dirname "$f")").txt"; fi

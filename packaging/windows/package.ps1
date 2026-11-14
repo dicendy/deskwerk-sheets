@@ -96,6 +96,11 @@ $Docs = Join-Path $Stage 'font-licences'
 New-Item -ItemType Directory -Force -Path $Docs | Out-Null
 # Bundled dependency font notices are required even without optional craft-fonts.
 Copy-Item -LiteralPath (Join-Path $Root 'NOTICE'), (Join-Path $Root 'ATTRIBUTION.md') -Destination $Docs
+# The font pack (apps\gridcraft-web\fonts) is embedded in deskwerk-sheets.exe: ship its licences.
+$PackFonts = Join-Path $Root 'apps\gridcraft-web\fonts'
+$PackLicences = Join-Path $Docs 'font-licences'
+New-Item -ItemType Directory -Force -Path $PackLicences | Out-Null
+Copy-Item -Path (Join-Path $PackFonts 'licenses\*.txt'), (Join-Path $PackFonts 'MANIFEST.tsv') -Destination $PackLicences
 $HasCraftFontLicences = 1
 if ($env:CRAFT_FONTS_DIR) {
   foreach ($ofl in Get-ChildItem -Path (Join-Path $env:CRAFT_FONTS_DIR 'fonts\*\OFL.txt') -File -ErrorAction SilentlyContinue) {
@@ -124,6 +129,7 @@ $Portable = Join-Path $TargetDir "windows-package\deskwerk-sheets-$Version-windo
 Remove-Item -Recurse -Force $Portable -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Portable | Out-Null
 Copy-Item (Join-Path $Stage '*.exe') $Portable
+Copy-Item -Recurse $PackLicences (Join-Path $Portable 'font-licences')
 foreach ($f in 'README.md', 'LICENSE', 'LICENSE-MIT', 'LICENSE-APACHE', 'NOTICE', 'ATTRIBUTION.md') {
   $p = Join-Path $Root $f
   if (Test-Path $p) { Copy-Item $p $Portable }

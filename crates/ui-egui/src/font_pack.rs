@@ -1,4 +1,4 @@
-//! The web build's font pack: open fonts that stand in for the Office fonts a workbook names, plus
+//! The font pack of the web build and the desktop app: open fonts that stand in for the Office fonts a workbook names, plus
 //! popular open fonts offered by their own names, and the fonts of the user's computer where the
 //! browser lets us read them (Local Font Access).
 //!
@@ -16,7 +16,8 @@
 //! font of this computer read through Local Font Access; a pack family of that name; the name's
 //! substitute from [`SUBSTITUTES`]; else the built-in cell roles of [`crate::theme::cell_family`].
 //!
-//! Native builds never enable the pack: there the operating system's fonts are used.
+//! The desktop app embeds the same files (`apps/gridcraft/src/font_pack.rs`) and hands them over
+//! the same way; there the installed fonts come first and Local Font Access doesn't apply.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
@@ -288,7 +289,7 @@ struct Registry {
     local_api: bool,
     local: Option<Vec<LocalFace>>,
     local_access_wanted: bool,
-    list: Option<(u64, Arc<Vec<(String, bool)>>)>,
+    list: Option<((u64, bool), Arc<Vec<(String, bool)>>)>,
 }
 
 fn registry() -> std::sync::MutexGuard<'static, Registry> {
@@ -418,7 +419,22 @@ pub fn take_local_access_request() -> bool {
 /// substitute for `name`, and no font of this computer goes by it.
 pub fn substituted(name: &str) -> bool {
     let reg = registry();
-    reg.enabled && substitute(name).is_some() && !reg.has_local(name)
+    reg.enabled && substitute(name).is_some() && !reg.has_local(name) && !installed(name)
+}
+
+/// Whether the desktop app's catalog of installed fonts has `name` (which then draws itself, see
+/// [`bind_used`]'s `installed`). Never on the web, whose computer fonts are [`set_local_fonts`]'s,
+/// nor in unit tests, which must not depend on the test machine's fonts.
+fn installed(name: &str) -> bool {
+    #[cfg(any(test, target_arch = "wasm32"))]
+    {
+        let _ = name;
+        false
+    }
+    #[cfg(not(any(test, target_arch = "wasm32")))]
+    {
+        !crate::fonts::installed_among(&[name.trim().to_string()]).is_empty()
+    }
 }
 
 /// The font list: the Office and open font names ([`crate::ribbon::FONTS`]), then the families of
@@ -426,8 +442,10 @@ pub fn substituted(name: &str) -> bool {
 /// Cached until the next [`generation`].
 pub fn font_list() -> Arc<Vec<(String, bool)>> {
     let mut reg = registry();
-    if let Some((generation, list)) = &reg.list
-        && *generation == reg.generation
+    // The desktop catalog of installed fonts may finish after the list was first built.
+    let key = (reg.generation, crate::fonts::scan_done());
+    if let Some((built, list)) = &reg.list
+        && *built == key
     {
         return Arc::clone(list);
     }
@@ -438,9 +456,10 @@ pub fn font_list() -> Arc<Vec<(String, bool)>> {
         extra.sort_by_key(|n| n.to_lowercase());
         names.extend(extra);
     }
-    let list: Vec<(String, bool)> = names.into_iter().map(|n| (n.clone(), reg.enabled && substitute(&n).is_some() && !reg.has_local(&n))).collect();
+    let list: Vec<(String, bool)> =
+        names.into_iter().map(|n| (n.clone(), reg.enabled && substitute(&n).is_some() && !reg.has_local(&n) && !installed(&n))).collect();
     let list = Arc::new(list);
-    reg.list = Some((reg.generation, Arc::clone(&list)));
+    reg.list = Some((key, Arc::clone(&list)));
     list
 }
 

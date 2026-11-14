@@ -16,7 +16,8 @@ Builds made with craft-fonts (CRAFT_FONTS_DIR) also embed the fonts listed there
 Font License 1.1.
 
 The web build serves a font pack from apps/gridcraft-web/fonts (copied next to index.html as
-fonts/). Every file is unmodified from its pinned upstream source, listed with its sha256 in
+fonts/), and the desktop app embeds the same files (its packages carry the licence texts and the
+manifest in font-licences/). Every file is unmodified from its pinned upstream source, listed with its sha256 in
 fonts/MANIFEST.tsv, and distributed under the licence below, whose full text (with the copyright
 and any Reserved Font Names) ships beside it in fonts/licenses/:
 
