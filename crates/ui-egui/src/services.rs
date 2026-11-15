@@ -1,6 +1,8 @@
 use super::printing;
 
 type PickSave = Box<dyn Fn(&str) -> Option<String>>;
+/// Lists (name, path) pairs such as ("Documents", "C:\\Users\\me\\Documents").
+type KnownFolders = Box<dyn Fn() -> Vec<(String, String)>>;
 type OpenUrl = Box<dyn Fn(&str)>;
 type CopyHtml = Box<dyn FnMut(&str, &str) -> Result<(), String>>;
 type Download = Box<dyn Fn(&str, &[u8])>;
@@ -20,7 +22,7 @@ pub struct Services {
     pub pick_folder: Option<PickSave>,
     /// Desktop: the user's Documents and Desktop folders as (English name, path), for the Save
     /// file window's folder list. `None` looks for them in the home folder.
-    pub known_folders: Option<Box<dyn Fn() -> Vec<(String, String)>>>,
+    pub known_folders: Option<KnownFolders>,
     /// Native picture picker (PNG/JPEG), separate from workbook opening.
     pub pick_picture: Option<Box<dyn Fn() -> Option<String>>>,
     /// Browser picture picker. Each dialog owns its inbox, so canceled picks cannot

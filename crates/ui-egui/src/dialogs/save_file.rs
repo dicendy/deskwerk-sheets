@@ -180,7 +180,7 @@ pub(super) fn show(app: &mut SheetApp, ctx: &egui::Context, mut d: Dialog) {
         }
     }
     let frame = egui::Frame::window(&ctx.global_style()).inner_margin(egui::Margin::same(20)).corner_radius(8.0);
-    egui::Modal::new(egui::Id::new("save_file_dialog")).frame(frame).show(ctx, |ui| {
+    egui::Modal::new(egui::Id::unique("save_file_dialog")).frame(frame).show(ctx, |ui| {
         ui.set_width(WIDTH);
         if let Some(a) = form(app, ui, &mut d, &t) {
             action = Some(a);
@@ -188,7 +188,7 @@ pub(super) fn show(app: &mut SheetApp, ctx: &egui::Context, mut d: Dialog) {
     });
     if let Some(path) = d.values.get("replace").and_then(Json::as_str).map(str::to_string) {
         let frame = egui::Frame::window(&ctx.global_style()).inner_margin(egui::Margin::same(20)).corner_radius(8.0);
-        egui::Modal::new(egui::Id::new("save_file_replace")).frame(frame).show(ctx, |ui| {
+        egui::Modal::new(egui::Id::unique("save_file_replace")).frame(frame).show(ctx, |ui| {
             ui.set_width(360.0);
             ui.label(RichText::new(lang.tr("Save file")).font(theme::ui_font(16.0)).color(t.accent));
             ui.add_space(8.0);
@@ -316,7 +316,7 @@ fn name_box(ui: &mut egui::Ui, d: &mut Dialog, t: &Tokens, label: egui::Id) {
     let edit_rect = egui::Rect::from_min_max(pos2(rect.left() + 10.0, rect.top() + 2.0), pos2(ext.left() - 6.0, rect.bottom() - 2.0));
     let mut name = text(d, "name").to_string();
     let edit = egui::TextEdit::singleline(&mut name)
-        .id(egui::Id::new("save_file_name"))
+        .id(egui::Id::unique("save_file_name"))
         .frame(egui::Frame::NONE)
         .margin(egui::Margin::symmetric(0, 6))
         .font(theme::ui_font(14.0))
