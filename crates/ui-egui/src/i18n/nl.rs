@@ -556,6 +556,18 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
         "Show" => "Weergeven",
         "Collapse dialog" => "Dialoogvenster samenvouwen",
         "Expand dialog" => "Dialoogvenster uitvouwen",
+        "Save file" => "Bestand opslaan",
+        "File name" => "Bestandsnaam",
+        "Choose a location" => "Kies een locatie",
+        "More options…" => "Meer opties…",
+        "Documents" => "Documenten",
+        "Desktop" => "Bureaublad",
+        "A file named {name} already exists. Do you want to replace it?" => "Er bestaat al een bestand met de naam {name}. Wilt u het vervangen?",
+        "Save file|Replace" => "Vervangen",
+        "This file name isn't valid." => "Deze bestandsnaam is ongeldig.",
+        "Do you want to save the changes you made to {title}?" => "Wilt u de wijzigingen in {title} opslaan?",
+        "Save Changes?" => "Wijzigingen opslaan?",
+        "Don't Save" => "Niet opslaan",
         _ => return None,
     })
 }

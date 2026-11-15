@@ -18,6 +18,7 @@ mod graphics;
 mod logging;
 #[cfg(target_os = "macos")]
 mod native_menu;
+mod places;
 mod print;
 
 use std::cell::RefCell;
@@ -202,6 +203,14 @@ fn services() -> Services {
             }
             dialog.save_file().and_then(|p| p.to_str().map(str::to_string))
         })),
+        pick_folder: Some(Box::new(|start: &str| {
+            let mut dialog = rfd::FileDialog::new();
+            if std::path::Path::new(start).is_dir() {
+                dialog = dialog.set_directory(start);
+            }
+            dialog.pick_folder().and_then(|p| p.to_str().map(str::to_string))
+        })),
+        known_folders: Some(Box::new(places::known_folders)),
         open_url: Some(Box::new(|url: &str| open_with_system(url))),
         printers: Some(print::discover()),
         print_native: Some(print::submit()),

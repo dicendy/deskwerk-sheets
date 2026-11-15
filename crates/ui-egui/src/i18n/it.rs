@@ -1015,6 +1015,15 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
         "Show" => "Mostra",
         "Collapse dialog" => "Comprimi finestra di dialogo",
         "Expand dialog" => "Espandi finestra di dialogo",
+        "Save file" => "Salva file",
+        "File name" => "Nome file",
+        "Choose a location" => "Scegli una posizione",
+        "More options…" => "Altre opzioni…",
+        "Documents" => "Documenti",
+        "Desktop" => "Desktop",
+        "A file named {name} already exists. Do you want to replace it?" => "Il file {name} esiste già. Sostituirlo?",
+        "Save file|Replace" => "Sostituisci",
+        "This file name isn't valid." => "Il nome file non è valido.",
         _ => return None,
     })
 }

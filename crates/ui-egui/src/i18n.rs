@@ -213,7 +213,12 @@ impl Language {
     /// A label that needs two translations (Home's text "Orientation" vs Page Layout's print
     /// "Orientation") is keyed `context|label`: English shows only the part after the `|`.
     pub fn tr(self, text: &str) -> &str {
-        let translated = match self {
+        self.translated(text).unwrap_or_else(|| text.rsplit_once('|').map_or(text, |(_, label)| label))
+    }
+
+    /// The catalog's own translation of `text`, `None` when it has none (and English shows).
+    fn translated(self, text: &str) -> Option<&'static str> {
+        match self {
             Self::En => None,
             Self::Es => es::translate(text),
             Self::El => el::translate(text),
@@ -233,8 +238,7 @@ impl Language {
             Self::Vi => vi::translate(text),
             Self::Nl => nl::translate(text),
             Self::Ro => ro::translate(text),
-        };
-        translated.unwrap_or_else(|| text.rsplit_once('|').map_or(text, |(_, label)| label))
+        }
     }
 
     pub(crate) fn tr_error(self, message: &str) -> String {
@@ -405,6 +409,41 @@ mod tests {
                 assert!(!shown.contains('\n'), "{}: {key:?} is not a single-line label: {shown:?}", language.code());
                 if language != Language::En {
                     assert_ne!(shown, key, "{} falls back to English for {key:?}", language.code());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_save_file_window_and_save_changes_are_translated_in_every_catalog() {
+        let keys = [
+            "Save file",
+            "File name",
+            "Choose a location",
+            "More options…",
+            "Documents",
+            "Desktop",
+            "Browse…",
+            "Close",
+            "Save",
+            "Cancel",
+            "Don't Save",
+            "Save Changes?",
+            "A file named {name} already exists. Do you want to replace it?",
+            "Save file|Replace",
+            "This file name isn't valid.",
+            "Do you want to save the changes you made to {title}?",
+        ];
+        for language in Language::ALL.into_iter().filter(|l| *l != Language::En) {
+            for key in keys {
+                let shown = language.translated(key);
+                assert!(shown.is_some_and(|s| !s.trim().is_empty()), "{} has no translation for {key:?}", language.code());
+                // Folder names may read the same (French "Documents", German "Desktop").
+                if !matches!(key, "Documents" | "Desktop") {
+                    assert_ne!(shown, Some(key), "{} keeps the English text for {key:?}", language.code());
+                }
+                for placeholder in ["{name}", "{title}"] {
+                    assert_eq!(key.contains(placeholder), shown.is_some_and(|s| s.contains(placeholder)), "{}: {key:?}", language.code());
                 }
             }
         }

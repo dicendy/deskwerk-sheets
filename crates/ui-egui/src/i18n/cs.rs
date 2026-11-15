@@ -595,6 +595,18 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
         "Show" => "Zobrazit",
         "Collapse dialog" => "Sbalit dialogové okno",
         "Expand dialog" => "Rozbalit dialogové okno",
+        "Save file" => "Uložit soubor",
+        "File name" => "Název souboru",
+        "Choose a location" => "Zvolte umístění",
+        "More options…" => "Další možnosti…",
+        "Documents" => "Dokumenty",
+        "Desktop" => "Plocha",
+        "A file named {name} already exists. Do you want to replace it?" => "Soubor {name} již existuje. Chcete ho nahradit?",
+        "Save file|Replace" => "Nahradit",
+        "This file name isn't valid." => "Tento název souboru není platný.",
+        "Do you want to save the changes you made to {title}?" => "Chcete uložit změny provedené v souboru {title}?",
+        "Save Changes?" => "Uložit změny?",
+        "Don't Save" => "Neukládat",
         _ => return None,
     })
 }

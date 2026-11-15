@@ -1309,6 +1309,15 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
         "Couldn't open {name}: {error}" => "{name} konnte nicht geöffnet werden: {error}",
         "Shown with a similar font; the file keeps “{name}”." => "Wird mit einer ähnlichen Schrift angezeigt; in der Datei bleibt »{name}«.",
         "Use this computer's fonts" => "Schriftarten dieses Computers verwenden",
+        "Save file" => "Datei speichern",
+        "File name" => "Dateiname",
+        "Choose a location" => "Speicherort auswählen",
+        "More options…" => "Weitere Optionen…",
+        "Documents" => "Dokumente",
+        "Desktop" => "Desktop",
+        "A file named {name} already exists. Do you want to replace it?" => "Die Datei {name} ist bereits vorhanden. Möchten Sie sie ersetzen?",
+        "Save file|Replace" => "Ersetzen",
+        "This file name isn't valid." => "Dieser Dateiname ist ungültig.",
         _ => return None,
     })
 }

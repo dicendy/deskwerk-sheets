@@ -4746,6 +4746,21 @@ fn encrypted_workbooks_open_with_their_password() {
 }
 
 #[test]
+fn save_on_a_new_workbook_asks_as_save_and_save_as_asks_as_save_as() {
+    let mut s = s();
+    s.execute("file.save", json!({})).unwrap();
+    let asked = s.take_ui_requests();
+    assert!(
+        asked.iter().any(|r| matches!(r, crate::UiRequest::Dialog(name, p) if name == "saveAs" && p["save"] == json!(true))),
+        "Save tells the interface it is Save: {asked:?}"
+    );
+    s.execute("file.saveAs", json!({})).unwrap();
+    let asked = s.take_ui_requests();
+    assert!(asked.iter().any(|r| matches!(r, crate::UiRequest::Dialog(name, p) if name == "saveAs" && p.get("save").is_none())));
+    assert!(s.execute_headless("file.save", json!({})).is_err(), "a programmatic Save with no file still needs a path");
+}
+
+#[test]
 #[cfg(not(target_arch = "wasm32"))]
 fn a_decrypted_workbook_never_overwrites_its_encrypted_original() {
     const PW: &str = "synthetic-pw-5522";

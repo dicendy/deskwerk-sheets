@@ -427,6 +427,12 @@ impl SheetApp {
                     self.open_path(&path);
                 }
             }
+            // Save on a workbook never saved asks in the compact Save file window, as Excel 365 does;
+            // the system Save As stays for Save As itself and More options….
+            #[cfg(not(target_arch = "wasm32"))]
+            "saveAs" if params.get("save").and_then(Json::as_bool) == Some(true) && self.services.pick_save.is_some() => {
+                self.open_dialog("saveFile", json!({}));
+            }
             "saveAs" => {
                 let format = self.web_save_format(&params);
                 let suggested = self.session.active().map(|d| d.display_title()).unwrap_or_else(|| "Book1".into());

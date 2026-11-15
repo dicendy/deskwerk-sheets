@@ -121,23 +121,34 @@ pub(crate) fn build_params(d: &Dialog) -> Json {
     v
 }
 
+/// The macro step editor: a large resizable window of its own.
+fn macro_editor(app: &mut SheetApp, ctx: &egui::Context, mut d: Dialog, home: Option<u64>) {
+    let mut open = true;
+    crate::macro_editor::window(app, ctx, &mut d, &mut open);
+    if !open {
+        app.macros.editor = None;
+        app.grid.macro_overlay = None;
+    } else if app.ui_window() != home {
+        // Something run from the editor switched windows: the editor stays in its own.
+        app.return_dialog(home, d);
+    } else {
+        app.dialog = Some(d);
+    }
+}
+
 /// Takes and draws the active dialog, dispatches its body by name, consumes picture-inbox results, runs OK/confirm commands, handles Esc/close and restores the back-dialog stack.
 pub fn show(app: &mut SheetApp, ctx: &egui::Context) {
     let Some(mut d) = app.dialog.take() else { return };
     let home = app.ui_window();
     // The macro step editor is a large resizable window of its own.
     if d.name == "macroEditor" {
-        let mut open = true;
-        crate::macro_editor::window(app, ctx, &mut d, &mut open);
-        if !open {
-            app.macros.editor = None;
-            app.grid.macro_overlay = None;
-        } else if app.ui_window() != home {
-            // Something run from the editor switched windows: the editor stays in its own.
-            app.return_dialog(home, d);
-        } else {
-            app.dialog = Some(d);
-        }
+        macro_editor(app, ctx, d, home);
+        return;
+    }
+    // Save on a workbook never saved: a compact window of its own (Excel's Save file).
+    #[cfg(not(target_arch = "wasm32"))]
+    if d.name == super::save_file::NAME {
+        super::save_file::show(app, ctx, d);
         return;
     }
     if d.name == "pasteSpecial" {
@@ -338,17 +349,16 @@ pub fn show(app: &mut SheetApp, ctx: &egui::Context) {
                     }
                 }
                 "saveChanges" => {
-                    ui.label(format!("Do you want to save the changes you made to {}?", d.values.get("title").and_then(Json::as_str).unwrap_or("this workbook")));
+                    let lang = app.ui.language;
+                    let title = d.values.get("title").and_then(Json::as_str).unwrap_or("this workbook");
+                    ui.label(lang.tr("Do you want to save the changes you made to {title}?").replace("{title}", title));
+                    ui.add_space(12.0);
                     let quitting = d.values.get("quit").and_then(Json::as_bool) == Some(true);
-                    ui.horizontal(|ui| {
-                        for (label, answer) in
-                            [("Don't Save", crate::SaveAnswer::DontSave), ("Cancel", crate::SaveAnswer::Cancel), ("Save", crate::SaveAnswer::Save)]
-                        {
-                            if ui.button(label).clicked() && app.answer_save_changes(answer, quitting, ui.ctx()) {
-                                open = false;
-                            }
-                        }
-                    });
+                    if let Some(answer) = save_changes_buttons(ui)
+                        && app.answer_save_changes(answer, quitting, ui.ctx())
+                    {
+                        open = false;
+                    }
                 }
                 "start" => {
                     ui.heading("Start a new workbook");
@@ -520,6 +530,38 @@ pub(super) fn open_confirmed_link(app: &mut SheetApp, d: &Dialog) -> Result<(), 
     let r = app.session.open_confirmed_link(url).map(|_| ()).map_err(|e| e.to_string());
     app.after_engine();
     r
+}
+
+/// Save Changes' answers, as in Excel: Save filled with the accent colour, Don't Save outlined in
+/// it, Cancel with a neutral outline; right-aligned, in that order.
+fn save_changes_buttons(ui: &mut egui::Ui) -> Option<crate::SaveAnswer> {
+    let lang = crate::i18n::current(ui.ctx());
+    let t = crate::theme::Tokens::get(ui.ctx());
+    let size = vec2(96.0, 30.0);
+    let mut answer = None;
+    ui.horizontal(|ui| {
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            let cancel = egui::Button::new(egui::RichText::new(lang.tr("Cancel")).color(t.text))
+                .fill(egui::Color32::TRANSPARENT)
+                .stroke(egui::Stroke::new(1.0, t.input_border))
+                .min_size(size);
+            if ui.add(cancel).clicked() {
+                answer = Some(crate::SaveAnswer::Cancel);
+            }
+            let dont_save = egui::Button::new(egui::RichText::new(lang.tr("Don't Save")).color(t.accent_dark))
+                .fill(egui::Color32::TRANSPARENT)
+                .stroke(egui::Stroke::new(1.0, t.accent))
+                .min_size(size);
+            if ui.add(dont_save).clicked() {
+                answer = Some(crate::SaveAnswer::DontSave);
+            }
+            let save = egui::Button::new(egui::RichText::new(lang.tr("Save")).color(t.on_accent)).fill(t.accent).min_size(size);
+            if ui.add(save).clicked() {
+                answer = Some(crate::SaveAnswer::Save);
+            }
+        })
+    });
+    answer
 }
 
 pub(super) fn ok_cancel(ui: &mut egui::Ui, confirm: &mut bool, open: &mut bool) {
