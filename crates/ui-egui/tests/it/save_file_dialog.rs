@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use egui::accesskit::Role;
 use egui::{Event, Key, Modifiers};
-use egui_kittest::kittest::{NodeT as _, Queryable as _};
+use egui_kittest::kittest::Queryable as _;
 use gridcraft_ui_egui::i18n::Language;
 use gridcraft_ui_egui::{Services, SheetApp};
 use serde_json::json;
