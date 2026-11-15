@@ -1168,6 +1168,15 @@ pub(super) const EXTRA: &[(&str, &str)] = &[
         "Drag to fill cells. Drag from inside a cell to select a range.",
         "ドラッグしてセルをオートフィルします。セルの内側からドラッグすると範囲を選択します。",
     ),
+    ("Save file", "ファイルの保存"),
+    ("File name", "ファイル名"),
+    ("Choose a location", "場所の選択"),
+    ("More options…", "その他のオプション…"),
+    ("Documents", "ドキュメント"),
+    ("Desktop", "デスクトップ"),
+    ("A file named {name} already exists. Do you want to replace it?", "{name} は既に存在します。置き換えますか?"),
+    ("Save file|Replace", "置き換え"),
+    ("This file name isn't valid.", "このファイル名は無効です。"),
 ];
 
 /// Translates an interface label; `None` for a label the catalog does not know, so `i18n.rs` can

@@ -69,6 +69,12 @@ impl SheetApp {
                 if !self.commit_edit(0, 0, false, false) {
                     return false;
                 }
+                // A workbook never saved asks for its name and folder first, in the Save file
+                // window; it closes (and a quit goes on) once that has saved it.
+                if cfg!(not(target_arch = "wasm32")) && self.services.pick_save.is_some() && self.session.active().is_some_and(|d| d.path.is_none()) {
+                    self.open_dialog("saveFile", json!({"close": true, "quit": quitting}));
+                    return true;
+                }
                 self.run_or_alert("file.save", json!({}));
                 if self.session.active().is_some_and(|x| !x.is_dirty()) {
                     self.run_or_alert("file.close", json!({"force": true, "document": true}));

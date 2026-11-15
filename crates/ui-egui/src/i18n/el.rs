@@ -1009,6 +1009,15 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
         "Show" => "Εμφάνιση",
         "Collapse dialog" => "Σύμπτυξη παραθύρου διαλόγου",
         "Expand dialog" => "Ανάπτυξη παραθύρου διαλόγου",
+        "Save file" => "Αποθήκευση αρχείου",
+        "File name" => "Όνομα αρχείου",
+        "Choose a location" => "Επιλέξτε θέση",
+        "More options…" => "Περισσότερες επιλογές…",
+        "Documents" => "Έγγραφα",
+        "Desktop" => "Επιφάνεια εργασίας",
+        "A file named {name} already exists. Do you want to replace it?" => "Υπάρχει ήδη αρχείο με το όνομα {name}. Θέλετε να το αντικαταστήσετε;",
+        "Save file|Replace" => "Αντικατάσταση",
+        "This file name isn't valid." => "Αυτό το όνομα αρχείου δεν είναι έγκυρο.",
         _ => return None,
     })
 }

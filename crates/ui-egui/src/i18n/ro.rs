@@ -1065,6 +1065,15 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
         "Show" => "Afișare",
         "Collapse dialog" => "Restrângere casetă de dialog",
         "Expand dialog" => "Extindere casetă de dialog",
+        "Save file" => "Salvare fișier",
+        "File name" => "Nume fișier",
+        "Choose a location" => "Alegeți o locație",
+        "More options…" => "Mai multe opțiuni…",
+        "Documents" => "Documente",
+        "Desktop" => "Desktop",
+        "A file named {name} already exists. Do you want to replace it?" => "Fișierul {name} există deja. Doriți să-l înlocuiți?",
+        "Save file|Replace" => "Înlocuire",
+        "This file name isn't valid." => "Acest nume de fișier nu este valid.",
         _ => return None,
     })
 }

@@ -684,6 +684,14 @@ fn save_in_the_question_saves_the_macro_then_the_workbook_asks_about_itself() {
     assert_eq!(h.state().dialog.as_ref().map(|d| d.name()), Some("saveChanges"));
     h.get_all_by_role_and_label(egui::Role::Button, "Save").last().unwrap().click();
     h.run_steps(4);
+    // A workbook never saved asks for its name and folder in the Save file window first.
+    assert_eq!(h.state().dialog.as_ref().map(|d| d.name()), Some("saveFile"));
+    let d = h.state_mut().dialog.as_mut().unwrap();
+    d.values.insert("folder".into(), json!(path.parent().unwrap().to_str().unwrap()));
+    d.values.insert("name".into(), json!(path.file_stem().unwrap().to_str().unwrap()));
+    h.run_steps(2);
+    h.get_all_by_role_and_label(egui::Role::Button, "Save").last().unwrap().click();
+    h.run_steps(4);
     assert!(!is_open(&h, book));
     let mut s = Session::new();
     s.execute("file.open", json!({"path": path.to_str().unwrap()})).unwrap();

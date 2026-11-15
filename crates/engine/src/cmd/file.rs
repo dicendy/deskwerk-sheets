@@ -140,7 +140,9 @@ fn save(s: &mut Session, p: &Json) -> Result<Json> {
     let path = match str_param(p, "path").map(str::to_string).or_else(|| s.active().and_then(|d| d.path.clone())) {
         Some(p) => p,
         None => {
-            s.ui_requests.push(crate::UiRequest::Dialog("saveAs".into(), json!({})));
+            // `save` tells the interface this is Save, not Save As: a desktop app asks in its
+            // compact Save file window rather than the full Save As.
+            s.ui_requests.push(crate::UiRequest::Dialog("saveAs".into(), json!({"save": true})));
             return ok();
         }
     };
