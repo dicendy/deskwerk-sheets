@@ -8,7 +8,7 @@ impl SheetApp {
     pub fn run(&mut self, id: &str, params: Json) -> Result<Json, String> {
         let r = self.run_command(id, params);
         // This copy leaves the system clipboard alone: note what it holds, so Paste can tell
-        // that GridCraft's copy is newer while that text is still there.
+        // that Deskwerk Sheets' copy is newer while that text is still there.
         if matches!(id, "edit.copy" | "edit.cut") && r.is_ok() {
             self.clipboard_text_at_copy = self.system_clipboard_text();
             self.cut_text = if id == "edit.cut" { self.clipboard_text_at_copy.clone() } else { None };
@@ -89,7 +89,7 @@ impl SheetApp {
             && let Ok(r) = &r
             && let Some(chart) = r.get("chart").and_then(Json::as_u64).and_then(|id| u32::try_from(id).ok())
         {
-            self.selected_object = Some(gridcraft_engine::model::ObjRef::new(gridcraft_engine::model::ObjKind::Chart, chart));
+            self.selected_object = Some(deskwerk_sheets_engine::model::ObjRef::new(deskwerk_sheets_engine::model::ObjKind::Chart, chart));
         }
         if id == "file.exportPdf"
             && let Ok(r) = &r
@@ -308,7 +308,7 @@ impl SheetApp {
         let tag = p.get("locale").and_then(Json::as_str).unwrap_or("auto");
         self.ui.number_locale = match tag {
             "auto" | "" => None,
-            _ => match gridcraft_engine::core::Locale::from_tag(tag) {
+            _ => match deskwerk_sheets_engine::core::Locale::from_tag(tag) {
                 Some(l) => Some(l.tag().to_string()),
                 None => return Err(format!("unknown locale {tag:?} (use en, de, fr or auto)")),
             },
@@ -444,7 +444,7 @@ impl SheetApp {
                 } else if self.services.download.is_some()
                     && let Ok(r) = self.run("file.saveBytes", json!({ "format": format }))
                     && let Some(dl) = &self.services.download
-                    && let Some(b) = r.get("base64").and_then(Json::as_str).and_then(gridcraft_engine::io::base64_decode)
+                    && let Some(b) = r.get("base64").and_then(Json::as_str).and_then(deskwerk_sheets_engine::io::base64_decode)
                 {
                     let name = r.get("name").and_then(Json::as_str).unwrap_or("Book.xlsx").to_string();
                     dl(&name, &b);

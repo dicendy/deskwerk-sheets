@@ -3,10 +3,10 @@
 #
 # Exports:
 #   ROOT                    workspace root
-#   VERSION                 [workspace.package] version from Cargo.toml (override: GRIDCRAFT_VERSION)
+#   VERSION                 [workspace.package] version from Cargo.toml (override: DESKWERK_SHEETS_VERSION)
 #   DIST                    output directory for release artifacts (default: $ROOT/dist/release)
-#   GRIDCRAFT_BUILD_SHA    git commit baked into the binaries (see crates/engine/src/build_info.rs)
-#   GRIDCRAFT_BUILD_DATE   UTC build date, YYYY-MM-DD
+#   DESKWERK_SHEETS_BUILD_SHA    git commit baked into the binaries (see crates/engine/src/build_info.rs)
+#   DESKWERK_SHEETS_BUILD_DATE   UTC build date, YYYY-MM-DD
 #   CARGO_TARGET_DIR        cargo's target dir (default: $ROOT/target)
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -22,7 +22,7 @@ workspace_version() {
   return
 }
 
-VERSION="${GRIDCRAFT_VERSION:-$(workspace_version)}"
+VERSION="${DESKWERK_SHEETS_VERSION:-$(workspace_version)}"
 if [[ -z "$VERSION" ]]; then
   echo "error: could not read [workspace.package] version from $ROOT/Cargo.toml" >&2
   exit 1
@@ -33,11 +33,11 @@ DIST="${DIST:-$ROOT/dist/release}"
 mkdir -p "$DIST"
 export DIST
 
-if [[ -z "${GRIDCRAFT_BUILD_SHA:-}" ]]; then
-  GRIDCRAFT_BUILD_SHA="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || true)"
+if [[ -z "${DESKWERK_SHEETS_BUILD_SHA:-}" ]]; then
+  DESKWERK_SHEETS_BUILD_SHA="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || true)"
 fi
-export GRIDCRAFT_BUILD_SHA
-export GRIDCRAFT_BUILD_DATE="${GRIDCRAFT_BUILD_DATE:-$(date -u +%Y-%m-%d)}"
+export DESKWERK_SHEETS_BUILD_SHA
+export DESKWERK_SHEETS_BUILD_DATE="${DESKWERK_SHEETS_BUILD_DATE:-$(date -u +%Y-%m-%d)}"
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$ROOT/target}"
 
 # Emit a GitHub Actions warning (plain stderr outside Actions).
@@ -56,14 +56,14 @@ copy_docs() {
   return
 }
 
-# Every build carries the font pack (apps/gridcraft-web/fonts: served by the web build, embedded
+# Every build carries the font pack (apps/deskwerk-sheets-web/fonts: served by the web build, embedded
 # in the desktop app), so every package carries its licences in font-licences/ with its manifest.
 # Builds made with craft-fonts (CRAFT_FONTS_DIR, set by the release workflow) embed its fonts too,
 # so the package also carries their licences as OFL-<family-dir>.txt.
 copy_font_licences() {
   local dest="$1" f
   mkdir -p "$dest/font-licences"
-  cp "$ROOT"/apps/gridcraft-web/fonts/licenses/*.txt "$ROOT/apps/gridcraft-web/fonts/MANIFEST.tsv" "$dest/font-licences/"
+  cp "$ROOT"/apps/deskwerk-sheets-web/fonts/licenses/*.txt "$ROOT/apps/deskwerk-sheets-web/fonts/MANIFEST.tsv" "$dest/font-licences/"
   [[ -n "${CRAFT_FONTS_DIR:-}" ]] || return 0
   for f in "$CRAFT_FONTS_DIR"/fonts/*/OFL.txt; do
     if [[ -f "$f" ]]; then cp "$f" "$dest/OFL-$(basename "$(dirname "$f")").txt"; fi

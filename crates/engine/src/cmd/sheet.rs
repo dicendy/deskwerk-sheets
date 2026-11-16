@@ -2,9 +2,9 @@
 
 use std::sync::Arc;
 
-use gridcraft_core::{CellRef, MAX_COLS, MAX_ROWS, RangeRef};
-use gridcraft_formula::adjust::{Axis, Edit};
-use gridcraft_model::{Anchor, AnchorMode, Sheet, Visibility};
+use deskwerk_sheets_core::{CellRef, MAX_COLS, MAX_ROWS, RangeRef};
+use deskwerk_sheets_formula::adjust::{Axis, Edit};
+use deskwerk_sheets_model::{Anchor, AnchorMode, Sheet, Visibility};
 use serde_json::{Value as Json, json};
 
 use super::{
@@ -225,8 +225,8 @@ pub(super) fn rewrite(cx: &mut Ctx, target: &str, e: &Edit) -> Result<()> {
         let host = wb.sheets.get(si).map(|s| s.name.clone()).unwrap_or_default();
         let Some(sh) = wb.sheet_mut(si) else { continue };
         let fix = |text: &str| -> String {
-            match gridcraft_formula::parse(text) {
-                Ok(expr) => gridcraft_formula::print(&gridcraft_formula::adjust::adjust(expr, &host, target, e)),
+            match deskwerk_sheets_formula::parse(text) {
+                Ok(expr) => deskwerk_sheets_formula::print(&deskwerk_sheets_formula::adjust::adjust(expr, &host, target, e)),
                 Err(_) => text.to_string(),
             }
         };
@@ -237,9 +237,9 @@ pub(super) fn rewrite(cx: &mut Ctx, target: &str, e: &Edit) -> Result<()> {
         // moves them, so table and name sources keep their text.
         for pt in sh.pivots.iter_mut() {
             let body = pt.source.trim().trim_start_matches('=');
-            if let Ok(expr) = gridcraft_formula::parse(body) {
-                let before = gridcraft_formula::print(&expr);
-                let after = gridcraft_formula::print(&gridcraft_formula::adjust::adjust(expr, &host, target, e));
+            if let Ok(expr) = deskwerk_sheets_formula::parse(body) {
+                let before = deskwerk_sheets_formula::print(&expr);
+                let after = deskwerk_sheets_formula::print(&deskwerk_sheets_formula::adjust::adjust(expr, &host, target, e));
                 if after != before {
                     pt.source = after;
                 }
@@ -266,7 +266,7 @@ fn inherit_line_format(sh: &mut Sheet, axis: Axis, at: u32, count: u32) {
     if let Some(info) = prev {
         for i in at..at + count {
             let map = if axis == Axis::Rows { &mut sh.rows } else { &mut sh.cols };
-            map.insert(i, gridcraft_model::LineInfo { hidden: false, outline: 0, collapsed: false, ..info });
+            map.insert(i, deskwerk_sheets_model::LineInfo { hidden: false, outline: 0, collapsed: false, ..info });
         }
     }
 }
@@ -694,7 +694,7 @@ fn check_lines_protection(s: &Session, p: &Json, axis: Axis, at: u32, count: u32
         (Axis::Cols, true) => pr.insert_columns,
         (Axis::Cols, false) => pr.delete_columns,
     };
-    let locked = |st: gridcraft_model::StyleId| wb.styles.get(st).protection.locked;
+    let locked = |st: deskwerk_sheets_model::StyleId| wb.styles.get(st).protection.locked;
     let refuse = || EngineError::Other(PROTECTED.into());
     if !allowed {
         return Err(refuse());
@@ -716,15 +716,15 @@ fn check_lines_protection(s: &Session, p: &Json, axis: Axis, at: u32, count: u32
 
 /// Where a range of the edited sheet goes after a structural edit (`None` = deleted).
 pub(crate) fn map_range(r: RangeRef, e: &Edit) -> Option<RangeRef> {
-    let expr = gridcraft_formula::Expr::Ref(gridcraft_formula::Reference {
-        sheet: gridcraft_formula::SheetSel::Current,
-        kind: gridcraft_formula::RefKind::Range(
-            gridcraft_formula::Anchor { row: r.start.row, col: r.start.col, row_abs: false, col_abs: false },
-            gridcraft_formula::Anchor { row: r.end.row, col: r.end.col, row_abs: false, col_abs: false },
+    let expr = deskwerk_sheets_formula::Expr::Ref(deskwerk_sheets_formula::Reference {
+        sheet: deskwerk_sheets_formula::SheetSel::Current,
+        kind: deskwerk_sheets_formula::RefKind::Range(
+            deskwerk_sheets_formula::Anchor { row: r.start.row, col: r.start.col, row_abs: false, col_abs: false },
+            deskwerk_sheets_formula::Anchor { row: r.end.row, col: r.end.col, row_abs: false, col_abs: false },
         ),
     });
-    match gridcraft_formula::adjust::adjust(expr, "S", "S", e) {
-        gridcraft_formula::Expr::Ref(r) => Some(r.range()),
+    match deskwerk_sheets_formula::adjust::adjust(expr, "S", "S", e) {
+        deskwerk_sheets_formula::Expr::Ref(r) => Some(r.range()),
         _ => None,
     }
 }
@@ -779,7 +779,7 @@ pub(super) fn shift_cell_features(sh: &mut Sheet, e: &Edit) {
 
 /// Columns inserted inside a table become new table columns (with names no other column has);
 /// deleted ones leave it.
-fn shift_table_columns(t: &mut gridcraft_model::Table, at: u32, count: u32, insert: bool) {
+fn shift_table_columns(t: &mut deskwerk_sheets_model::Table, at: u32, count: u32, insert: bool) {
     if insert {
         if at > t.range.start.col && at <= t.range.end.col {
             let idx = (at - t.range.start.col) as usize;
@@ -792,7 +792,7 @@ fn shift_table_columns(t: &mut gridcraft_model::Table, at: u32, count: u32, inse
                         break name;
                     }
                 };
-                let col = gridcraft_model::TableColumn {
+                let col = deskwerk_sheets_model::TableColumn {
                     name,
                     totals: Default::default(),
                     totals_label: None,

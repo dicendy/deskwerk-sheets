@@ -1,9 +1,9 @@
 //! Touch input on the grid: one finger pans, a tap selects (issue #1907).
 
+use deskwerk_sheets_engine::Session;
+use deskwerk_sheets_engine::core::CellRef;
+use deskwerk_sheets_ui_egui::SheetApp;
 use egui::{Event, Modifiers, PointerButton, TouchDeviceId, TouchId, TouchPhase};
-use gridcraft_engine::Session;
-use gridcraft_engine::core::CellRef;
-use gridcraft_ui_egui::SheetApp;
 
 fn harness(session: Session) -> egui_kittest::Harness<'static, SheetApp> {
     crate::support::harness(session, 4)

@@ -487,7 +487,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
         "Show" => "Afficher",
         "Collapse dialog" => "Réduire la boîte de dialogue",
         "Expand dialog" => "Développer la boîte de dialogue",
-        // Every interface string the other catalogs have (storytold/gridcraft#2965; a few from #3448 and #2655; the macro editor, window and Advanced Filter labels are new here).
+        // Every interface string the other catalogs have (upstream #2965; a few from #3448 and #2655; the macro editor, window and Advanced Filter labels are new here).
         "Paste Special" => "Collage spécial",
         "All" => "Tout",
         "Formulas (F)" => "Formules (F)",
@@ -1324,10 +1324,6 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
         "Unique rows only" => "Extraction sans doublon",
         "Windows of active workbook" => "Fenêtres du classeur actif",
         "Write a macro step by step" => "Écrire une macro étape par étape",
-        "A clean-room, open-source, Rust-native spreadsheet." => "Un tableur open source écrit en Rust, développé en salle blanche.",
-        "Based on GridCraft by the ArtCraft team. Not affiliated with or endorsed by them." => {
-            "Basé sur GridCraft de l'équipe ArtCraft. Sans lien avec elle ni approbation de sa part."
-        }
         "Couldn't save {name}: {error}" => "Impossible d'enregistrer {name} : {error}",
         "Couldn't open {name}: {error}" => "Impossible d'ouvrir {name} : {error}",
         "Shown with a similar font; the file keeps “{name}”." => "Affichée avec une police similaire ; le fichier conserve « {name} ».",

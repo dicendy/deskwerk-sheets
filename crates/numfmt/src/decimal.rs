@@ -4,7 +4,7 @@
 //! digits and then rounded half away from zero on that decimal string. That makes 2.675 with
 //! "0.00" show 2.68 and 1.005 show 1.01, as in Excel, even though neither is exact in binary.
 
-use gridcraft_core::Locale;
+use deskwerk_sheets_core::Locale;
 
 /// Most decimals we ever compute; placeholders beyond this are padded with zeros.
 pub(crate) const MAX_DECIMALS: usize = 400;

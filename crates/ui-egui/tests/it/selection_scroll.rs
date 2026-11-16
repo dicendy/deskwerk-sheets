@@ -1,11 +1,11 @@
 //! Extending the selection from the keyboard scrolls its moving end into view, not the anchor.
 //! Go To and Select over the control channel scroll the active cell into view.
 
+use deskwerk_sheets_engine::Session;
+use deskwerk_sheets_engine::core::{CellRef, RangeRef};
+use deskwerk_sheets_ui_egui::control::{Outcome, handle};
+use deskwerk_sheets_ui_egui::{SheetApp, grid::Geo};
 use egui::{Event, Key, Modifiers};
-use gridcraft_engine::Session;
-use gridcraft_engine::core::{CellRef, RangeRef};
-use gridcraft_ui_egui::control::{Outcome, handle};
-use gridcraft_ui_egui::{SheetApp, grid::Geo};
 use serde_json::{Value as Json, json};
 
 type Harness = egui_kittest::Harness<'static, SheetApp>;

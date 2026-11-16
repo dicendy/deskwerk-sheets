@@ -13,8 +13,8 @@ const ACCOUNTING_SYMBOLS: &[(&str, &str)] = &[
     ("$ English (United States)", "_(\"$\"* #,##0.00_);_(\"$\"* \\(#,##0.00\\);_(\"$\"* \"-\"??_);_(@_)"),
     ("£ English (United Kingdom)", "_-[$£-809]* #,##0.00_-;-[$£-809]* #,##0.00_-;_-[$£-809]* \"-\"??_-;_-@_-"),
     ("€ Euro", "_-[$€-x-euro2] * #,##0.00_-;-[$€-x-euro2] * #,##0.00_-;_-[$€-x-euro2] * \"-\"??_-;_-@_-"),
-    ("€ German (Germany)", gridcraft_engine::numfmt::ACCOUNTING_EUR),
-    ("€ French (France)", gridcraft_engine::numfmt::ACCOUNTING_EUR),
+    ("€ German (Germany)", deskwerk_sheets_engine::numfmt::ACCOUNTING_EUR),
+    ("€ French (France)", deskwerk_sheets_engine::numfmt::ACCOUNTING_EUR),
     ("¥ Japanese", "_-[$¥-411]* #,##0_-;-[$¥-411]* #,##0_-;_-[$¥-411]* \"-\"_-;_-@_-"),
     ("¥ Chinese (PRC)", "_-[$¥-804]* #,##0.00_-;-[$¥-804]* #,##0.00_-;_-[$¥-804]* \"-\"??_-;_-@_-"),
     ("₹ English (India)", "_-[$₹-4009]* #,##0.00_-;-[$₹-4009]* #,##0.00_-;_-[$₹-4009]* \"-\"??_-;_-@_-"),
@@ -200,7 +200,7 @@ pub(super) fn home(app: &mut SheetApp, ui: &mut Ui) {
                 }
             });
             let fill = app.grid.last_fill.clone();
-            let fill_c = gridcraft_engine::model::Color::from_hex(&fill).and_then(|c| c.resolve(&Default::default())).map(theme::color32);
+            let fill_c = deskwerk_sheets_engine::model::Color::from_hex(&fill).and_then(|c| c.resolve(&Default::default())).map(theme::color32);
             let (f, fa) = split_button(ui, Icon::Fill, fill_c, "Fill Color");
             control_keytip(app, ui, &fa, "home.fillColor");
             if f {
@@ -220,7 +220,7 @@ pub(super) fn home(app: &mut SheetApp, ui: &mut Ui) {
                     }
                 });
             let fc = app.grid.last_font_color.clone();
-            let fc_c = gridcraft_engine::model::Color::from_hex(&fc).and_then(|c| c.resolve(&Default::default())).map(theme::color32);
+            let fc_c = deskwerk_sheets_engine::model::Color::from_hex(&fc).and_then(|c| c.resolve(&Default::default())).map(theme::color32);
             let (c, ca) = split_button(ui, Icon::FontColor, fc_c, "Font Color");
             control_keytip(app, ui, &ca, "home.fontColor");
             if c {
@@ -331,7 +331,7 @@ pub(super) fn home(app: &mut SheetApp, ui: &mut Ui) {
         number_combo(app, ui, &st);
         ui.horizontal(|ui| {
             // The button applies the number locale's currency (`home.accounting`), so it shows its symbol.
-            let currency = if app.session.locale() == gridcraft_engine::core::Locale::En { Icon::Currency } else { Icon::CurrencyEuro };
+            let currency = if app.session.locale() == deskwerk_sheets_engine::core::Locale::En { Icon::Currency } else { Icon::CurrencyEuro };
             let (c, ca) = split_button(ui, currency, None, "Accounting Number Format");
             control_keytip(app, ui, &ca, "home.accounting");
             if c {
@@ -670,7 +670,7 @@ fn size_combo(app: &mut SheetApp, ui: &mut Ui, st: &Style) {
     let t = Tokens::get(ui.ctx());
     let size = st.font.size;
     let current = if size.fract() == 0.0 { format!("{}", size as i32) } else { format!("{size}") };
-    let field = egui::Id::unique("gridcraft.font_size_box");
+    let field = egui::Id::unique("deskwerk-sheets.font_size_box");
     let draft = field.with("draft");
     let mut text = ui.data_mut(|d| d.get_temp::<String>(draft)).unwrap_or_else(|| current.clone());
     // One frame like the Font name box beside it (same fill, border, height and corners), with the
@@ -735,7 +735,7 @@ fn size_combo(app: &mut SheetApp, ui: &mut Ui, st: &Style) {
 
 fn number_combo(app: &mut SheetApp, ui: &mut Ui, st: &Style) {
     let code = st.num_fmt.as_str().to_string();
-    let kind = gridcraft_engine::display::number_format(&code).kind();
+    let kind = deskwerk_sheets_engine::display::number_format(&code).kind();
     let current = format!("{kind:?}");
     let lang = app.ui.language;
     let sample = app.session.active().and_then(|d| d.wb.active().map(|sh| sh.value(d.selection.active))).unwrap_or_default();
@@ -746,8 +746,8 @@ fn number_combo(app: &mut SheetApp, ui: &mut Ui, st: &Style) {
     let items: Vec<(&str, String)> = names
         .iter()
         .map(|n| {
-            let code = gridcraft_engine::cmd::format::format_code_for_in(n, app.session.locale());
-            let preview = app.session.active().map(|d| gridcraft_engine::display::format(&sample, code, &d.wb).text).unwrap_or_default();
+            let code = deskwerk_sheets_engine::cmd::format::format_code_for_in(n, app.session.locale());
+            let preview = app.session.active().map(|d| deskwerk_sheets_engine::display::format(&sample, code, &d.wb).text).unwrap_or_default();
             (*n, format!("{:<12}   {preview}", lang.tr(n)))
         })
         .chain(std::iter::once(("__more", format!("{:>12}", lang.tr("More Number Formats…")))))
@@ -850,8 +850,8 @@ fn cf_menu(app: &mut SheetApp, ui: &mut Ui) {
 #[cfg(test)]
 mod accounting_symbol_tests {
     use super::*;
-    use gridcraft_engine::core::{DateSystem, Value};
-    use gridcraft_engine::numfmt::{NumberFormat, format_value};
+    use deskwerk_sheets_engine::core::{DateSystem, Value};
+    use deskwerk_sheets_engine::numfmt::{NumberFormat, format_value};
 
     #[test]
     fn accounting_dropdown_offers_the_issue_currencies_with_excel_codes() {
@@ -879,14 +879,14 @@ mod accounting_symbol_tests {
         // The format the button applies in a German or French number locale is in the list too.
         for label in ["€ German (Germany)", "€ French (France)"] {
             let code = ACCOUNTING_SYMBOLS.iter().find(|(l, _)| *l == label).map(|(_, c)| *c);
-            assert_eq!(code, Some(gridcraft_engine::numfmt::ACCOUNTING_EUR), "{label}");
+            assert_eq!(code, Some(deskwerk_sheets_engine::numfmt::ACCOUNTING_EUR), "{label}");
         }
-        let code = gridcraft_engine::numfmt::ACCOUNTING_EUR;
-        let de = gridcraft_engine::numfmt::format_value_in(
+        let code = deskwerk_sheets_engine::numfmt::ACCOUNTING_EUR;
+        let de = deskwerk_sheets_engine::numfmt::format_value_in(
             &Value::Number(1234.5),
             &NumberFormat::parse(code),
             DateSystem::D1900,
-            gridcraft_engine::core::Locale::De,
+            deskwerk_sheets_engine::core::Locale::De,
         );
         assert_eq!(de.text.trim(), "1.234,50 €");
     }

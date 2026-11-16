@@ -1,12 +1,12 @@
 //! Floating objects through real pointer and keyboard input: selecting every kind, resizing from
 //! each of the eight handles, deleting with Delete and Backspace, and double-click routing.
 
+use deskwerk_sheets_engine::Session;
+use deskwerk_sheets_engine::core::{CellRef, Value};
+use deskwerk_sheets_engine::model::{ObjKind, ObjRef};
+use deskwerk_sheets_ui_egui::objects::{Handle, OpenAction, open_action};
+use deskwerk_sheets_ui_egui::{SheetApp, chartview, grid::Geo};
 use egui::{Event, Key, Modifiers, PointerButton, Pos2, Rect, vec2};
-use gridcraft_engine::Session;
-use gridcraft_engine::core::{CellRef, Value};
-use gridcraft_engine::model::{ObjKind, ObjRef};
-use gridcraft_ui_egui::objects::{Handle, OpenAction, open_action};
-use gridcraft_ui_egui::{SheetApp, chartview, grid::Geo};
 use serde_json::json;
 
 type Harness = egui_kittest::Harness<'static, SheetApp>;
@@ -73,7 +73,7 @@ fn tiny_png() -> String {
     image::RgbaImage::from_pixel(2, 2, image::Rgba([40, 120, 200, 255]))
         .write_to(&mut std::io::Cursor::new(&mut bytes), image::ImageFormat::Png)
         .unwrap();
-    gridcraft_engine::io::base64_encode(&bytes)
+    deskwerk_sheets_engine::io::base64_encode(&bytes)
 }
 
 fn rect(h: &Harness, o: ObjRef) -> Rect {
@@ -166,7 +166,7 @@ fn a_control_over_a_slicer_tile_keeps_the_generic_path_on_a_selecting_click() {
         let sh = d.wb.active().unwrap();
         let sl = sh.slicers.iter().find(|s| s.id == o.slicer.id).unwrap();
         let geo = Geo::new(sh, app.grid.rect.unwrap(), app.view().scroll);
-        (geo.z, sl.anchor, gridcraft_engine::cmd::slicer::slicer_items(&d.wb, d.wb.active_sheet(), sl).len(), sl.columns)
+        (geo.z, sl.anchor, deskwerk_sheets_engine::cmd::slicer::slicer_items(&d.wb, d.wb.active_sheet(), sl).len(), sl.columns)
     };
     let layout = chartview::slicer_layout(slicer, z, n, columns);
     let tile = layout.tiles[0];
@@ -433,7 +433,7 @@ fn dragging_an_unselected_object_by_its_edge_moves_it() {
     assert!((after.min - before.min - vec2(30.0, 20.0)).length() < 1.0, "moved with the pointer: {before:?} {after:?}");
 }
 
-fn anchor(h: &Harness, o: ObjRef) -> gridcraft_engine::model::Anchor {
+fn anchor(h: &Harness, o: ObjRef) -> deskwerk_sheets_engine::model::Anchor {
     h.state().session.doc().unwrap().wb.active().unwrap().object_anchor(o).unwrap()
 }
 

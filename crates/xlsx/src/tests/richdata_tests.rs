@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use gridcraft_core::{CellError, CellRef, RangeRef, Value};
-use gridcraft_model::{Cell, CellPicture, Formula, Sheet, Workbook};
+use deskwerk_sheets_core::{CellError, CellRef, RangeRef, Value};
+use deskwerk_sheets_model::{Cell, CellPicture, Formula, Sheet, Workbook};
 
 use super::make_zip;
 use crate::package::Package;

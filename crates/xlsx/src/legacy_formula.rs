@@ -3,16 +3,16 @@
 //! A formula a file stores without dynamic-array metadata (`cm`) and outside a legacy array range
 //! is a legacy formula. Where one gives a multi-cell reference to an operator or to a parameter
 //! that takes one value, Excel intersects the reference with the formula's row or column (and a
-//! function that may return several values gives its first). GridCraft evaluates every formula
+//! function that may return several values gives its first). Deskwerk Sheets evaluates every formula
 //! as a dynamic array, so it would spill there (or show `#SPILL!`) instead. On import those
 //! places get the `@` operator, as Excel 365 shows them; on export, a formula whose every `@` is
 //! one of those is written back as the legacy formula without them.
 
 use std::sync::Arc;
 
-use gridcraft_core::CellRef;
-use gridcraft_formula::{BinOp, Expr, UnOp};
-use gridcraft_model::{Formula, Workbook};
+use deskwerk_sheets_core::CellRef;
+use deskwerk_sheets_formula::{BinOp, Expr, UnOp};
+use deskwerk_sheets_model::{Formula, Workbook};
 
 /// Functions only dynamic-array Excel has (or that only make sense there): a formula calling one
 /// is left as it is.

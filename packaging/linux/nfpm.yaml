@@ -12,7 +12,7 @@ version_schema: semver
 release: 1
 section: misc
 priority: optional
-maintainer: ${GRIDCRAFT_MAINTAINER}
+maintainer: ${DESKWERK_SHEETS_MAINTAINER}
 vendor: Deskwerk
 homepage: https://github.com/dicendy/deskwerk-sheets
 license: MIT OR Apache-2.0

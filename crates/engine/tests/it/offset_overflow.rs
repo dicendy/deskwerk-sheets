@@ -1,5 +1,5 @@
-use gridcraft_core::{CellError, CellRef, Value};
-use gridcraft_engine::Session;
+use deskwerk_sheets_core::{CellError, CellRef, Value};
+use deskwerk_sheets_engine::Session;
 use serde_json::json;
 
 #[test]

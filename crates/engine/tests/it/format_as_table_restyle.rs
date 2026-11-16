@@ -1,4 +1,4 @@
-use gridcraft_engine::Session;
+use deskwerk_sheets_engine::Session;
 use serde_json::json;
 
 fn table() -> Session {

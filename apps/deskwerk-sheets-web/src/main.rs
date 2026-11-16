@@ -1,0 +1,50 @@
+//! Deskwerk Sheets in the browser.
+//!
+//! Runs the same [`deskwerk_sheets_ui_egui::SheetApp`] as the desktop app through eframe's web runner
+//! (wgpu: WebGPU where available, WebGL2 otherwise). Build with `trunk build --release` from
+//! this directory (output in `dist/web`).
+//!
+//! Differences from the desktop app: no TCP control channel; Open uses the browser file picker
+//! (bytes arrive asynchronously through `Services::inbox`); Save downloads the file; dropped
+//! files are read asynchronously.
+//!
+//! URL query flags: `?webgl` forces WebGL2; `?sample=sales|budget|grades` opens a sample;
+//! `?host=parent` (inside an `<iframe>`) talks to a same-origin parent page instead: it sends the
+//! workbook to open and stores what Deskwerk Sheets saves (`host`). A page can host Deskwerk Sheets in its
+//! own document (no iframe) with `data-host="page"` on the canvas, talking over DOM `CustomEvent`s
+//! on the canvas. `&author=` names the user for notes and comments in either host mode.
+//! `window.deskwerk_sheets` (`craft-web-api`) is the page command API in every mode: `request`,
+//! `execute`, `commands`, `docInspect`, `uiInspect` and `screenshot` over the control methods
+//! (`api`).
+//! `?src=<url>&save=<url>&token=…&name=…&origin=…` opens a server's workbook and saves it back
+//! over HTTP, telling the framing page with `postMessage` (`remote`); it wins over the host modes.
+//! `?chrome=none|notitlebar|nofiletab` leaves the title bar and/or the File tab undrawn for a host
+//! that embeds the sheet in its own window (see `Chrome`). Preferences (theme, interface size,
+//! editing options…) are kept in `localStorage` (`prefs`). Fonts come from the font pack in `fonts/`
+//! next to `index.html` and, where the browser allows, from the user's computer (`fonts`).
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
+
+#[cfg(any(target_arch = "wasm32", test))]
+mod api;
+#[cfg(target_arch = "wasm32")]
+mod fonts;
+#[cfg(target_arch = "wasm32")]
+mod host;
+#[cfg(any(target_arch = "wasm32", test))]
+mod hostmode;
+#[cfg(any(target_arch = "wasm32", test))]
+mod prefs;
+#[cfg(any(target_arch = "wasm32", test))]
+mod remote;
+#[cfg(target_arch = "wasm32")]
+mod web;
+
+#[cfg(target_arch = "wasm32")]
+fn main() {
+    web::start();
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn main() {
+    eprintln!("deskwerk-sheets-web only runs in the browser: build it with `trunk build --release` in apps/deskwerk-sheets-web");
+}

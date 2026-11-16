@@ -4,7 +4,7 @@ use super::{
     Cell, CellRef, Clipboard, EngineError, Json, RangeRef, Result, Session, Value, bad, bool_param, cell_param_on, edit, json, ok, str_param,
     target_ranges, target_sheet,
 };
-use gridcraft_core::Locale;
+use deskwerk_sheets_core::Locale;
 
 // ---------------------------------------------------------------- clipboard
 
@@ -89,7 +89,12 @@ fn visible_row_runs(range: RangeRef, hidden: &std::collections::BTreeSet<u32>) -
 
 /// The validation rules of `src` cut into the areas of a packed block: one rule per area a rule
 /// touches, over that area's part moved by the area's shift. `sorted` areas run in order.
-fn pack_validations(src: &gridcraft_model::Sheet, sorted: &[RangeRef], shifts: &[(i64, i64)], across: bool) -> Vec<gridcraft_model::Validation> {
+fn pack_validations(
+    src: &deskwerk_sheets_model::Sheet,
+    sorted: &[RangeRef],
+    shifts: &[(i64, i64)],
+    across: bool,
+) -> Vec<deskwerk_sheets_model::Validation> {
     let key = |c: CellRef| if across { c.col } else { c.row };
     let mut packed_rules = Vec::new();
     for dv in &src.validations {
@@ -122,7 +127,7 @@ fn pack_validations(src: &gridcraft_model::Sheet, sorted: &[RangeRef], shifts: &
 /// bottom), without overlapping. Returns a copy of the workbook whose sheet holds the areas packed
 /// into one block at the first area's place, and that block. Formulas travel as their values, as
 /// in Excel. `None` when the areas don't line up.
-fn slide_together(wb: &gridcraft_model::Workbook, sheet: usize, areas: &[RangeRef]) -> Option<(gridcraft_model::Workbook, RangeRef)> {
+fn slide_together(wb: &deskwerk_sheets_model::Workbook, sheet: usize, areas: &[RangeRef]) -> Option<(deskwerk_sheets_model::Workbook, RangeRef)> {
     let first = *areas.first()?;
     let across = areas.iter().all(|a| a.start.row == first.start.row && a.end.row == first.end.row);
     let down = areas.iter().all(|a| a.start.col == first.start.col && a.end.col == first.end.col);
@@ -355,7 +360,7 @@ fn paste_text(s: &mut Session, p: &Json, text: &str) -> Result<Json> {
 struct HtmlSource<'a> {
     field: &'a str,
     cell: Option<&'a crate::clip_html::HtmlCell>,
-    style: gridcraft_model::StyleId,
+    style: deskwerk_sheets_model::StyleId,
     loc: Locale,
 }
 
@@ -367,7 +372,7 @@ struct HtmlSource<'a> {
 /// - a cell read as another number keeps the source's (an en-US page's "1.5" is 1.5, not the
 ///   German 1 May; "1.23" shown for 1.23456 keeps its digits), with the style the target cell
 ///   had, since the format the text suggested belongs to the misread value.
-fn numeric_from_html(cell: &mut Cell, src: &HtmlSource<'_>, wb: &mut gridcraft_model::Workbook) {
+fn numeric_from_html(cell: &mut Cell, src: &HtmlSource<'_>, wb: &mut deskwerk_sheets_model::Workbook) {
     let Some(hc) = src.cell else { return };
     let Some(n) = hc.num else { return };
     if cell.formula.is_some() || wb.styles.get(cell.style).num_fmt.as_str() == "@" {
@@ -387,7 +392,7 @@ fn numeric_from_html(cell: &mut Cell, src: &HtmlSource<'_>, wb: &mut gridcraft_m
     if wb.styles.get(cell.style).num_fmt.as_str() == "General"
         && let Some(code) = crate::clip_html::format_for_in(src.field, n, src.loc)
     {
-        cell.style = wb.styles.derive(cell.style, |s| s.num_fmt = gridcraft_model::NumFmt::new(&code));
+        cell.style = wb.styles.derive(cell.style, |s| s.num_fmt = deskwerk_sheets_model::NumFmt::new(&code));
     }
 }
 

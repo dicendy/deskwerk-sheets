@@ -3,8 +3,8 @@
 //! the focus, all go into the cell in order, and Enter and a shortcut typed in the same pass act
 //! after the text is in.
 
+use deskwerk_sheets_engine::core::{CellRef, Value};
 use egui::{Event, Key, Modifiers};
-use gridcraft_engine::core::{CellRef, Value};
 use std::sync::{Arc, Mutex};
 
 type Harness = crate::common::Harness;
@@ -102,6 +102,6 @@ fn enter_and_ctrl_s_in_the_same_pass_save_the_typed_entry() {
     assert_eq!(value(&h, "A1"), Value::text("Wort1x74"));
     let bytes = downloaded.lock().unwrap().clone();
     assert!(!bytes.is_empty(), "Ctrl+S after Enter in the same pass must save");
-    let (saved, _) = gridcraft_engine::io::open_bytes("saved.xlsx", &bytes).unwrap();
+    let (saved, _) = deskwerk_sheets_engine::io::open_bytes("saved.xlsx", &bytes).unwrap();
     assert_eq!(saved.sheet(0).unwrap().value(CellRef::parse("A1").unwrap()), Value::text("Wort1x74"));
 }

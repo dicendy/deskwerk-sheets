@@ -71,7 +71,7 @@ pub(super) fn paste_special(s: &mut Session, p: &Json) -> Result<Json> {
         // Styles from another workbook must be re-interned.
         let dest_name = cx.wb.sheet(dest_sheet).map(|sh| sh.name.clone()).unwrap_or_default();
         let mut style_map = std::collections::HashMap::new();
-        let mut map_style = |id: StyleId, wb: &mut gridcraft_model::Workbook| -> StyleId {
+        let mut map_style = |id: StyleId, wb: &mut deskwerk_sheets_model::Workbook| -> StyleId {
             if same_doc {
                 return id;
             }
@@ -165,9 +165,9 @@ pub(super) fn paste_special(s: &mut Session, p: &Json) -> Result<Json> {
                             // those references before the workbook-wide move adjustment below.
                             let e = if dest_sheet != clip.sheet {
                                 e.map(&mut |x| match x {
-                                    gridcraft_formula::Expr::Ref(mut r) if r.sheet == gridcraft_formula::SheetSel::Current => {
-                                        r.sheet = gridcraft_formula::SheetSel::Named(src_sheet_name.clone());
-                                        gridcraft_formula::Expr::Ref(r)
+                                    deskwerk_sheets_formula::Expr::Ref(mut r) if r.sheet == deskwerk_sheets_formula::SheetSel::Current => {
+                                        r.sheet = deskwerk_sheets_formula::SheetSel::Named(src_sheet_name.clone());
+                                        deskwerk_sheets_formula::Expr::Ref(r)
                                     }
                                     other => other,
                                 })
@@ -181,27 +181,28 @@ pub(super) fn paste_special(s: &mut Session, p: &Json) -> Result<Json> {
                             moved.dynamic = f.dynamic;
                             return Some(std::sync::Arc::new(moved));
                         }
-                        let moved = gridcraft_formula::adjust::shift_relative(e, dest.row as i64 - sc.row as i64, dest.col as i64 - sc.col as i64);
+                        let moved =
+                            deskwerk_sheets_formula::adjust::shift_relative(e, dest.row as i64 - sc.row as i64, dest.col as i64 - sc.col as i64);
                         Some(std::sync::Arc::new(Formula { dynamic: f.dynamic, ..Formula::from_expr(moved) }))
                     };
-                    let moved_py = |cell: &Cell| -> Result<Option<std::sync::Arc<gridcraft_model::PyCode>>> {
+                    let moved_py = |cell: &Cell| -> Result<Option<std::sync::Arc<deskwerk_sheets_model::PyCode>>> {
                         let Some(py) = cell.py.clone() else { return Ok(None) };
                         if !cut_move || dest_sheet == clip.sheet {
                             return Ok(Some(py));
                         }
-                        let qualified = gridcraft_model::python::rewrite_xl(&py.code, |reference| {
-                            let e = gridcraft_formula::parse(reference).ok()?.map(&mut |x| match x {
-                                gridcraft_formula::Expr::Ref(mut r) if r.sheet == gridcraft_formula::SheetSel::Current => {
-                                    r.sheet = gridcraft_formula::SheetSel::Named(src_sheet_name.clone());
-                                    gridcraft_formula::Expr::Ref(r)
+                        let qualified = deskwerk_sheets_model::python::rewrite_xl(&py.code, |reference| {
+                            let e = deskwerk_sheets_formula::parse(reference).ok()?.map(&mut |x| match x {
+                                deskwerk_sheets_formula::Expr::Ref(mut r) if r.sheet == deskwerk_sheets_formula::SheetSel::Current => {
+                                    r.sheet = deskwerk_sheets_formula::SheetSel::Named(src_sheet_name.clone());
+                                    deskwerk_sheets_formula::Expr::Ref(r)
                                 }
                                 other => other,
                             });
-                            Some(gridcraft_formula::print(&e))
+                            Some(deskwerk_sheets_formula::print(&e))
                         });
                         Ok(Some(match qualified {
                             Some(code) => {
-                                let moved = gridcraft_model::PyCode { code, ..(*py).clone() };
+                                let moved = deskwerk_sheets_model::PyCode { code, ..(*py).clone() };
                                 check_python_fits(&moved, &dest_name, dest)?;
                                 std::sync::Arc::new(moved)
                             }
@@ -212,7 +213,7 @@ pub(super) fn paste_special(s: &mut Session, p: &Json) -> Result<Json> {
                         let sheet_prefix = if dest_sheet == clip.sheet && same_doc {
                             String::new()
                         } else {
-                            format!("{}!", gridcraft_formula::quote_sheet(&src_sheet_name))
+                            format!("{}!", deskwerk_sheets_formula::quote_sheet(&src_sheet_name))
                         };
                         new.formula = Some(std::sync::Arc::new(Formula::new(&format!("={sheet_prefix}{}", sc.a1()))));
                         new.value = Value::Empty;
@@ -265,7 +266,7 @@ pub(super) fn paste_special(s: &mut Session, p: &Json) -> Result<Json> {
                         {
                             if old_picture.is_some() || new_picture.is_some() {
                                 new_picture = None;
-                                new.value = Value::Error(gridcraft_core::CellError::Value);
+                                new.value = Value::Error(deskwerk_sheets_core::CellError::Value);
                             }
                             let a = old.value.clone();
                             let b = new.value.clone();
@@ -281,7 +282,7 @@ pub(super) fn paste_special(s: &mut Session, p: &Json) -> Result<Json> {
                                     "multiply" => Value::number(x * y),
                                     "divide" => {
                                         if y == 0.0 {
-                                            Value::Error(gridcraft_core::CellError::Div0)
+                                            Value::Error(deskwerk_sheets_core::CellError::Div0)
                                         } else {
                                             Value::number(x / y)
                                         }
@@ -303,7 +304,7 @@ pub(super) fn paste_special(s: &mut Session, p: &Json) -> Result<Json> {
                                     _ => None,
                                 }
                             {
-                                let text = format!("=({}){sym}{}", f.text, gridcraft_core::number_to_text(y));
+                                let text = format!("=({}){sym}{}", f.text, deskwerk_sheets_core::number_to_text(y));
                                 new.formula = Some(std::sync::Arc::new(Formula::new(&text)));
                                 new.value = Value::Empty;
                             }
@@ -369,9 +370,9 @@ pub(super) fn paste_special(s: &mut Session, p: &Json) -> Result<Json> {
         if cut_move {
             // References elsewhere to the moved block now point to its new place.
             let e = if dest_sheet == clip.sheet {
-                gridcraft_formula::adjust::Edit::Move { from: src, to_row: at.row, to_col: at.col }
+                deskwerk_sheets_formula::adjust::Edit::Move { from: src, to_row: at.row, to_col: at.col }
             } else {
-                gridcraft_formula::adjust::Edit::MoveToSheet { from: src, to_sheet: dest_name.clone(), to_row: at.row, to_col: at.col }
+                deskwerk_sheets_formula::adjust::Edit::MoveToSheet { from: src, to_sheet: dest_name.clone(), to_row: at.row, to_col: at.col }
             };
             rewrite_all_formulas(&mut cx.wb, &src_sheet_name, &e)?;
             cx.structural = true;
@@ -434,7 +435,7 @@ fn without_rows(range: RangeRef, skip: &std::collections::BTreeSet<u32>) -> Vec<
 /// `size` is one tile's (height, width) at the destination; `pasted` is all the tiles together.
 fn paste_validations(
     cx: &mut crate::cmd::Ctx<'_>,
-    src_sheet: &gridcraft_model::Sheet,
+    src_sheet: &deskwerk_sheets_model::Sheet,
     src: RangeRef,
     dest_sheet: usize,
     pasted: RangeRef,
@@ -552,8 +553,8 @@ fn paste_validations(
 }
 
 /// Applies a reference adjustment to every cell formula and defined name in the workbook.
-pub(crate) fn rewrite_all_formulas(wb: &mut gridcraft_model::Workbook, target: &str, e: &gridcraft_formula::adjust::Edit) -> Result<()> {
-    use gridcraft_formula::adjust::Edit;
+pub(crate) fn rewrite_all_formulas(wb: &mut deskwerk_sheets_model::Workbook, target: &str, e: &deskwerk_sheets_formula::adjust::Edit) -> Result<()> {
+    use deskwerk_sheets_formula::adjust::Edit;
     // Rows and columns inserted or deleted on the target sheet move its legacy array ranges too
     // (a cut moves its arrays itself).
     let moves_arrays = matches!(e, Edit::Insert { .. } | Edit::Delete { .. } | Edit::InsertCells { .. } | Edit::DeleteCells { .. });
@@ -569,7 +570,7 @@ pub(crate) fn rewrite_all_formulas(wb: &mut gridcraft_model::Workbook, target: &
         for (c, f) in keys {
             // Borrows the tree and copies and prints only the formulas the edit changes. A formula
             // the edit leaves alone keeps its stored text, even if that text is not canonical.
-            let Some(new) = f.with_expr(|x| gridcraft_formula::adjust::adjust_if_changed(x, &host, target, e)) else { continue };
+            let Some(new) = f.with_expr(|x| deskwerk_sheets_formula::adjust::adjust_if_changed(x, &host, target, e)) else { continue };
             let array = match f.array {
                 Some(a) if on_target => crate::cmd::sheet::map_range(a, e),
                 a => a,
@@ -585,14 +586,14 @@ pub(crate) fn rewrite_all_formulas(wb: &mut gridcraft_model::Workbook, target: &
         }
     }
     for n in wb.names.iter_mut() {
-        if let Ok(expr) = gridcraft_formula::parse_name(&n.formula) {
+        if let Ok(expr) = deskwerk_sheets_formula::parse_name(&n.formula) {
             // Names are workbook-level: unqualified refs don't occur; qualified ones adjust.
-            let new = gridcraft_formula::adjust::adjust(expr, "\u{0}", target, e);
-            n.formula = gridcraft_formula::print(&new);
+            let new = deskwerk_sheets_formula::adjust::adjust(expr, "\u{0}", target, e);
+            n.formula = deskwerk_sheets_formula::print(&new);
         }
     }
-    rewrite_cell_links(wb, |host, expr| gridcraft_formula::adjust::adjust(expr, host, target, e));
-    rewrite_python_refs(wb, &|host, expr| gridcraft_formula::adjust::adjust(expr, host, target, e))
+    rewrite_cell_links(wb, |host, expr| deskwerk_sheets_formula::adjust::adjust(expr, host, target, e));
+    rewrite_python_refs(wb, &|host, expr| deskwerk_sheets_formula::adjust::adjust(expr, host, target, e))
 }
 
 /// Runs `f` over every reference a floating object holds (a chart's series values, categories,
@@ -602,13 +603,16 @@ pub(crate) fn rewrite_all_formulas(wb: &mut gridcraft_model::Workbook, target: &
 /// [`rewrite_all_formulas`]), and renaming and deleting sheets. `f` maps a reference held by an
 /// object on the sheet named `host` to its new form; text that does not parse is kept. A source
 /// block that no longer exists is dropped.
-pub(crate) fn rewrite_cell_links(wb: &mut gridcraft_model::Workbook, f: impl Fn(&str, gridcraft_formula::Expr) -> gridcraft_formula::Expr) {
+pub(crate) fn rewrite_cell_links(
+    wb: &mut deskwerk_sheets_model::Workbook,
+    f: impl Fn(&str, deskwerk_sheets_formula::Expr) -> deskwerk_sheets_formula::Expr,
+) {
     for si in 0..wb.sheets.len() {
         let Some(host) = wb.sheets.get(si).filter(|s| !s.charts.is_empty() || !s.controls.is_empty()).map(|s| s.name.clone()) else { continue };
         let Some(sh) = wb.sheet_mut(si) else { continue };
         let fix = |text: &str| -> String {
-            match gridcraft_formula::parse(text) {
-                Ok(expr) => gridcraft_formula::print(&f(&host, expr)),
+            match deskwerk_sheets_formula::parse(text) {
+                Ok(expr) => deskwerk_sheets_formula::print(&f(&host, expr)),
                 Err(_) => text.to_string(),
             }
         };
@@ -638,8 +642,8 @@ pub(crate) fn rewrite_cell_links(wb: &mut gridcraft_model::Workbook, f: impl Fn(
 /// make a cell's code longer than one cell holds (a longer sheet name, `Z1` becoming `AA1`) refuses
 /// the whole edit, which then changes nothing: see [`check_python_fits`].
 pub(crate) fn rewrite_python_refs(
-    wb: &mut gridcraft_model::Workbook,
-    f: &impl Fn(&str, gridcraft_formula::Expr) -> gridcraft_formula::Expr,
+    wb: &mut deskwerk_sheets_model::Workbook,
+    f: &impl Fn(&str, deskwerk_sheets_formula::Expr) -> deskwerk_sheets_formula::Expr,
 ) -> Result<()> {
     for si in 0..wb.sheets.len() {
         let Some(sh) = wb.sheets.get(si) else { continue };
@@ -648,15 +652,15 @@ pub(crate) fn rewrite_python_refs(
         for (c, cell) in sh.cells.iter() {
             let Some(py) = &cell.py else { continue };
             let mut lost = false;
-            let changed = gridcraft_model::python::rewrite_xl(&py.code, |reference| {
-                let expr = gridcraft_formula::parse(reference).ok()?;
-                let before = gridcraft_formula::print(&expr);
-                let after = gridcraft_formula::print(&f(&host, expr));
+            let changed = deskwerk_sheets_model::python::rewrite_xl(&py.code, |reference| {
+                let expr = deskwerk_sheets_formula::parse(reference).ok()?;
+                let before = deskwerk_sheets_formula::print(&expr);
+                let after = deskwerk_sheets_formula::print(&f(&host, expr));
                 lost |= (after.contains("#REF!") && !before.contains("#REF!")) || area_shape(&before) != area_shape(&after);
                 (after != before).then_some(after)
             });
             if let Some(code) = changed {
-                check_python_fits(&gridcraft_model::PyCode { code: code.clone(), object: py.object, ..Default::default() }, &host, c)?;
+                check_python_fits(&deskwerk_sheets_model::PyCode { code: code.clone(), object: py.object, ..Default::default() }, &host, c)?;
                 new_code.push((c, code, lost));
             }
         }
@@ -672,7 +676,7 @@ pub(crate) fn rewrite_python_refs(
                 py.code = code;
                 if lost {
                     py.output = None;
-                    cell.value = Value::Error(gridcraft_core::CellError::Blocked);
+                    cell.value = Value::Error(deskwerk_sheets_core::CellError::Blocked);
                 }
             }
         }
@@ -690,14 +694,14 @@ fn area_shape(reference: &str) -> Option<(u32, u32)> {
 /// Refuses Python code an edit has made longer than one cell holds: the limit `python.set`
 /// enforces and opening a file applies (code over it is dropped to its value on open). The edit
 /// is refused rather than made, so no code is lost and none keeps a reference the edit moved.
-pub(crate) fn check_python_fits(py: &gridcraft_model::PyCode, sheet: &str, at: CellRef) -> Result<()> {
+pub(crate) fn check_python_fits(py: &deskwerk_sheets_model::PyCode, sheet: &str, at: CellRef) -> Result<()> {
     if py.fits() {
         return Ok(());
     }
     Err(EngineError::Other(format!(
         "The edit would make the Python code in {}!{} longer than Excel's {}-character formula limit, so nothing was changed. Shorten the code first.",
-        gridcraft_formula::quote_sheet(sheet),
+        deskwerk_sheets_formula::quote_sheet(sheet),
         at.a1(),
-        gridcraft_model::python::MAX_FORMULA_CHARS
+        deskwerk_sheets_model::python::MAX_FORMULA_CHARS
     )))
 }

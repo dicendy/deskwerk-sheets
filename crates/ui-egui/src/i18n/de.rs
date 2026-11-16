@@ -521,7 +521,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
         "Show" => "Anzeigen",
         "Collapse dialog" => "Dialogfeld reduzieren",
         "Expand dialog" => "Dialogfeld erweitern",
-        // Every interface string the other catalogs have, plus labels the running UI shows (storytold/gridcraft#3034).
+        // Every interface string the other catalogs have, plus labels the running UI shows (upstream #3034).
         " (password)" => " (Kennwort)",
         " (password, unlocked)" => " (Kennwort, entsperrt)",
         "$ English (United States)" => "$ Englisch (USA)",
@@ -1299,12 +1299,6 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
         "Resize\nTable" => "Tabellengröße\nändern",
         "Resize Table" => "Tabellengröße ändern",
         "Scroll ribbon left" => "Menüband nach links scrollen",
-        "A clean-room, open-source, Rust-native spreadsheet." => {
-            "Eine quelloffene, in Rust geschriebene Tabellenkalkulation, im Clean-Room-Verfahren entwickelt."
-        }
-        "Based on GridCraft by the ArtCraft team. Not affiliated with or endorsed by them." => {
-            "Basiert auf GridCraft des ArtCraft-Teams. Nicht mit ihm verbunden und nicht von ihm unterstützt."
-        }
         "Couldn't save {name}: {error}" => "{name} konnte nicht gespeichert werden: {error}",
         "Couldn't open {name}: {error}" => "{name} konnte nicht geöffnet werden: {error}",
         "Shown with a similar font; the file keeps “{name}”." => "Wird mit einer ähnlichen Schrift angezeigt; in der Datei bleibt »{name}«.",

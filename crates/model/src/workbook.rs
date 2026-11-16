@@ -3,8 +3,8 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU8, AtomicUsize, Ordering};
 
-use gridcraft_core::{DateSystem, Locale};
-use gridcraft_formula::Expr;
+use deskwerk_sheets_core::{DateSystem, Locale};
+use deskwerk_sheets_formula::Expr;
 use serde::{Deserialize, Serialize};
 
 use crate::cell::Formula;
@@ -46,7 +46,7 @@ pub enum ShowObjects {
 /// The values are modelled so an open + save keeps them — a workbook Excel saved with the
 /// tabs hidden must not come back with them shown and the settings gone. The app does not
 /// act on them yet and there is no Options control for them; that is the other half of
-/// storytold/gridcraft#3057.
+/// upstream #3057.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorkbookView {
     #[serde(default = "yes")]
@@ -96,7 +96,7 @@ pub struct CalcSettings {
     /// Use precision as displayed.
     pub precision_as_displayed: bool,
     /// R1C1 reference style (`<calcPr refMode="R1C1"/>`): kept with the file and written back;
-    /// GridCraft itself shows and takes A1 references.
+    /// Deskwerk Sheets itself shows and takes A1 references.
     #[serde(default)]
     pub r1c1: bool,
 }
@@ -218,7 +218,7 @@ pub struct Workbook {
     pub show_objects: ShowObjects,
     /// Trust Center › Privacy Options › "Remove personal information from file properties on save"
     /// (`<workbookPr filterPrivacy="1"/>`): kept with the file, and while it is on the author and
-    /// company are left out of the XLSX files GridCraft writes, as Excel leaves them empty. Other
+    /// company are left out of the XLSX files Deskwerk Sheets writes, as Excel leaves them empty. Other
     /// formats aren't filtered: the workbook's own serialization still holds them.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub remove_personal_info: bool,
@@ -248,7 +248,7 @@ pub struct Workbook {
     /// which holds unmodelled parts), so it is saved to JSON as well as to XLSX.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub phonetics: Vec<PhoneticString>,
-    /// VBA project (`xl/vbaProject.bin`) carried through unchanged. GridCraft does not run
+    /// VBA project (`xl/vbaProject.bin`) carried through unchanged. Deskwerk Sheets does not run
     /// macros; the blob is preserved so that saving a macro-enabled workbook never destroys the
     /// macros it arrived with. base64 in JSON. `None` = the workbook has no macros. Shared, so a
     /// copy of the workbook (every edit's undo step) doesn't copy it.
@@ -258,7 +258,7 @@ pub struct Workbook {
     /// separator back (a `;` file stays a `;` file). `None` = not read from CSV: CSV saves use `,`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub csv_delimiter: Option<u8>,
-    /// GridCraft macros (typed command lists, not VBA), in the order the macro list shows them.
+    /// Deskwerk Sheets macros (typed command lists, not VBA), in the order the macro list shows them.
     /// The JSON format keeps them as this field; xlsx keeps them in hidden defined names.
     #[serde(default, skip_serializing_if = "crate::macros::Macros::is_empty", skip_deserializing)]
     pub macros: crate::macros::Macros,
@@ -530,10 +530,10 @@ impl Workbook {
             }
         }
         for n in self.names.iter_mut() {
-            if let Ok(e) = gridcraft_formula::parse_name(&n.formula) {
+            if let Ok(e) = deskwerk_sheets_formula::parse_name(&n.formula) {
                 let ne = spell_calls(e.clone(), &lambdas);
                 if ne != e {
-                    n.formula = gridcraft_formula::print(&ne);
+                    n.formula = deskwerk_sheets_formula::print(&ne);
                 }
             }
         }

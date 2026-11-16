@@ -31,9 +31,9 @@ open_workbook / save_workbook. inspect_workbook summarizes sheets, used ranges, 
 list_functions lists the worksheet functions.";
 
 /// Resource URIs.
-pub const WORKBOOK_URI: &str = "gridcraft://workbook";
-pub const COMMANDS_URI: &str = "gridcraft://commands";
-pub const FUNCTIONS_URI: &str = "gridcraft://functions";
+pub const WORKBOOK_URI: &str = "deskwerk-sheets://workbook";
+pub const COMMANDS_URI: &str = "deskwerk-sheets://commands";
+pub const FUNCTIONS_URI: &str = "deskwerk-sheets://functions";
 
 /// An MCP server bound to one backend.
 pub struct Server {

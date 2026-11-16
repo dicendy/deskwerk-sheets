@@ -1,10 +1,10 @@
 //! Repeat fill (`*` in a number format, as in the Accounting format): a number that fits is drawn
 //! across its cell, and one too wide for its column shows #### instead of losing its leading digits.
 
+use deskwerk_sheets_engine::Session;
+use deskwerk_sheets_engine::core::CellRef;
+use deskwerk_sheets_ui_egui::{SheetApp, grid::Geo};
 use egui::Shape;
-use gridcraft_engine::Session;
-use gridcraft_engine::core::CellRef;
-use gridcraft_ui_egui::{SheetApp, grid::Geo};
 use serde_json::json;
 
 type Harness = egui_kittest::Harness<'static, SheetApp>;

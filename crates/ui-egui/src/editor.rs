@@ -1,7 +1,7 @@
 //! In-cell / formula-bar editing state: point mode, reference colouring, function
 //! autocomplete and argument hints.
 
-use gridcraft_engine::core::{CellRef, RangeRef};
+use deskwerk_sheets_engine::core::{CellRef, RangeRef};
 
 /// How many distinct reference colours a formula cycles through (`Tokens::ref_colors`).
 pub const REF_COLOR_COUNT: usize = 8;
@@ -27,7 +27,7 @@ pub struct EditState {
     /// `point_anchor`, which holds a sheet index.
     pub sheet_order: u64,
     /// Syntax of this edit, captured when it starts (prevents a language switch reinterpreting it).
-    pub locale: gridcraft_engine::formula::FormulaLocale,
+    pub locale: deskwerk_sheets_engine::formula::FormulaLocale,
     pub cell: CellRef,
     pub text: String,
     /// Started by typing (Enter mode: arrows commit) rather than F2 (Edit mode: arrows move the caret).
@@ -66,7 +66,7 @@ pub struct EditState {
 
 /// A digest of the order of `wb`'s sheets by identity: it changes when a sheet is inserted,
 /// deleted or moved, not when one is renamed or edited.
-pub fn sheet_order(wb: &gridcraft_engine::model::Workbook) -> u64 {
+pub fn sheet_order(wb: &deskwerk_sheets_engine::model::Workbook) -> u64 {
     wb.sheets.iter().fold(0xcbf2_9ce4_8422_2325_u64, |h, sh| (h ^ sh.uid.get()).wrapping_mul(0x0000_0100_0000_01b3))
 }
 
@@ -111,7 +111,7 @@ impl EditState {
     }
 
     /// Records the identity of the draft's sheet, from the workbook it is typed in.
-    pub fn on_sheet(mut self, wb: &gridcraft_engine::model::Workbook) -> EditState {
+    pub fn on_sheet(mut self, wb: &deskwerk_sheets_engine::model::Workbook) -> EditState {
         self.sheet_uid = wb.sheet(self.sheet).map_or(0, |sh| sh.uid.get());
         self.sheet_order = sheet_order(wb);
         self
@@ -119,7 +119,7 @@ impl EditState {
 
     /// The draft's sheet's index now, found by its identity, since commands insert, delete and
     /// move sheets under an open draft; `None` once the sheet is gone (or none was recorded).
-    pub fn sheet_in(&self, wb: &gridcraft_engine::model::Workbook) -> Option<usize> {
+    pub fn sheet_in(&self, wb: &deskwerk_sheets_engine::model::Workbook) -> Option<usize> {
         if self.sheet_uid == 0 {
             return None;
         }
@@ -256,7 +256,7 @@ impl EditState {
             return;
         }
         // Fold as formula names do: `zä` finds `ZÄHLENWENN`, `KGRÖẞ` finds `KGRÖSSTE`.
-        let fold = gridcraft_engine::formula::fold_name;
+        let fold = deskwerk_sheets_engine::formula::fold_name;
         let key = fold(&word);
         // Not after a column letter of a reference like A1 (digits follow) – fine either way.
         self.autocomplete = names.iter().filter(|n| fold(n).starts_with(&key)).take(12).cloned().collect();
@@ -364,15 +364,15 @@ impl EditState {
 /// References in formula text with their byte spans and colour index (same reference text ⇒
 /// same colour), for colouring the editor and outlining ranges on the grid. `locale` is the edit
 /// syntax, so `=A1+#WERT!` in German still finds A1.
-pub fn formula_refs(text: &str, locale: gridcraft_engine::formula::FormulaLocale) -> Vec<(usize, usize, RangeRef, Option<String>, usize)> {
+pub fn formula_refs(text: &str, locale: deskwerk_sheets_engine::formula::FormulaLocale) -> Vec<(usize, usize, RangeRef, Option<String>, usize)> {
     let body = text.strip_prefix('=').or_else(|| text.strip_prefix('+')).unwrap_or(text);
     let offset = text.len() - body.len();
-    let Ok(toks) = gridcraft_engine::formula::lexer::tokenize_locale(body, locale) else { return vec![] };
+    let Ok(toks) = deskwerk_sheets_engine::formula::lexer::tokenize_locale(body, locale) else { return vec![] };
     let mut out: Vec<(usize, usize, RangeRef, Option<String>, usize)> = Vec::new();
     let mut seen: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
     let mut i = 0;
     while i < toks.len() {
-        use gridcraft_engine::formula::lexer::Tok;
+        use deskwerk_sheets_engine::formula::lexer::Tok;
         let (sheet, start, j) = match &toks[i].tok {
             Tok::Sheet(a, _) => (Some(a.clone()), toks[i].start, i + 1),
             _ => (None, toks[i].start, i),
@@ -420,7 +420,7 @@ pub fn ref_is_on_sheet(ref_sheet: Option<&str>, origin: &str, shown: &str) -> bo
 
 /// Excel-style AutoComplete: the one distinct text entry in the same column (contiguous data
 /// above and below) that starts with `typed` (case-insensitive). `None` when ambiguous.
-pub fn column_completion(sheet: &gridcraft_engine::model::Sheet, at: CellRef, typed: &str) -> Option<String> {
+pub fn column_completion(sheet: &deskwerk_sheets_engine::model::Sheet, at: CellRef, typed: &str) -> Option<String> {
     if typed.is_empty() || typed.starts_with('=') || typed.chars().all(|c| c.is_ascii_digit() || c == '.' || c == '-') {
         return None;
     }
@@ -429,8 +429,8 @@ pub fn column_completion(sheet: &gridcraft_engine::model::Sheet, at: CellRef, ty
     let mut ambiguous = false;
     let mut scan = |row: u32| -> bool {
         match sheet.value(CellRef::new(row, at.col)) {
-            gridcraft_engine::core::Value::Empty => false,
-            gridcraft_engine::core::Value::Text(t) => {
+            deskwerk_sheets_engine::core::Value::Empty => false,
+            deskwerk_sheets_engine::core::Value::Text(t) => {
                 let folded = t.to_lowercase();
                 if folded.starts_with(&lower) && folded.len() > lower.len() {
                     match &found {
@@ -534,11 +534,11 @@ mod tests {
         assert_eq!(e.text, "=1+ZÄHLENWENN(");
         // The argument hint names the whole function, umlaut included.
         let mut e = EditState::new(1, 0, CellRef::new(0, 0), "=zählenwenn(A1:A9;".into(), true, false);
-        e.locale = gridcraft_engine::formula::FormulaLocale::De;
+        e.locale = deskwerk_sheets_engine::formula::FormulaLocale::De;
         assert_eq!(e.current_function(), Some(("ZÄHLENWENN".into(), 1)));
         // Ctrl+Shift+A after it inserts COUNTIF's arguments with German separators.
         let mut e = EditState::new(1, 0, CellRef::new(0, 0), "=zählenwenn(".into(), true, false);
-        e.locale = gridcraft_engine::formula::FormulaLocale::De;
+        e.locale = deskwerk_sheets_engine::formula::FormulaLocale::De;
         assert!(e.insert_argument_names(crate::i18n::Language::En));
         assert_eq!(e.text, "=zählenwenn(range;criteria)");
     }
@@ -554,7 +554,7 @@ mod tests {
 
     #[test]
     fn ref_spans_follow_the_edit_syntax() {
-        use gridcraft_engine::formula::FormulaLocale;
+        use deskwerk_sheets_engine::formula::FormulaLocale;
         // A German error value does not hide the references around it.
         let r = formula_refs("=A1+#WERT!+SUMME(B2:C3;1,5)", FormulaLocale::De);
         assert_eq!(r.iter().map(|r| r.2.a1()).collect::<Vec<_>>(), ["A1", "B2:C3"]);

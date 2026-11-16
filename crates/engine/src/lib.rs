@@ -1,4 +1,4 @@
-//! The GridCraft engine façade.
+//! The Deskwerk Sheets engine façade.
 //!
 //! Every user-visible action is a command with a stable id (`cell.set`, `home.bold`,
 //! `data.sortAscending`…) and JSON parameters. The egui UI, the CLI, the control channel and MCP
@@ -29,19 +29,19 @@ pub mod windows;
 
 use std::sync::Arc;
 
-use gridcraft_calc::Calc;
-use gridcraft_core::{CellRef, RangeRef};
-use gridcraft_model::Workbook;
+use deskwerk_sheets_calc::Calc;
+use deskwerk_sheets_core::{CellRef, RangeRef};
+use deskwerk_sheets_model::Workbook;
 use serde::Serialize;
 use serde_json::Value as Json;
 
 pub use cmd::{CommandInfo, CommandSpec, command_specs, find_command, register_test_command};
-pub use gridcraft_calc as calc;
-pub use gridcraft_core as core;
-pub use gridcraft_formula as formula;
-pub use gridcraft_math as math;
-pub use gridcraft_model as model;
-pub use gridcraft_numfmt as numfmt;
+pub use deskwerk_sheets_calc as calc;
+pub use deskwerk_sheets_core as core;
+pub use deskwerk_sheets_formula as formula;
+pub use deskwerk_sheets_math as math;
+pub use deskwerk_sheets_model as model;
+pub use deskwerk_sheets_numfmt as numfmt;
 pub use selection::Selection;
 pub use windows::{Target, TargetGuard, WindowState, WindowView};
 
@@ -220,7 +220,7 @@ pub struct DocState {
     pub touched: Option<Vec<(String, CellRef)>>,
     /// While a macro step runs: the structural edits its command made (the sheet's name, the
     /// edit), so the macro's inputs, output and Repeat ranges follow their cells as formulas do.
-    pub edits: Option<Vec<(String, gridcraft_formula::adjust::Edit)>>,
+    pub edits: Option<Vec<(String, deskwerk_sheets_formula::adjust::Edit)>>,
     /// The references `edit.goTo` with `record: true` went to in this document, newest first,
     /// without names, each area written with its sheet (`Sheet1!B14:C22,Sheet1!F19:G30`).
     pub go_to_recent: Vec<String>,
@@ -244,8 +244,8 @@ fn history_retained_bytes(older: &Workbook, newer: &Workbook) -> usize {
         if newer.sheets.iter().any(|next| Arc::ptr_eq(sheet, next)) {
             continue;
         }
-        bytes = bytes.saturating_add(std::mem::size_of::<gridcraft_model::Sheet>());
-        let empty = gridcraft_model::CellStore::new();
+        bytes = bytes.saturating_add(std::mem::size_of::<deskwerk_sheets_model::Sheet>());
+        let empty = deskwerk_sheets_model::CellStore::new();
         let next = newer.sheets.get(index).map_or(&empty, |next| &next.cells);
         bytes = bytes.saturating_add(sheet.cells.retained_bytes_against(next));
     }
@@ -425,8 +425,8 @@ impl Default for Prefs {
             enter_direction: "down".into(),
             autocomplete: true,
             user_name: "Deskwerk Sheets User".into(),
-            default_font: gridcraft_model::DEFAULT_FONT.into(),
-            default_font_size: gridcraft_model::DEFAULT_FONT_SIZE,
+            default_font: deskwerk_sheets_model::DEFAULT_FONT.into(),
+            default_font_size: deskwerk_sheets_model::DEFAULT_FONT_SIZE,
             sheets_in_new_workbook: 1,
             r1c1: false,
             user_dictionary: vec![],
@@ -533,7 +533,7 @@ pub struct Session {
     pub text_width: Option<TextWidth>,
     /// The number locale every open workbook is shown in ([`Session::set_locale`],
     /// `app.locale.set`).
-    locale: gridcraft_core::Locale,
+    locale: deskwerk_sheets_core::Locale,
 }
 
 impl Session {
@@ -544,12 +544,12 @@ impl Session {
         &self.docs
     }
     /// The number locale workbooks are shown in and the front end types in (en-US by default).
-    pub fn locale(&self) -> gridcraft_core::Locale {
+    pub fn locale(&self) -> deskwerk_sheets_core::Locale {
         self.locale
     }
     /// Shows every open workbook, and those opened later, in `loc`'s number conventions. A view
     /// setting: no workbook changes, and nothing is recalculated (see `app.locale.set`).
-    pub fn set_locale(&mut self, loc: gridcraft_core::Locale) {
+    pub fn set_locale(&mut self, loc: deskwerk_sheets_core::Locale) {
         self.locale = loc;
         self.sync_locale();
     }
@@ -634,7 +634,7 @@ impl Session {
         wb.props.author = self.prefs.user_name.clone();
         for _ in 1..self.prefs.sheets_in_new_workbook.clamp(1, 255) {
             let name = wb.next_sheet_name();
-            wb.sheets.push(Arc::new(gridcraft_model::Sheet::new(name)));
+            wb.sheets.push(Arc::new(deskwerk_sheets_model::Sheet::new(name)));
         }
         self.add_document(DocState::new(wb, None, format!("Book{n}"), Trust::Local))
     }
@@ -1148,7 +1148,7 @@ impl Session {
 }
 
 /// Convenience: the active workbook's active sheet.
-pub fn active_sheet(s: &Session) -> Option<&gridcraft_model::Sheet> {
+pub fn active_sheet(s: &Session) -> Option<&deskwerk_sheets_model::Sheet> {
     s.active().and_then(|d| d.wb.active())
 }
 

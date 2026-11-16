@@ -24,7 +24,7 @@ impl SheetApp {
     /// The view a sheet opens with: scrolled to the file's saved first visible cell (`topLeftCell`).
     fn saved_view(&self) -> SheetView {
         let Some(sh) = self.session.active().and_then(|d| d.wb.active()) else { return SheetView::default() };
-        if sh.view != gridcraft_engine::model::SheetViewMode::Normal {
+        if sh.view != deskwerk_sheets_engine::model::SheetViewMode::Normal {
             return SheetView::default();
         }
         let (fr, fc) = sh.freeze.unwrap_or((0, 0));
@@ -43,7 +43,7 @@ impl SheetApp {
         let mut tops = Vec::new();
         for (si, sh) in d.wb.sheets.iter().enumerate() {
             let Some(v) =
-                window.and_then(|w| self.views.get(&(w, sh.uid.get()))).filter(|_| sh.view == gridcraft_engine::model::SheetViewMode::Normal)
+                window.and_then(|w| self.views.get(&(w, sh.uid.get()))).filter(|_| sh.view == deskwerk_sheets_engine::model::SheetViewMode::Normal)
             else {
                 continue;
             };

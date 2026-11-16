@@ -13,7 +13,7 @@ use super::ref_edit::{RefLabel, SHEET_DELETED, end_pick, home_sheet_deleted, pla
 use super::spelling::spelling;
 use super::zoom::zoom;
 use super::{Dialog, Field, Json, Key, Map, RefPick, SheetApp, json, vec2};
-use gridcraft_engine::model::PageOrder;
+use deskwerk_sheets_engine::model::PageOrder;
 
 /// Builds the command params from form values for dialogs that need translation.
 /// The parameters OK sends to the dialog's command: its field values, reshaped per dialog.
@@ -159,7 +159,6 @@ pub fn show(app: &mut SheetApp, ctx: &egui::Context) {
     let mut confirm = false;
     let width = match d.name.as_str() {
         "formatCells" => 560.0,
-        "about" => 820.0,
         "insertFunction" | "commandSearch" | "nameManager" | "manageRules" | "journal" | "agents" | "equation" => 520.0,
         "macros" => 480.0,
         "recommendedCharts" => 600.0,
@@ -221,11 +220,11 @@ pub fn show(app: &mut SheetApp, ctx: &egui::Context) {
                 "agents" => {
                     ui.label("Deskwerk Sheets is fully drivable by agents. Every menu item, button and gesture is a command:");
                     ui.add_space(4.0);
-                    ui.monospace("gridcraft --control 7979        # JSON-lines control channel\ngridcraft-cli mcp --connect 7979   # MCP bridged to this window\ngridcraft-cli mcp                   # headless MCP server");
+                    ui.monospace("deskwerk-sheets --control 7979        # JSON-lines control channel\ndeskwerk-sheets-cli mcp --connect 7979   # MCP bridged to this window\ndeskwerk-sheets-cli mcp                   # headless MCP server");
                     ui.add_space(4.0);
-                    ui.label(format!("{} engine commands are available. See docs/mcp.md and docs/control-protocol.md.", gridcraft_engine::command_specs().len()));
+                    ui.label(format!("{} engine commands are available. See docs/mcp.md and docs/control-protocol.md.", deskwerk_sheets_engine::command_specs().len()));
                 }
-                "about" => about(ui, &mut d),
+                "about" => about(ui, &mut open),
                 "journal" => {
                     egui::ScrollArea::vertical().max_height(360.0).show(ui, |ui| {
                         for (id, p) in app.session.journal.iter().rev().take(500) {
@@ -258,7 +257,7 @@ pub fn show(app: &mut SheetApp, ctx: &egui::Context) {
                         } else {
                             d.values.remove("path");
                             d.values.insert("alt".into(), json!(name));
-                            d.values.insert("base64".into(), json!(gridcraft_engine::io::base64_encode(&bytes)));
+                            d.values.insert("base64".into(), json!(deskwerk_sheets_engine::io::base64_encode(&bytes)));
                         }
                     }
                     if app.services.pick_picture_async.is_some() {
@@ -305,9 +304,9 @@ pub fn show(app: &mut SheetApp, ctx: &egui::Context) {
                             let a = doc.selection.active;
                             let mut seen = std::collections::BTreeSet::new();
                             let mut r = a.row;
-                            while r > 0 && !sh.value(gridcraft_engine::core::CellRef::new(r - 1, a.col)).is_empty() {
+                            while r > 0 && !sh.value(deskwerk_sheets_engine::core::CellRef::new(r - 1, a.col)).is_empty() {
                                 r -= 1;
-                                seen.insert(sh.value(gridcraft_engine::core::CellRef::new(r, a.col)).display());
+                                seen.insert(sh.value(deskwerk_sheets_engine::core::CellRef::new(r, a.col)).display());
                             }
                             Some(seen.into_iter().collect())
                         })
@@ -367,7 +366,7 @@ pub fn show(app: &mut SheetApp, ctx: &egui::Context) {
                             app.run_or_alert("file.new", json!({}));
                             open = false;
                         }
-                        for (n, t) in gridcraft_engine::sample::SAMPLES {
+                        for (n, t) in deskwerk_sheets_engine::sample::SAMPLES {
                             if ui.button(*t).clicked() {
                                 app.run_or_alert("file.new", json!({"sample": n}));
                                 open = false;
@@ -452,7 +451,7 @@ pub fn show(app: &mut SheetApp, ctx: &egui::Context) {
                 }
             }
             // Data Analysis asks before replacing data in its output range.
-            Err(e) if d.name == "analysisToolPak" && e.contains(gridcraft_engine::cmd::analysis::OVERWRITE_ERROR) => {
+            Err(e) if d.name == "analysisToolPak" && e.contains(deskwerk_sheets_engine::cmd::analysis::OVERWRITE_ERROR) => {
                 d.values.insert("askOverwrite".into(), json!(true));
             }
             // A wrong password: say so, clear the field and stay open for another try.

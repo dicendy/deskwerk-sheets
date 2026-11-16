@@ -1,10 +1,10 @@
 //! The Home ▸ Font list grows back when a filter that matched nothing is cleared, and its filter
 //! field stays where it is (egui#5225).
 
+use deskwerk_sheets_engine::Session;
+use deskwerk_sheets_ui_egui::SheetApp;
 use egui::{Event, Key, Modifiers, accesskit::Role};
 use egui_kittest::kittest::Queryable as _;
-use gridcraft_engine::Session;
-use gridcraft_ui_egui::SheetApp;
 use serde_json::json;
 
 type Harness = egui_kittest::Harness<'static, SheetApp>;
@@ -43,14 +43,14 @@ fn text_inputs(h: &Harness) -> Vec<egui::Rect> {
 
 /// The bottom of the Font list's ninth row, if that row is on screen.
 fn ninth_row_bottom(h: &Harness) -> Option<f32> {
-    h.query_by_label(gridcraft_ui_egui::ribbon::FONTS[8]).map(|n| n.rect().bottom())
+    h.query_by_label(deskwerk_sheets_ui_egui::ribbon::FONTS[8]).map(|n| n.rect().bottom())
 }
 
 #[test]
 fn font_list_grows_back_after_a_filter_is_cleared() {
     let mut h = harness();
     let before = text_inputs(&h);
-    let font = h.state().session.active().unwrap().wb.active().unwrap().style_id(gridcraft_engine::core::CellRef::parse("A1").unwrap());
+    let font = h.state().session.active().unwrap().wb.active().unwrap().style_id(deskwerk_sheets_engine::core::CellRef::parse("A1").unwrap());
     let name = h.state().session.active().unwrap().wb.styles.get(font).font.name.clone();
     h.get_by_label(&name).click();
     h.run_steps(4);

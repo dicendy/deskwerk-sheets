@@ -1,4 +1,4 @@
-//! GridCraft number formats: Excel format codes (`#,##0.00;[Red](#,##0.00)`, dates, fractions,
+//! Deskwerk Sheets number formats: Excel format codes (`#,##0.00;[Red](#,##0.00)`, dates, fractions,
 //! scientific…), the General display format and the `TEXT()` worksheet function. Codes are stored
 //! en-US; the `_in` entry points write numbers, dates and booleans in a [`Locale`]'s conventions.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
@@ -12,7 +12,7 @@ mod render;
 
 use std::sync::Arc;
 
-use gridcraft_core::{CellError, DateSystem, Locale, Value};
+use deskwerk_sheets_core::{CellError, DateSystem, Locale, Value};
 
 pub use builtin::{builtin_format, builtin_id};
 pub use decimal::{format_general_fit, format_general_fit_in};
@@ -54,7 +54,7 @@ impl FormatColor {
             F::Red => [255, 0, 0],
             F::White => [255, 255, 255],
             F::Yellow => [255, 255, 0],
-            F::Indexed(index) => return gridcraft_core::color::indexed_color(index),
+            F::Indexed(index) => return deskwerk_sheets_core::color::indexed_color(index),
         })
     }
 }

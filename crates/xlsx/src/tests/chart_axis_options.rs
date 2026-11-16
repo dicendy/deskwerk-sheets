@@ -4,9 +4,9 @@
 use std::io::Read;
 
 use crate::{chart::read_chart, read_xlsx, write_xlsx, xml::parse};
-use gridcraft_model::{ChartAxis, Workbook};
+use deskwerk_sheets_model::{ChartAxis, Workbook};
 
-fn chart(val_ax: &str) -> gridcraft_model::Chart {
+fn chart(val_ax: &str) -> deskwerk_sheets_model::Chart {
     let xml = format!(
         "<c:chartSpace xmlns:c=\"http://schemas.openxmlformats.org/drawingml/2006/chart\"><c:chart><c:plotArea>\
         <c:barChart><c:barDir val=\"col\"/><c:grouping val=\"clustered\"/><c:ser><c:idx val=\"0\"/><c:order val=\"0\"/>\

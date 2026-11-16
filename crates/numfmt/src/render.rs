@@ -1,7 +1,7 @@
 //! Rendering a value with a parsed section.
 
-use gridcraft_core::date::{datetime_from_serial, max_serial};
-use gridcraft_core::{DateSystem, Locale};
+use deskwerk_sheets_core::date::{datetime_from_serial, max_serial};
+use deskwerk_sheets_core::{DateSystem, Locale};
 
 use crate::decimal::{decimal_digits, fixed, fixed_from_digits, format_general_fit_in};
 use crate::parse::{DatePart, Section, Tok};

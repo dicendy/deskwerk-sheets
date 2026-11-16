@@ -1,7 +1,7 @@
 //! Synthetic DrawingML only: pie and doughnut slices labelled with their percentage
 //! (`c:dLbls/c:showPercent`), read and saved.
 
-use gridcraft_model::{Chart, ChartKind, Workbook};
+use deskwerk_sheets_model::{Chart, ChartKind, Workbook};
 
 use crate::chart::{read_chart, write_chart};
 use crate::xml::parse;

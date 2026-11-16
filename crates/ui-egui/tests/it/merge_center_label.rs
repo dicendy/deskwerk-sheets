@@ -1,10 +1,10 @@
 //! Home › Merge & Center is a split button: clicking its text label runs `home.mergeCenter`, like
 //! its icon does.
 
+use deskwerk_sheets_engine::Session;
+use deskwerk_sheets_ui_egui::SheetApp;
+use deskwerk_sheets_ui_egui::i18n::Language;
 use egui::{Event, Shape, vec2};
-use gridcraft_engine::Session;
-use gridcraft_ui_egui::SheetApp;
-use gridcraft_ui_egui::i18n::Language;
 use serde_json::json;
 
 #[test]

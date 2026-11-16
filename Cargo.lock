@@ -1162,6 +1162,224 @@ dependencies = [
 ]
 
 [[package]]
+name = "deskwerk-sheets"
+version = "0.16.4"
+dependencies = [
+ "arboard",
+ "chrono",
+ "craft-print",
+ "craft-update",
+ "deskwerk-sheets-engine",
+ "deskwerk-sheets-mcp",
+ "deskwerk-sheets-ui-egui",
+ "eframe",
+ "egui",
+ "fmv-macos-events",
+ "getrandom 0.4.3",
+ "image",
+ "log",
+ "muda",
+ "objc2 0.6.5",
+ "objc2-app-kit 0.3.2",
+ "pollster 1.0.1",
+ "rfd",
+ "serde_json",
+ "windows-registry",
+ "winit",
+ "winresource",
+]
+
+[[package]]
+name = "deskwerk-sheets-calc"
+version = "0.16.4"
+dependencies = [
+ "deskwerk-sheets-core",
+ "deskwerk-sheets-formula",
+ "deskwerk-sheets-functions",
+ "deskwerk-sheets-model",
+ "deskwerk-sheets-numfmt",
+ "log",
+]
+
+[[package]]
+name = "deskwerk-sheets-chart"
+version = "0.16.4"
+dependencies = [
+ "deskwerk-sheets-calc",
+ "deskwerk-sheets-core",
+ "deskwerk-sheets-model",
+ "deskwerk-sheets-numfmt",
+ "serde",
+]
+
+[[package]]
+name = "deskwerk-sheets-cli"
+version = "0.16.4"
+dependencies = [
+ "deskwerk-sheets-engine",
+ "deskwerk-sheets-mcp",
+ "log",
+ "quick-xml 0.41.0",
+ "serde_json",
+ "zip 3.0.0",
+]
+
+[[package]]
+name = "deskwerk-sheets-core"
+version = "0.16.4"
+dependencies = [
+ "chrono",
+ "js-sys",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "deskwerk-sheets-engine"
+version = "0.16.4"
+dependencies = [
+ "deskwerk-sheets-calc",
+ "deskwerk-sheets-chart",
+ "deskwerk-sheets-core",
+ "deskwerk-sheets-formula",
+ "deskwerk-sheets-functions",
+ "deskwerk-sheets-math",
+ "deskwerk-sheets-model",
+ "deskwerk-sheets-numfmt",
+ "deskwerk-sheets-pdf",
+ "deskwerk-sheets-xlsx",
+ "image",
+ "log",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "web-time",
+ "zip 3.0.0",
+]
+
+[[package]]
+name = "deskwerk-sheets-formula"
+version = "0.16.4"
+dependencies = [
+ "deskwerk-sheets-core",
+ "serde",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "deskwerk-sheets-functions"
+version = "0.16.4"
+dependencies = [
+ "deskwerk-sheets-core",
+ "regex",
+]
+
+[[package]]
+name = "deskwerk-sheets-math"
+version = "0.16.4"
+dependencies = [
+ "ratex-font",
+ "ratex-layout",
+ "ratex-parser",
+ "ratex-types",
+]
+
+[[package]]
+name = "deskwerk-sheets-mcp"
+version = "0.16.4"
+dependencies = [
+ "deskwerk-sheets-engine",
+ "log",
+ "serde_json",
+]
+
+[[package]]
+name = "deskwerk-sheets-model"
+version = "0.16.4"
+dependencies = [
+ "deskwerk-sheets-core",
+ "deskwerk-sheets-formula",
+ "deskwerk-sheets-math",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "deskwerk-sheets-numfmt"
+version = "0.16.4"
+dependencies = [
+ "deskwerk-sheets-core",
+]
+
+[[package]]
+name = "deskwerk-sheets-pdf"
+version = "0.16.4"
+
+[[package]]
+name = "deskwerk-sheets-ui-egui"
+version = "0.16.4"
+dependencies = [
+ "craft-ui",
+ "craft-update",
+ "craft-window",
+ "deskwerk-sheets-chart",
+ "deskwerk-sheets-engine",
+ "deskwerk-sheets-xlsx",
+ "egui",
+ "egui_extras",
+ "egui_kittest",
+ "epaint_default_fonts",
+ "image",
+ "log",
+ "serde",
+ "serde_json",
+ "skrifa",
+ "sys-locale",
+ "web-sys",
+ "web-time",
+ "zbus",
+]
+
+[[package]]
+name = "deskwerk-sheets-web"
+version = "0.16.4"
+dependencies = [
+ "craft-web-api",
+ "craft-web-host",
+ "deskwerk-sheets-engine",
+ "deskwerk-sheets-ui-egui",
+ "eframe",
+ "egui",
+ "js-sys",
+ "log",
+ "rfd",
+ "serde_json",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
+name = "deskwerk-sheets-xlsx"
+version = "0.16.4"
+dependencies = [
+ "aes",
+ "deskwerk-sheets-core",
+ "deskwerk-sheets-formula",
+ "deskwerk-sheets-functions",
+ "deskwerk-sheets-math",
+ "deskwerk-sheets-model",
+ "quick-xml 0.41.0",
+ "sha1 0.11.0",
+ "sha2 0.11.1",
+ "thiserror 2.0.21",
+ "zip 3.0.0",
+]
+
+[[package]]
 name = "dify"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2018,225 +2236,6 @@ dependencies = [
  "presser",
  "thiserror 2.0.21",
  "windows",
-]
-
-[[package]]
-name = "gridcraft"
-version = "0.16.3"
-dependencies = [
- "arboard",
- "chrono",
- "craft-print",
- "craft-update",
- "eframe",
- "egui",
- "fmv-macos-events",
- "getrandom 0.4.3",
- "gridcraft-engine",
- "gridcraft-mcp",
- "gridcraft-ui-egui",
- "image",
- "log",
- "muda",
- "objc2 0.6.5",
- "objc2-app-kit 0.3.2",
- "pollster 1.0.1",
- "rfd",
- "serde_json",
- "windows-registry",
- "winit",
- "winresource",
-]
-
-[[package]]
-name = "gridcraft-calc"
-version = "0.16.3"
-dependencies = [
- "gridcraft-core",
- "gridcraft-formula",
- "gridcraft-functions",
- "gridcraft-model",
- "gridcraft-numfmt",
- "log",
-]
-
-[[package]]
-name = "gridcraft-chart"
-version = "0.16.3"
-dependencies = [
- "gridcraft-calc",
- "gridcraft-core",
- "gridcraft-model",
- "gridcraft-numfmt",
- "serde",
-]
-
-[[package]]
-name = "gridcraft-cli"
-version = "0.16.3"
-dependencies = [
- "gridcraft-engine",
- "gridcraft-mcp",
- "log",
- "quick-xml 0.41.0",
- "serde_json",
- "zip 3.0.0",
-]
-
-[[package]]
-name = "gridcraft-core"
-version = "0.16.3"
-dependencies = [
- "chrono",
- "js-sys",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "gridcraft-engine"
-version = "0.16.3"
-dependencies = [
- "gridcraft-calc",
- "gridcraft-chart",
- "gridcraft-core",
- "gridcraft-formula",
- "gridcraft-functions",
- "gridcraft-math",
- "gridcraft-model",
- "gridcraft-numfmt",
- "gridcraft-pdf",
- "gridcraft-xlsx",
- "image",
- "log",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "web-time",
- "zip 3.0.0",
-]
-
-[[package]]
-name = "gridcraft-formula"
-version = "0.16.3"
-dependencies = [
- "gridcraft-core",
- "serde",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "gridcraft-functions"
-version = "0.16.3"
-dependencies = [
- "gridcraft-core",
- "regex",
-]
-
-[[package]]
-name = "gridcraft-math"
-version = "0.16.3"
-dependencies = [
- "ratex-font",
- "ratex-layout",
- "ratex-parser",
- "ratex-types",
-]
-
-[[package]]
-name = "gridcraft-mcp"
-version = "0.16.3"
-dependencies = [
- "gridcraft-engine",
- "log",
- "serde_json",
-]
-
-[[package]]
-name = "gridcraft-model"
-version = "0.16.3"
-dependencies = [
- "gridcraft-core",
- "gridcraft-formula",
- "gridcraft-math",
- "serde",
- "serde_json",
- "sha2 0.11.1",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "gridcraft-numfmt"
-version = "0.16.3"
-dependencies = [
- "gridcraft-core",
-]
-
-[[package]]
-name = "gridcraft-pdf"
-version = "0.16.3"
-
-[[package]]
-name = "gridcraft-ui-egui"
-version = "0.16.3"
-dependencies = [
- "craft-ui",
- "craft-update",
- "craft-window",
- "egui",
- "egui_extras",
- "egui_kittest",
- "epaint_default_fonts",
- "gridcraft-chart",
- "gridcraft-engine",
- "gridcraft-xlsx",
- "image",
- "log",
- "serde",
- "serde_json",
- "skrifa",
- "sys-locale",
- "toml",
- "web-sys",
- "web-time",
- "zbus",
-]
-
-[[package]]
-name = "gridcraft-web"
-version = "0.16.3"
-dependencies = [
- "craft-web-api",
- "craft-web-host",
- "eframe",
- "egui",
- "gridcraft-engine",
- "gridcraft-ui-egui",
- "js-sys",
- "log",
- "rfd",
- "serde_json",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
-]
-
-[[package]]
-name = "gridcraft-xlsx"
-version = "0.16.3"
-dependencies = [
- "aes",
- "gridcraft-core",
- "gridcraft-formula",
- "gridcraft-functions",
- "gridcraft-math",
- "gridcraft-model",
- "quick-xml 0.41.0",
- "sha1 0.11.0",
- "sha2 0.11.1",
- "thiserror 2.0.21",
- "zip 3.0.0",
 ]
 
 [[package]]
@@ -6675,9 +6674,9 @@ checksum = "e450f9b2ed1dff33c94c12589a87338689467b9c4f5d8a5710bd09a847d2c8a7"
 
 [[package]]
 name = "xtask"
-version = "0.16.3"
+version = "0.16.4"
 dependencies = [
- "gridcraft-engine",
+ "deskwerk-sheets-engine",
  "serde_json",
 ]
 

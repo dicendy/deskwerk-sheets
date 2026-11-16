@@ -3,9 +3,9 @@
 
 use std::sync::Arc;
 
-use gridcraft_core::{CellRef, RangeRef};
-use gridcraft_engine::Session;
-use gridcraft_model::{Cell, Formula};
+use deskwerk_sheets_core::{CellRef, RangeRef};
+use deskwerk_sheets_engine::Session;
+use deskwerk_sheets_model::{Cell, Formula};
 use serde_json::{Value as Json, json};
 
 fn run(s: &mut Session, command: &str, params: Json) {

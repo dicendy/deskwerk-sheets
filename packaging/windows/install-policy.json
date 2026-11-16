@@ -4,9 +4,9 @@
   "installDirKey": "Software\\Deskwerk\\Sheets",
   "upgradeCode": "CA81A1E0-D901-45D0-9E16-8859F2B95AF8",
   "sources": [
-    "gridcraft.wxs"
+    "deskwerk-sheets.wxs"
   ],
-  "icon": "assets/app-icon/gridcraft.ico",
+  "icon": "assets/app-icon/deskwerk-sheets.ico",
   "localization": [],
   "extensions": [],
   "payloads": [
@@ -18,7 +18,7 @@
       "-1",
       "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\deskwerk-sheets.exe",
       "",
-      "[#GridcraftExe]"
+      "[#DeskwerkSheetsExe]"
     ],
     [
       "-1",
@@ -30,13 +30,13 @@
       "-1",
       "Software\\Classes\\DeskwerkSheets.Workbook\\DefaultIcon",
       "",
-      "\"[#GridcraftDocIcon]\",0"
+      "\"[#DeskwerkSheetsDocIcon]\",0"
     ],
     [
       "-1",
       "Software\\Classes\\DeskwerkSheets.Workbook\\shell\\open\\command",
       "",
-      "\"[#GridcraftExe]\" \"%1\""
+      "\"[#DeskwerkSheetsExe]\" \"%1\""
     ],
     [
       "-1",
@@ -48,13 +48,13 @@
       "-1",
       "Software\\Classes\\DeskwerkSheets.TextData\\DefaultIcon",
       "",
-      "\"[#GridcraftDocIcon]\",0"
+      "\"[#DeskwerkSheetsDocIcon]\",0"
     ],
     [
       "-1",
       "Software\\Classes\\DeskwerkSheets.TextData\\shell\\open\\command",
       "",
-      "\"[#GridcraftExe]\" \"%1\""
+      "\"[#DeskwerkSheetsExe]\" \"%1\""
     ],
     [
       "-1",

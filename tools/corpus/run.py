@@ -5,7 +5,7 @@
                                 [--timeout 30] [--jobs N] [--soffice] [--deadline EPOCH] [--limit N]
 
 DIR (from fetch.sh) holds the files and manifest.tsv. For every file, each step in its own process
-with a timeout (commands from apps/gridcraft-cli/src/main.rs):
+with a timeout (commands from apps/deskwerk-sheets-cli/src/main.rs):
 
   open           deskwerk-sheets-cli run --in <file> --cmd document.inspect
                  open + sheets, used ranges, cell counts, tables, charts, names...
@@ -537,7 +537,7 @@ def process(entry: dict, args, workdir: str, env: dict) -> dict:
         # How many of the file's cells the app shows at all (no save involved).
         rec["open_cells_vs_xml"] = round(min(len(vals_a["values"]), xa["cells"]) / xa["cells"], 4) if xa["cells"] else 1.0
 
-    # The CLI's own oracle: cached values vs GridCraft's recalculation, and its round-trip diff.
+    # The CLI's own oracle: cached values vs Deskwerk Sheets' recalculation, and its round-trip diff.
     if not args.no_check:
         r = run_proc([args.bin, "check", src, "--json", "--max-report", "3"], args.timeout * 2, env)
         rec["check_seconds"] = r["seconds"]
@@ -581,7 +581,7 @@ def process(entry: dict, args, workdir: str, env: dict) -> dict:
 
 
 FIDELITY_KEYS = ("values_kept", "xml_cells_kept", "xml_formulas_kept", "lo_cells_kept")
-# Measured on the files themselves and GridCraft's own reading of both: below 0.99 the saved file
+# Measured on the files themselves and Deskwerk Sheets' own reading of both: below 0.99 the saved file
 # lost cells, formulas or values (`real_loss`). LibreOffice's view alone below 0.99 is
 # `content_changed`: it may also be how LibreOffice reads either file.
 OWN_KEYS = ("values_kept", "xml_cells_kept", "xml_formulas_kept")
@@ -725,7 +725,7 @@ def render_md(report: dict, worst: int) -> tuple[str, str]:
           f"({pct(s['full_round_trip_ok'], s['processed'])}); verdict ok (content kept ≥ 99%, formulas unchanged): "
           f"**{s['verdicts'].get('ok', 0)}**.", "",
           "Verdicts: " + ", ".join(f"{k} {n}" for k, n in s["verdicts"].items()) + ". real_loss: the saved file lost cells, formulas "
-          "or values by the files' XML or GridCraft's reading of both; content_changed: only LibreOffice's view of the two differs "
+          "or values by the files' XML or Deskwerk Sheets' reading of both; content_changed: only LibreOffice's view of the two differs "
           "(both recalculated by LibreOffice).", ""]
     L += ["| Content kept | files | identical | ≥ 0.99 | < 0.90 | median | mean |", "|---|---|---|---|---|---|---|"]
     labels = {"values_kept": "app cell values, original vs saved", "xml_cells_kept": "worksheet XML cells with a value",

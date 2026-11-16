@@ -1,4 +1,4 @@
-use gridcraft_core::Locale;
+use deskwerk_sheets_core::Locale;
 
 use super::{
     Cell, CellRef, EngineError, Formula, Json, MAX_ROWS, RangeRef, Result, Session, StyleId, Value, bad, bool_param, cell_param_on, edit, json,
@@ -16,20 +16,26 @@ pub(crate) fn is_formula_input(input: &str) -> bool {
     input.starts_with('=')
         || (input.len() > 1
             && (input.starts_with('+') || input.starts_with('-'))
-            && gridcraft_core::parse::parse_number_text(input).is_none()
+            && deskwerk_sheets_core::parse::parse_number_text(input).is_none()
             && input.chars().nth(1).is_some_and(|c| c.is_ascii_alphabetic() || c == '('))
 }
 
 /// What typing `input` into a cell produces (constant or formula, plus an automatic number
 /// format). Inherits the destination's cell, row or column style, including its number
 /// format, before parsing. Errors when the formula can't be parsed.
-pub(crate) fn input_to_cell(input: &str, sheet: usize, at: CellRef, wb: &mut gridcraft_model::Workbook) -> Result<Option<Cell>> {
+pub(crate) fn input_to_cell(input: &str, sheet: usize, at: CellRef, wb: &mut deskwerk_sheets_model::Workbook) -> Result<Option<Cell>> {
     input_to_cell_in(input, sheet, at, wb, Locale::En)
 }
 
 /// [`input_to_cell`] with constants read in `loc`'s conventions (`1.234,5`, `31.12.2026`,
 /// `WAHR`). Formulas are always canonical (English) syntax.
-pub(crate) fn input_to_cell_in(input: &str, sheet: usize, at: CellRef, wb: &mut gridcraft_model::Workbook, loc: Locale) -> Result<Option<Cell>> {
+pub(crate) fn input_to_cell_in(
+    input: &str,
+    sheet: usize,
+    at: CellRef,
+    wb: &mut deskwerk_sheets_model::Workbook,
+    loc: Locale,
+) -> Result<Option<Cell>> {
     let style = wb.sheet(sheet).map(|sh| sh.style_id(at)).unwrap_or_default();
     if input.is_empty() {
         let c = Cell { value: Value::Empty, formula: None, style, py: None };
@@ -40,7 +46,7 @@ pub(crate) fn input_to_cell_in(input: &str, sheet: usize, at: CellRef, wb: &mut 
         return Ok(Some(Cell { value: Value::text(input), formula: None, style, py: None }));
     }
     let is_formula = is_formula_input(input);
-    if is_formula && gridcraft_model::python::is_py_formula(input) {
+    if is_formula && deskwerk_sheets_model::python::is_py_formula(input) {
         return Err(EngineError::Other(PY_FORMULA.into()));
     }
     if is_formula {
@@ -67,12 +73,12 @@ pub(crate) fn input_to_cell_in(input: &str, sheet: usize, at: CellRef, wb: &mut 
                 None
             };
             if let Some(code) = auto {
-                cell.style = wb.styles.derive(style, |s| s.num_fmt = gridcraft_model::NumFmt::new(code));
+                cell.style = wb.styles.derive(style, |s| s.num_fmt = deskwerk_sheets_model::NumFmt::new(code));
             }
         }
         return Ok(Some(cell));
     }
-    let mut parsed = gridcraft_core::parse::parse_input_in(input, wb.date_system, loc);
+    let mut parsed = deskwerk_sheets_core::parse::parse_input_in(input, wb.date_system, loc);
     // Like Excel's automatic percent entry: a bare number of 1 or more typed into a cell already
     // formatted as a percentage is a percent (3 -> 3%); smaller numbers are taken as fractions.
     if parsed.format.is_none()
@@ -87,7 +93,7 @@ pub(crate) fn input_to_cell_in(input: &str, sheet: usize, at: CellRef, wb: &mut 
     if let Some(code) = parsed.format {
         let cur = wb.styles.get(style).num_fmt.as_str().to_string();
         if cur == "General" {
-            style = wb.styles.derive(style, |s| s.num_fmt = gridcraft_model::NumFmt::new(code));
+            style = wb.styles.derive(style, |s| s.num_fmt = deskwerk_sheets_model::NumFmt::new(code));
         }
     }
     // Wrap text automatically when the input has line breaks (Alt+Enter).
@@ -99,9 +105,9 @@ pub(crate) fn input_to_cell_in(input: &str, sheet: usize, at: CellRef, wb: &mut 
 
 /// Parses a formula as it is typed (without the `=`). Excel closes missing parentheses for you,
 /// and refuses a formula that still doesn't parse.
-pub(crate) fn parse_typed_formula(body: &str) -> Result<gridcraft_formula::Expr> {
+pub(crate) fn parse_typed_formula(body: &str) -> Result<deskwerk_sheets_formula::Expr> {
     // Excel closes missing parentheses for you.
-    let parsed = gridcraft_formula::parse_closing_parens(body, gridcraft_formula::parse);
+    let parsed = deskwerk_sheets_formula::parse_closing_parens(body, deskwerk_sheets_formula::parse);
     parsed.map_err(|e| EngineError::Other(format!("There's a problem with this formula: {e}")))
 }
 
@@ -109,12 +115,12 @@ pub(crate) fn parse_typed_formula(body: &str) -> Result<gridcraft_formula::Expr>
 /// refused when it's entered, rather than stored to show `#VALUE!`. Functions the registry doesn't
 /// hold (special forms like LET, LAMBDA, OFFSET, INDIRECT, SUBTOTAL), defined LAMBDA names and
 /// unknown functions are skipped.
-pub(crate) fn check_arg_counts(expr: &gridcraft_formula::Expr) -> Result<()> {
+pub(crate) fn check_arg_counts(expr: &deskwerk_sheets_formula::Expr) -> Result<()> {
     let mut bad = None;
     expr.walk(&mut |e| {
         if bad.is_none()
-            && let gridcraft_formula::Expr::Call(name, args) = e
-            && let Some(spec) = gridcraft_functions::lookup(name)
+            && let deskwerk_sheets_formula::Expr::Call(name, args) = e
+            && let Some(spec) = deskwerk_sheets_functions::lookup(name)
             && !spec.accepts(args.len())
         {
             let few = args.len() < spec.min_args;
@@ -376,7 +382,8 @@ pub(super) fn range_fill(s: &mut Session, p: &Json) -> Result<Json> {
                 if let Some(f) = &cell.formula
                     && let Some(e) = f.expr()
                 {
-                    let shifted = gridcraft_formula::adjust::shift_relative(e, at.row as i64 - origin.row as i64, at.col as i64 - origin.col as i64);
+                    let shifted =
+                        deskwerk_sheets_formula::adjust::shift_relative(e, at.row as i64 - origin.row as i64, at.col as i64 - origin.col as i64);
                     cell.formula = Some(std::sync::Arc::new(Formula::from_expr(shifted)));
                 }
                 let sh = cx.sheet_mut(sheet)?;

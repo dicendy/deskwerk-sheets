@@ -1,9 +1,9 @@
 //! The All Sheets navigator next to the sheet tabs: type part of a name, Enter, and that sheet is active (#839).
 
+use deskwerk_sheets_engine::Session;
+use deskwerk_sheets_ui_egui::SheetApp;
 use egui::{Event, Key, Modifiers};
 use egui_kittest::kittest::Queryable;
-use gridcraft_engine::Session;
-use gridcraft_ui_egui::SheetApp;
 use serde_json::json;
 
 fn harness() -> egui_kittest::Harness<'static, SheetApp> {

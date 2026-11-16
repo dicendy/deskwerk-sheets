@@ -6,8 +6,8 @@
 use std::io::Read;
 use std::sync::Arc;
 
-use gridcraft_core::{CellRef, Value};
-use gridcraft_model::*;
+use deskwerk_sheets_core::{CellRef, Value};
+use deskwerk_sheets_model::*;
 
 use crate::tables::builtin_format;
 use crate::{read_xlsx, write_xlsx};
@@ -63,7 +63,7 @@ fn locale_independent_built_ins_keep_their_id() {
 #[test]
 fn euro_accounting_format_round_trips_as_its_code() {
     // The Accounting Number Format button's code in German and French (`ACCOUNTING_EUR` in
-    // gridcraft-numfmt): no built-in id, so a custom <numFmt> that reads back character for
+    // deskwerk-sheets-numfmt): no built-in id, so a custom <numFmt> that reads back character for
     // character, as Excel and LibreOffice write and read it.
     let code = "_-* #,##0.00\\ \"€\"_-;\\-* #,##0.00\\ \"€\"_-;_-* \"-\"??\\ \"€\"_-;_-@_-";
     let (id, xml, back) = round_trip(code);

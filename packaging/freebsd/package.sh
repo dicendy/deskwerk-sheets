@@ -44,7 +44,7 @@ BASENAME="deskwerk-sheets-$VERSION-freebsd-$ARCH"
 echo "==> Deskwerk Sheets $VERSION for FreeBSD $ARCH"
 
 if [[ "$SKIP_BUILD" = 0 ]]; then
-  (cd "$ROOT" && cargo build --release --locked -p gridcraft -p gridcraft-cli ${CARGO_BUILD_TARGET:+--target "$CARGO_BUILD_TARGET"})
+  (cd "$ROOT" && cargo build --release --locked -p deskwerk-sheets -p deskwerk-sheets-cli ${CARGO_BUILD_TARGET:+--target "$CARGO_BUILD_TARGET"})
 fi
 BIN="$CARGO_TARGET_DIR/${CARGO_BUILD_TARGET:+$CARGO_BUILD_TARGET/}release"
 WORK="$CARGO_TARGET_DIR/freebsd-package"
@@ -57,7 +57,7 @@ install -m 755 "$BIN/deskwerk-sheets" "$BIN/deskwerk-sheets-cli" "$TREE/bin/"
 strip "$TREE/bin/deskwerk-sheets" "$TREE/bin/deskwerk-sheets-cli" 2>/dev/null || true
 install -m 644 "$LINUX/$APP_ID.desktop" "$TREE/share/applications/$APP_ID.desktop"
 install -m 644 "$LINUX/$APP_ID.mime.xml" "$TREE/share/mime/packages/$APP_ID.xml"
-sed -e "s/@VERSION@/$VERSION/g" -e "s/@DATE@/$GRIDCRAFT_BUILD_DATE/g" \
+sed -e "s/@VERSION@/$VERSION/g" -e "s/@DATE@/$DESKWERK_SHEETS_BUILD_DATE/g" \
   "$LINUX/$APP_ID.metainfo.xml.in" >"$TREE/share/metainfo/$APP_ID.metainfo.xml"
 cp -R "$ROOT/assets/app-icon/hicolor" "$TREE/share/icons/"
 copy_docs "$TREE/share/doc/deskwerk-sheets"

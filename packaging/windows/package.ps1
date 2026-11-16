@@ -33,7 +33,7 @@ function Invoke-Native([string] $What, [scriptblock] $Block) {
 }
 
 # The version lives in one place: [workspace.package] version in the root Cargo.toml.
-$Version = $env:GRIDCRAFT_VERSION
+$Version = $env:DESKWERK_SHEETS_VERSION
 if (-not $Version) {
   $inPkg = $false
   foreach ($line in Get-Content (Join-Path $Root 'Cargo.toml')) {
@@ -50,8 +50,8 @@ $Dist = if ($env:DIST) { $env:DIST } else { Join-Path $Root 'dist\release' }
 $TargetDir = if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { Join-Path $Root 'target' }
 New-Item -ItemType Directory -Force -Path $Dist | Out-Null
 
-if (-not $env:GRIDCRAFT_BUILD_SHA) { $env:GRIDCRAFT_BUILD_SHA = (git -C $Root rev-parse HEAD 2>$null) }
-if (-not $env:GRIDCRAFT_BUILD_DATE) { $env:GRIDCRAFT_BUILD_DATE = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd') }
+if (-not $env:DESKWERK_SHEETS_BUILD_SHA) { $env:DESKWERK_SHEETS_BUILD_SHA = (git -C $Root rev-parse HEAD 2>$null) }
+if (-not $env:DESKWERK_SHEETS_BUILD_DATE) { $env:DESKWERK_SHEETS_BUILD_DATE = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd') }
 
 Write-Output "Deskwerk Sheets $Version for Windows $Arch ($Target)"
 
@@ -61,8 +61,8 @@ if (-not $SkipBuild) {
   $flagVar = 'CARGO_TARGET_' + ($Target.ToUpper() -replace '-', '_') + '_RUSTFLAGS'
   [Environment]::SetEnvironmentVariable($flagVar, '-C target-feature=+crt-static')
   # Fail the build (rather than warn) if the icon/VERSIONINFO can't be embedded.
-  $env:GRIDCRAFT_REQUIRE_WINRES = '1'
-  Invoke-Native "cargo build ($Target)" { cargo build --release --locked -p gridcraft -p gridcraft-cli --target $Target }
+  $env:DESKWERK_SHEETS_REQUIRE_WINRES = '1'
+  Invoke-Native "cargo build ($Target)" { cargo build --release --locked -p deskwerk-sheets -p deskwerk-sheets-cli --target $Target }
 }
 
 $Bin = Join-Path $TargetDir "$Target\release"
@@ -94,10 +94,11 @@ Copy-Item (Join-Path $Bin 'deskwerk-sheets.exe'), (Join-Path $Bin 'deskwerk-shee
 # The portable ZIP already carries these notices; stage the complete files before MSI creation too.
 $Docs = Join-Path $Stage 'font-licences'
 New-Item -ItemType Directory -Force -Path $Docs | Out-Null
-# Bundled dependency font notices are required even without optional craft-fonts.
-Copy-Item -LiteralPath (Join-Path $Root 'NOTICE'), (Join-Path $Root 'ATTRIBUTION.md') -Destination $Docs
-# The font pack (apps\gridcraft-web\fonts) is embedded in deskwerk-sheets.exe: ship its licences.
-$PackFonts = Join-Path $Root 'apps\gridcraft-web\fonts'
+# The licence texts and notices are installed as plain files next to the app (the app shows none);
+# bundled dependency font notices are required even without optional craft-fonts.
+Copy-Item -LiteralPath (Join-Path $Root 'LICENSE-MIT'), (Join-Path $Root 'LICENSE-APACHE'), (Join-Path $Root 'NOTICE'), (Join-Path $Root 'ATTRIBUTION.md') -Destination $Docs
+# The font pack (apps\deskwerk-sheets-web\fonts) is embedded in deskwerk-sheets.exe: ship its licences.
+$PackFonts = Join-Path $Root 'apps\deskwerk-sheets-web\fonts'
 $PackLicences = Join-Path $Docs 'font-licences'
 New-Item -ItemType Directory -Force -Path $PackLicences | Out-Null
 Copy-Item -Path (Join-Path $PackFonts 'licenses\*.txt'), (Join-Path $PackFonts 'MANIFEST.tsv') -Destination $PackLicences
@@ -113,8 +114,8 @@ if ($env:CRAFT_FONTS_DIR) {
 # ---- MSI ---------------------------------------------------------------------------------------
 $Msi = Join-Path $Dist "deskwerk-sheets-$Version-windows-$Arch.msi"
 Invoke-Native 'wix build' {
-  wix build (Join-Path $PSScriptRoot 'gridcraft.wxs') -arch $Arch `
-    -d "Version=$MsiVersion" -d "BinDir=$Stage" -d "IconPath=$(Join-Path $Root 'assets\app-icon\gridcraft.ico')" `
+  wix build (Join-Path $PSScriptRoot 'deskwerk-sheets.wxs') -arch $Arch `
+    -d "Version=$MsiVersion" -d "BinDir=$Stage" -d "IconPath=$(Join-Path $Root 'assets\app-icon\deskwerk-sheets.ico')" `
     -d "DocsDir=$Docs" -d "HasCraftFontLicences=$HasCraftFontLicences" `
     -o $Msi
 }

@@ -54,7 +54,7 @@ right-to-left sheets and full complex-script support. Part of
   arrow keys, editor, popups and floating objects follow; text stays left-to-right inside its box
   (no bidi), and the sheet tabs, horizontal scrollbar and printing/PDF are not mirrored yet.
   Text boxes and shapes keep their paragraphs' right-to-left direction (`a:pPr rtl`) through XLSX
-  save, though GridCraft still draws that text left to right. IME input goes
+  save, though Deskwerk Sheets still draws that text left to right. IME input goes
   through egui/winit and is unverified for Chinese, Japanese and Korean.
 - **Names in any script.** Defined names (Define Name, Create from Selection) are limited to
   255 characters, counted as characters rather than UTF-8 bytes, so a 255-letter Arabic name is
@@ -111,15 +111,15 @@ language (none so far) and of localized function names.
 
 | Date | Change | Summary |
 |---|---|---|
-| 2026-11-08 | minor | French catalog (`i18n/fr.rs`) covers every key the other catalogs translate: 462 → 1,274 keys. Ported from storytold/gridcraft#2965, with a few rows from #3448 and #2655 and the macro editor, window and Advanced Filter labels written here |
-| 2026-11-08 | minor | German catalog (`i18n/de.rs`) covers every key the other catalogs translate plus the labels only the running UI showed (window arranging, macro editor steps, Resize Table): 494 → 1,253 keys. Ported from storytold/gridcraft#3034 |
+| 2026-11-08 | minor | French catalog (`i18n/fr.rs`) covers every key the other catalogs translate: 462 → 1,274 keys. Ported from upstream #2965, with a few rows from #3448 and #2655 and the macro editor, window and Advanced Filter labels written here |
+| 2026-11-08 | minor | German catalog (`i18n/de.rs`) covers every key the other catalogs translate plus the labels only the running UI showed (window arranging, macro editor steps, Resize Table): 494 → 1,253 keys. Ported from upstream #3034 |
 | 2026-10-31 | minor | German formula entry and display: Deutsch as the interface language selects German function names (420, observed in German Excel for PR #1201), `WAHR`/`FALSCH`, `;` arguments, decimal commas, `.` between array columns and German error values in formulas (`#WERT!`, `#NV`); Spanish and German share one per-language table instead of Spanish-only branches |
 | 2026-10-23 | minor | Missing translations are reported, never a failure: `cargo xtask i18n-report` prints, per language, the strings other catalogs translate and it lacks (plus Spanish function help rows keyed by English the function catalog no longer has) and always passes; `cargo xtask ci` runs it first. Coverage and per-language parity tests and tests of one language's exact wording are gone; UI tests take the expected text from the catalog. Duplicate-key, placeholder, context-prefix and line-shape checks stay |
 | 2026-10-21 | minor | Romanian interface (`ro`, Română): 970 labels covering every key of the other catalogs (`crates/ui-egui/src/i18n/ro.rs`), `ro-*` system locales, the View-tab switcher and `app.language.set`; context keys show no prefix (File › Options test). English formulas and formats; AI-assisted draft pending native-speaker review |
 | 2026-10-20 | minor | Japanese: furigana (`rPh` phonetic runs and `<phoneticPr>` in `xl/sharedStrings.xml`) is no longer deleted by an open + save; it is kept on the workbook and written back (a `<phoneticPr>` without runs is kept too, while duplicate texts with different readings keep only the first, reported on open). Display of the readings is still missing (`crates/xlsx/src/tests/phonetic_tests.rs`) |
 | 2026-10-20 | minor | Japanese catalog (`i18n/ja.rs`) covers every key the Brazilian Portuguese catalog translates: the 398-label shared core moved verbatim plus 545 dialog, message, Backstage and menu strings — 943 keys, ~12% → ~43%. A test parses `pt.rs`'s source, so the two catalogs can't drift apart again. Portuguese re-measured at 943 (was 923) |
 | 2026-10-20 | minor | Dutch (nl) interface catalog (`i18n/nl.rs`, 518 labels, ~24%): the shared key set every language must cover (ribbon, context menus, File view, dialog titles, Options page), matching the German, French and Czech catalogs; `nl-NL`, `nl-BE` locale tags resolve to Dutch |
-| 2026-10-20 | minor | XLSX: a theme's per-script typefaces (`<a:font script="Arab">`, Hebr, Jpan…) are kept through open + save, so Arabic Excel's theme fonts for shapes, charts and theme-font cells survive a GridCraft save |
+| 2026-10-20 | minor | XLSX: a theme's per-script typefaces (`<a:font script="Arab">`, Hebr, Jpan…) are kept through open + save, so Arabic Excel's theme fonts for shapes, charts and theme-font cells survive a Deskwerk Sheets save |
 | 2026-10-20 | trivial | XLSX: a workbook theme's major/minor East Asian (`<a:ea>`) and complex-script (`<a:cs>`) typefaces are kept through open + save, so a Japanese workbook keeps its theme's East Asian font; rendering does not resolve them yet (follow-up) |
 | 2026-10-19 | minor | XLSX fonts retain charset and family metadata so systems can select a substitute font with the intended script when the named font is unavailable |
 | 2026-10-19 | minor | Arabic CSV and text imports decode Windows-1256 text; Arabic shaping and bidirectional UI remain unsupported |

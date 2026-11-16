@@ -1,18 +1,18 @@
 [package]
-name = "gridcraft-model"
+name = "deskwerk-sheets-model"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "GridCraft document model: workbooks, sheets, cells, styles, tables, charts"
+description = "Deskwerk Sheets document model: workbooks, sheets, cells, styles, tables, charts"
 
 [lints]
 workspace = true
 
 [dependencies]
-gridcraft-core = { workspace = true }
+deskwerk-sheets-core = { workspace = true }
 sha2 = { workspace = true }
-gridcraft-formula = { workspace = true }
-gridcraft-math = { workspace = true }
+deskwerk-sheets-formula = { workspace = true }
+deskwerk-sheets-math = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

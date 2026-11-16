@@ -13,9 +13,6 @@
   Windows, Linux and BSD, and in the browser via WebAssembly.
 </p>
 
-> [!NOTE]
-> Deskwerk Sheets is a modified version of GridCraft by the ArtCraft team (https://github.com/storytold/gridcraft), used under MIT OR Apache-2.0. It is not affiliated with or endorsed by the ArtCraft team.
-
 <p align="center">
   <a href="https://github.com/dicendy/deskwerk-sheets"><b>Deskwerk Sheets on GitHub</b></a>
 </p>
@@ -80,10 +77,10 @@
 ## Quick start
 
 ```sh
-cargo run --release -p gridcraft                              # desktop app
-cargo run --release -p gridcraft -- --sample sales            # open a sample (sales, budget, grades)
-cargo run --release -p gridcraft -- book.xlsx                 # open a workbook
-cargo run --release -p gridcraft -- --sample sales --control 7979   # + JSON control channel
+cargo run --release -p deskwerk-sheets                              # desktop app
+cargo run --release -p deskwerk-sheets -- --sample sales            # open a sample (sales, budget, grades)
+cargo run --release -p deskwerk-sheets -- book.xlsx                 # open a workbook
+cargo run --release -p deskwerk-sheets -- --sample sales --control 7979   # + JSON control channel
 cargo xtask ci                                                 # fmt, clippy, tests, assets, layering, wasm
 ```
 
@@ -93,8 +90,8 @@ Workbooks, clipboard exchange, and programmatic APIs retain canonical English sy
 ### Web
 
 ```sh
-cd apps/gridcraft-web && trunk build --release     # → dist/web (serve it with any static server)
-cd apps/gridcraft-web && trunk serve --release     # http://127.0.0.1:8771  (?sample=sales opens a sample)
+cd apps/deskwerk-sheets-web && trunk build --release     # → dist/web (serve it with any static server)
+cd apps/deskwerk-sheets-web && trunk serve --release     # http://127.0.0.1:8771  (?sample=sales opens a sample)
 ```
 
 You need [trunk](https://trunk-rs.github.io/trunk/) and the `wasm32-unknown-unknown` target. Open uses the
@@ -125,15 +122,15 @@ Browsers or desktop environments may reserve Alt/F10 for their own menus.
 
 ### Logs
 
-The desktop app writes its log to standard error and to `gridcraft.log` in the `logs` folder
+The desktop app writes its log to standard error and to `deskwerk-sheets.log` in the `logs` folder
 next to its settings: `~/.config/deskwerk-sheets/logs` on Linux and BSD (`$XDG_CONFIG_HOME/deskwerk-sheets/logs`
 when set), `~/Library/Application Support/Deskwerk Sheets/logs` on macOS and
-`%APPDATA%\Deskwerk Sheets\logs` on Windows. Each start moves the previous log to `gridcraft.1.log` and
-that one to `gridcraft.2.log`, so the log of a run that crashed survives the next start; attach
+`%APPDATA%\Deskwerk Sheets\logs` on Windows. Each start moves the previous log to `deskwerk-sheets.1.log` and
+that one to `deskwerk-sheets.2.log`, so the log of a run that crashed survives the next start; attach
 them to a bug report. A log file stops growing at 16 MiB. By default Deskwerk Sheets's own crates log
 at `info` and everything else at `warn`; `RUST_LOG` replaces that with env_logger-style
-directives, e.g. `RUST_LOG=debug` or `RUST_LOG=warn,gridcraft_engine=debug` (a trailing `*`
-matches a prefix: `gridcraft*=debug`). Runs with `GRIDCRAFT_NO_PREFS` set (no saved settings)
+directives, e.g. `RUST_LOG=debug` or `RUST_LOG=warn,deskwerk_sheets_engine=debug` (a trailing `*`
+matches a prefix: `deskwerk_sheets*=debug`). Runs with `DESKWERK_SHEETS_NO_PREFS` set (no saved settings)
 log to standard error only.
 
 ## For agents: MCP, CLI and the control channel
@@ -166,7 +163,7 @@ egui frontend is a separate crate, so the UI can be swapped without touching the
 | L3 | `chart` (toolkit-free chart layout and rendering) |
 | L5 | `engine` (session, commands, history, clipboard, fill, sort, filter, file I/O) |
 | L6 | `ui-egui` (spreadsheet UI, control channel) · `mcp` (MCP server) |
-| L7 | `apps/gridcraft`, `apps/gridcraft-cli`, `apps/gridcraft-web` |
+| L7 | `apps/deskwerk-sheets`, `apps/deskwerk-sheets-cli`, `apps/deskwerk-sheets-web` |
 
 - **Contributor and agent rules** (clean-room, asset policy, never-crash, quality gates): [`AGENTS.md`](AGENTS.md)
 - **Bundled assets:** each one is listed with its licence in [`ATTRIBUTION.md`](ATTRIBUTION.md)
@@ -256,13 +253,10 @@ handling again for troubleshooting.
 
 ## License and credits
 
-Deskwerk Sheets is a modified version of GridCraft by the ArtCraft team
-(https://github.com/storytold/gridcraft), used under MIT OR Apache-2.0. It is not affiliated with
-or endorsed by the ArtCraft team.
-
 Deskwerk Sheets is dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your option.
-Copyright (c) 2026 Deskwerk contributors. Based on GridCraft, Copyright (c) 2026 ArtCraft Team and the
-GridCraft contributors. Required notices are in [NOTICE](NOTICE).
+Copyright (c) 2026 Deskwerk contributors. Deskwerk Sheets is a modified fork of an upstream
+open-source project; its copyright and licence notices are kept unchanged in
+[LICENSE-MIT](LICENSE-MIT), [NOTICE](NOTICE) and [ATTRIBUTION.md](ATTRIBUTION.md).
 
 Bundled fonts, icons, images and other assets keep their own open licenses; each one is listed
 with its author, source and license in [ATTRIBUTION.md](ATTRIBUTION.md).
@@ -271,4 +265,3 @@ All UI icons are drawn in code and are original; the sample workbooks and every 
 this README were made with the app itself. It bundles no fonts: it uses the fonts installed on
 your system.
 
-ArtCraft and GridCraft are names of their respective owners; this fork carries none of the ArtCraft marks.

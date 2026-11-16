@@ -1,11 +1,11 @@
 //! UI interaction tests: real egui input through the whole app (no GPU needed).
 
+use deskwerk_sheets_engine::Session;
+use deskwerk_sheets_engine::core::{CellRef, Value};
+use deskwerk_sheets_ui_egui::i18n::Language;
+use deskwerk_sheets_ui_egui::{SheetApp, grid::Geo};
 use egui::{Event, Key, Modifiers, PointerButton};
 use egui_kittest::kittest::{NodeT as _, Queryable as _};
-use gridcraft_engine::Session;
-use gridcraft_engine::core::{CellRef, Value};
-use gridcraft_ui_egui::i18n::Language;
-use gridcraft_ui_egui::{SheetApp, grid::Geo};
 use serde_json::json;
 
 /// Builds the standard interaction harness around the caller's session with four warm-up passes.
@@ -69,7 +69,7 @@ fn click(h: &mut egui_kittest::Harness<'static, SheetApp>, p: egui::Pos2) {
 
 #[test]
 fn horizontal_scrollbar_pages_and_drags_across_a_wide_sheet() {
-    let mut wb = gridcraft_engine::model::Workbook::new();
+    let mut wb = deskwerk_sheets_engine::model::Workbook::new();
     let sh = wb.sheet_mut(0).unwrap();
     for c in 0..26 {
         sh.set_value(CellRef::new(0, c), Value::text(format!("col {}", c + 1)));
@@ -77,7 +77,7 @@ fn horizontal_scrollbar_pages_and_drags_across_a_wide_sheet() {
     // Column A frozen: a page is the scrolling part only.
     sh.freeze = Some((0, 1));
     let mut s = Session::new();
-    s.add_document(gridcraft_engine::DocState::new(wb, None, "Book1".into(), gridcraft_engine::Trust::Local));
+    s.add_document(deskwerk_sheets_engine::DocState::new(wb, None, "Book1".into(), deskwerk_sheets_engine::Trust::Local));
     let mut h = harness(s);
     let track = h.state().grid.hscroll.expect("the tab bar has a horizontal scrollbar");
     assert!(track.width() >= 200.0, "the scrollbar gets a usable share of the tab bar: {track:?}");
@@ -208,7 +208,7 @@ fn name_box_enter_goes_to_the_typed_cell_not_the_one_below() {
     let mut h = harness(blank());
     h.state_mut().session.run("selection.set", json!({"cell": "C5"})).unwrap();
     h.run_steps(2);
-    h.ctx.memory_mut(|m| m.request_focus(egui::Id::unique("gridcraft.name_box")));
+    h.ctx.memory_mut(|m| m.request_focus(egui::Id::unique("deskwerk-sheets.name_box")));
     h.run_steps(2);
     h.input_mut().events.push(Event::Key { key: Key::A, physical_key: None, pressed: true, repeat: false, modifiers: Modifiers::COMMAND });
     h.input_mut().events.push(Event::Text("A1".into()));
@@ -441,7 +441,7 @@ fn insert_column_or_bar_menu_inserts_a_hundred_percent_stacked_bar() {
     h.get_by_role_and_label(egui::accesskit::Role::Button, "100% Stacked Bar").click();
     h.run_steps(2);
     let kinds: Vec<_> = h.state().session.active().unwrap().wb.active().unwrap().charts.iter().map(|c| c.kind).collect();
-    assert_eq!(kinds, [gridcraft_engine::model::ChartKind::BarStacked100]);
+    assert_eq!(kinds, [deskwerk_sheets_engine::model::ChartKind::BarStacked100]);
 }
 
 #[test]
@@ -468,7 +468,8 @@ fn language_switch_renders_the_ribbon_and_persists() {
     assert_eq!(h.state().ui.language, Language::En);
     // The language commands are listed with the other UI commands.
     let ctx = h.ctx.clone();
-    let gridcraft_ui_egui::control::Outcome::Done(listed) = gridcraft_ui_egui::control::handle(h.state_mut(), &ctx, "engine.commands", &json!({}))
+    let deskwerk_sheets_ui_egui::control::Outcome::Done(listed) =
+        deskwerk_sheets_ui_egui::control::handle(h.state_mut(), &ctx, "engine.commands", &json!({}))
     else {
         panic!("engine.commands returns a response");
     };
@@ -481,14 +482,14 @@ fn language_switch_renders_the_ribbon_and_persists() {
     // the documented no-font gap, not a missing-glyph or accessibility opt-out.
     let languages: Vec<Language> = Language::ALL
         .into_iter()
-        .filter(|l| gridcraft_ui_egui::theme::craft_fonts_loaded() || !matches!(l, Language::Ja | Language::Ko | Language::Zh))
+        .filter(|l| deskwerk_sheets_ui_egui::theme::craft_fonts_loaded() || !matches!(l, Language::Ja | Language::Ko | Language::Zh))
         .collect();
     for language in languages {
         h.state_mut().run("app.language.set", json!({"language": language.code()})).unwrap();
         h.run_steps(2); // every available locale renders the ribbon without panicking
         h.check_accessibility();
         assert_eq!(h.state().ui.language, language);
-        let restored: gridcraft_ui_egui::UiState = serde_json::from_str(&serde_json::to_string(&h.state().ui).unwrap()).unwrap();
+        let restored: deskwerk_sheets_ui_egui::UiState = serde_json::from_str(&serde_json::to_string(&h.state().ui).unwrap()).unwrap();
         assert_eq!(restored.language, language);
     }
     h.state_mut().run("app.language.set", json!({"language": "en"})).unwrap();
@@ -620,7 +621,7 @@ fn recommended_charts_dialog_inserts_the_chosen_chart() {
     h.run_steps(2);
     assert!(h.state().dialog.is_none());
     let kinds: Vec<_> = h.state().session.active().unwrap().wb.active().unwrap().charts.iter().map(|c| c.kind).collect();
-    assert_eq!(kinds, [gridcraft_engine::model::ChartKind::Pie]);
+    assert_eq!(kinds, [deskwerk_sheets_engine::model::ChartKind::Pie]);
     assert!(h.state().selected_chart().is_some(), "the new chart is selected");
 
     // Without numbers there is nothing to recommend: a message, no dialog.
@@ -656,7 +657,7 @@ fn all_charts_inserts_a_hundred_percent_stacked_area() {
     h.run_steps(2);
     assert!(h.state().dialog.is_none());
     let kinds: Vec<_> = h.state().session.active().unwrap().wb.active().unwrap().charts.iter().map(|c| c.kind).collect();
-    assert_eq!(kinds, [gridcraft_engine::model::ChartKind::AreaStacked100]);
+    assert_eq!(kinds, [deskwerk_sheets_engine::model::ChartKind::AreaStacked100]);
 }
 
 #[test]
@@ -768,7 +769,7 @@ fn data_analysis_dialog_opens_every_tool_form() {
     let mut s = blank();
     s.execute("range.setValues", json!({"range": "A1", "values": [[1, 2], [2, 4], [3, 6]]})).unwrap();
     let mut h = harness(s);
-    for (id, label) in gridcraft_engine::cmd::analysis::TOOLS {
+    for (id, label) in deskwerk_sheets_engine::cmd::analysis::TOOLS {
         h.state_mut().open_dialog("analysisToolPak", json!({"tool": id}));
         h.run_steps(2);
         assert_eq!(h.state().dialog.as_ref().map(|d| d.title.clone()).as_deref(), Some(*label), "{id}");
@@ -996,7 +997,7 @@ fn solver_dialog_saves_loads_and_resets_the_model() {
     let d = h.state().dialog.as_ref().unwrap();
     assert_eq!(d.values.get("objective"), Some(&json!("B1")), "{:?}", d.values.get("modelNote"));
     assert_eq!(d.values.get("constraints"), Some(&json!(["B2 <= 12", "A1 <= 4"])));
-    let saved = gridcraft_engine::cmd::solver::saved_model(&h.state().session.active().unwrap().wb, 0);
+    let saved = deskwerk_sheets_engine::cmd::solver::saved_model(&h.state().session.active().unwrap().wb, 0);
     assert_eq!(saved.map(|m| m["variables"].clone()), Some(json!("A1:A2")));
 }
 
@@ -1103,7 +1104,7 @@ fn solver_reset_all_and_load_model_drop_the_old_models_options() {
     h.get_by_label("  Solve  ").click();
     h.run_steps(2);
     assert_eq!(h.state().dialog.as_ref().map(|d| d.name.as_str()), Some("solverResults"), "{:?}", h.state().message);
-    let saved = gridcraft_engine::cmd::solver::saved_model(&h.state().session.active().unwrap().wb, 0).unwrap();
+    let saved = deskwerk_sheets_engine::cmd::solver::saved_model(&h.state().session.active().unwrap().wb, 0).unwrap();
     assert_eq!(
         (saved["requireBounds"].as_bool(), saved["randomSeed"].as_f64(), saved["convergence"].as_f64()),
         (Some(true), Some(0.0), Some(0.0001)),
@@ -1146,7 +1147,7 @@ fn solver_options_go_with_the_solve() {
     h.run_steps(2);
     assert_eq!(h.state().dialog.as_ref().map(|d| d.name.as_str()), Some("solverResults"), "{:?}", h.state().message);
     assert!(matches!(value(&h, "A1"), Value::Number(v) if (v - 4.0).abs() < 1e-6));
-    let saved = gridcraft_engine::cmd::solver::saved_model(&h.state().session.active().unwrap().wb, 0).unwrap();
+    let saved = deskwerk_sheets_engine::cmd::solver::saved_model(&h.state().session.active().unwrap().wb, 0).unwrap();
     assert_eq!((saved["randomSeed"].as_f64(), saved["requireBounds"].as_bool()), (Some(11.0), Some(false)));
 }
 
@@ -1237,7 +1238,7 @@ fn solver_dialog_opened_in_its_options_shows_the_defaults_and_cancel_restores_th
     h.get_by_label("  Solve  ").click();
     h.run_steps(2);
     assert_eq!(h.state().dialog.as_ref().map(|d| d.name.as_str()), Some("solverResults"), "{:?}", h.state().message);
-    let saved = gridcraft_engine::cmd::solver::saved_model(&h.state().session.active().unwrap().wb, 0).unwrap();
+    let saved = deskwerk_sheets_engine::cmd::solver::saved_model(&h.state().session.active().unwrap().wb, 0).unwrap();
     assert_eq!(
         (saved["maxEvaluations"].as_f64(), saved["randomSeed"].as_f64(), saved["requireBounds"].as_bool()),
         (Some(20000.0), Some(0.0), Some(true)),
@@ -1273,14 +1274,15 @@ fn solver_results_write_the_chosen_reports() {
 }
 
 #[test]
-fn about_renders_every_tab() {
+fn about_is_an_empty_window_that_closes() {
     let mut h = harness(blank());
-    for tab in ["About", "Contributors", "Models"] {
-        h.state_mut().open_dialog("about", json!({"tab": tab}));
-        h.run_steps(2);
-        assert_eq!(h.state().dialog.as_ref().map(|d| d.tab.clone()).as_deref(), Some(tab));
-        h.state_mut().dialog = None;
-    }
+    h.state_mut().open_dialog("about", json!({}));
+    h.run_steps(2);
+    assert_eq!(h.state().dialog.as_ref().map(|d| d.name.as_str()), Some("about"));
+    // The title and a Close button only: no version, links, credits or licence text.
+    h.get_by_label(" Close ").click();
+    h.run_steps(2);
+    assert!(h.state().dialog.is_none());
 }
 
 #[test]
@@ -1370,8 +1372,8 @@ fn column_autocomplete_folds_case_beyond_ascii() {
 
 #[test]
 fn column_autocomplete_can_be_turned_off() {
-    assert!(gridcraft_ui_egui::UiState::default().autocomplete);
-    let old: gridcraft_ui_egui::UiState = serde_json::from_str(r#"{"dark": true}"#).unwrap();
+    assert!(deskwerk_sheets_ui_egui::UiState::default().autocomplete);
+    let old: deskwerk_sheets_ui_egui::UiState = serde_json::from_str(r#"{"dark": true}"#).unwrap();
     assert!(old.autocomplete, "a ui.json written before the setting existed keeps it on");
 
     let mut s = blank();
@@ -1391,9 +1393,9 @@ fn column_autocomplete_can_be_turned_off() {
 
 /// An .xlsm carrying a VBA project, saved to bytes.
 fn macro_workbook_bytes() -> Vec<u8> {
-    let mut wb = gridcraft_engine::model::Workbook::new();
+    let mut wb = deskwerk_sheets_engine::model::Workbook::new();
     wb.vba_project = Some(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1 fake OLE2 vbaProject".to_vec().into());
-    gridcraft_engine::io::save_bytes(&wb, "macros.xlsm").unwrap()
+    deskwerk_sheets_engine::io::save_bytes(&wb, "macros.xlsm").unwrap()
 }
 
 #[test]
@@ -1401,7 +1403,7 @@ fn opening_a_macro_workbook_shows_a_notice() {
     // The reader's "macros kept but not executed" warning must reach a dismissible info bar,
     // not be silently dropped (issue #6 follow-up: Excel-style message bar).
     let mut h = harness(blank());
-    let b64 = gridcraft_engine::io::base64_encode(&macro_workbook_bytes());
+    let b64 = deskwerk_sheets_engine::io::base64_encode(&macro_workbook_bytes());
     let res = h.state_mut().session.run("file.open", json!({"name": "macros.xlsm", "base64": b64})).unwrap();
     assert!(
         res.get("warnings").and_then(|w| w.as_array()).is_some_and(|a| a.iter().any(|m| m.as_str().is_some_and(|s| s.contains("macros")))),
@@ -1411,7 +1413,7 @@ fn opening_a_macro_workbook_shows_a_notice() {
     h.state_mut().show_open_warnings(&res);
     let n = h.state().notice.clone().expect("a notice was shown");
     assert!(n.text.contains("VBA"), "{}", n.text);
-    assert_eq!(n.kind, gridcraft_ui_egui::NoticeKind::Warning);
+    assert_eq!(n.kind, deskwerk_sheets_ui_egui::NoticeKind::Warning);
     assert_eq!(n.action.as_ref().map(|a| a.1.as_str()), Some("macros"), "action opens the Macros dialog");
 
     // The notice bar renders without panic; `ui.notice` surfaces it; dismissing clears it.
@@ -1429,7 +1431,7 @@ fn dropped_macro_warning_never_promises_to_keep_macros() {
     for w in ["macros (VBA project) reference a missing part and were dropped", "macros (VBA project) could not be read and were dropped: bad zip"] {
         h.state_mut().show_open_warnings(&json!({"warnings": [w]}));
         let n = h.state().notice.clone().unwrap();
-        assert_eq!(n.kind, gridcraft_ui_egui::NoticeKind::Warning);
+        assert_eq!(n.kind, deskwerk_sheets_ui_egui::NoticeKind::Warning);
         assert!(n.text.contains("dropped") && !n.text.contains("keeps them"), "{}", n.text);
     }
     h.state_mut().show_open_warnings(&json!({"warnings": ["macros (VBA project) were kept but not executed"]}));
@@ -1441,7 +1443,7 @@ fn plain_open_warning_becomes_an_info_notice() {
     let mut h = harness(blank());
     h.state_mut().show_open_warnings(&json!({"warnings": ["links to external workbooks are not supported"]}));
     let n = h.state().notice.clone().unwrap();
-    assert_eq!(n.kind, gridcraft_ui_egui::NoticeKind::Info);
+    assert_eq!(n.kind, deskwerk_sheets_ui_egui::NoticeKind::Info);
     assert!(n.action.is_none());
     assert!(n.text.contains("external"));
     // No warnings → no notice, no panic.
@@ -1452,7 +1454,7 @@ fn plain_open_warning_becomes_an_info_notice() {
 #[test]
 fn macros_dialog_lists_vba_and_scripts() {
     let mut s = blank();
-    let mut wb = gridcraft_engine::model::Workbook::new();
+    let mut wb = deskwerk_sheets_engine::model::Workbook::new();
     wb.vba_project = Some(vec![0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1].into());
     s.active_mut().unwrap().wb = std::sync::Arc::new(wb);
     let mut h = harness(s);
@@ -1468,7 +1470,7 @@ fn macros_dialog_lists_vba_and_scripts() {
 #[test]
 fn status_bar_shows_macro_badge() {
     let mut s = blank();
-    let mut wb = gridcraft_engine::model::Workbook::new();
+    let mut wb = deskwerk_sheets_engine::model::Workbook::new();
     wb.vba_project = Some(vec![0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1].into());
     s.active_mut().unwrap().wb = std::sync::Arc::new(wb);
     // Rendering the status bar must not panic with a VBA project present.

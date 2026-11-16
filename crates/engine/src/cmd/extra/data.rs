@@ -75,12 +75,12 @@ pub(super) fn from_csv(s: &mut Session, p: &Json) -> Result<Json> {
         let delimiter = match str_param(p, "delimiter").and_then(|d| d.chars().next()) {
             Some(d) => d as u8,
             // Detected by the reader, which tries `;` first in German and French.
-            None if loc != gridcraft_core::Locale::En => 0,
+            None if loc != deskwerk_sheets_core::Locale::En => 0,
             None if text.lines().next().is_some_and(|l| l.contains('\t')) => b'\t',
             None => b',',
         };
-        let opts = gridcraft_xlsx::CsvOptions { delimiter, locale: loc, ..Default::default() };
-        let wb = gridcraft_xlsx::read_csv(&bytes, &opts).map_err(|e| EngineError::Other(e.to_string()))?;
+        let opts = deskwerk_sheets_xlsx::CsvOptions { delimiter, locale: loc, ..Default::default() };
+        let wb = deskwerk_sheets_xlsx::read_csv(&bytes, &opts).map_err(|e| EngineError::Other(e.to_string()))?;
         let sh = wb.sheet(0).ok_or(EngineError::NoDocument)?;
         let Some(u) = sh.used_range() else { return Err(EngineError::Other("The file is empty.".into())) };
         (u.start.row..=u.end.row)

@@ -1,6 +1,6 @@
 //! French (fr-FR) function names for formula entry and display.
 //!
-//! Taken from the French tables of storytold/gridcraft#2310 and #1639 (identical in both,
+//! Taken from the French tables of upstream #2310 and #1639 (identical in both,
 //! `crates/formula/src/input/french.rs`), which checked them against the first name in the
 //! Syntax section of Microsoft's French function pages (reviewed 2026-10-16). Names French
 //! Excel keeps in English (ABS, DATE, LET, MAX…) are left out, as in the German table: they keep
@@ -12,7 +12,7 @@
 //! An English name typed in French still works unless French gives it to another function
 //! (`TRIM` is French for MIRR, `VAR.P` for VARP).
 
-use gridcraft_core::CellError;
+use deskwerk_sheets_core::CellError;
 
 /// Canonical function name → French name, in the format of `input::SPANISH`.
 pub(crate) const FRENCH: &[(&str, &str)] = &[

@@ -2,7 +2,7 @@
 //! popular open fonts offered by their own names, and the fonts of the user's computer where the
 //! browser lets us read them (Local Font Access).
 //!
-//! The files live next to the web build's `index.html` in `fonts/` (`apps/gridcraft-web/fonts`,
+//! The files live next to the web build's `index.html` in `fonts/` (`apps/deskwerk-sheets-web/fonts`,
 //! with `MANIFEST.tsv` naming each file's source, sha256 and licence, and the licence texts in
 //! `fonts/licenses/`). Nothing is fetched from a third-party server: the web shell fetches a file
 //! from the app's own origin when a workbook (or the user, through the font list) uses a family
@@ -16,7 +16,7 @@
 //! font of this computer read through Local Font Access; a pack family of that name; the name's
 //! substitute from [`SUBSTITUTES`]; else the built-in cell roles of [`crate::theme::cell_family`].
 //!
-//! The desktop app embeds the same files (`apps/gridcraft/src/font_pack.rs`) and hands them over
+//! The desktop app embeds the same files (`apps/deskwerk-sheets/src/font_pack.rs`) and hands them over
 //! the same way; there the installed fonts come first and Local Font Access doesn't apply.
 
 use std::collections::{HashMap, HashSet};

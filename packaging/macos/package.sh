@@ -58,7 +58,7 @@ echo "==> Deskwerk Sheets $VERSION for macOS ($ARCH), identity: $IDENTITY, notar
 if [[ "$SKIP_BUILD" = 0 ]]; then
   args=()
   for t in "${TARGETS[@]}"; do args+=(--target "$t"); done
-  (cd "$ROOT" && cargo build --release --locked -p gridcraft -p gridcraft-cli "${args[@]}")
+  (cd "$ROOT" && cargo build --release --locked -p deskwerk-sheets -p deskwerk-sheets-cli "${args[@]}")
 fi
 
 rm -rf "$WORK"
@@ -116,15 +116,15 @@ echo "==> assembling $APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 # Executable and icon carry the display name (CFBundleExecutable / CFBundleIconFile).
 cp "$WORK/bin/deskwerk-sheets" "$APP/Contents/MacOS/Deskwerk Sheets"
-cp "$ROOT/assets/app-icon/gridcraft.icns" "$APP/Contents/Resources/Deskwerk Sheets.icns"
+cp "$ROOT/assets/app-icon/deskwerk-sheets.icns" "$APP/Contents/Resources/Deskwerk Sheets.icns"
 # Document icon (CFBundleTypeIconFile of every CFBundleDocumentTypes entry).
 cp "$ROOT/assets/app-icon/document.icns" "$APP/Contents/Resources/Deskwerk Sheets Document.icns"
-# Bundled dependency font notices are installed before the app is signed.
-cp "$ROOT/NOTICE" "$ROOT/ATTRIBUTION.md" "$APP/Contents/Resources/"
+# Licence texts and notices, as plain files (the app shows none), installed before the app is signed.
+cp "$ROOT/LICENSE-MIT" "$ROOT/LICENSE-APACHE" "$ROOT/NOTICE" "$ROOT/ATTRIBUTION.md" "$APP/Contents/Resources/"
 # Licences of the embedded craft-fonts fonts (only when built with CRAFT_FONTS_DIR).
 copy_font_licences "$APP/Contents/Resources"
 sed -e "s/@VERSION@/$VERSION/g" -e "s/@SHORT_VERSION@/$SHORT_VERSION/g" \
-  -e "s/@BUILD_SHA@/${GRIDCRAFT_BUILD_SHA:-unknown}/g" \
+  -e "s/@BUILD_SHA@/${DESKWERK_SHEETS_BUILD_SHA:-unknown}/g" \
   "$HERE/Info.plist.in" >"$APP/Contents/Info.plist"
 plutil -lint "$APP/Contents/Info.plist"
 printf 'APPL????' >"$APP/Contents/PkgInfo"

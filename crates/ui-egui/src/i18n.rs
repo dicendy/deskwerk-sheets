@@ -187,8 +187,8 @@ impl Language {
         }
     }
 
-    pub fn formula_locale(self) -> gridcraft_engine::formula::FormulaLocale {
-        use gridcraft_engine::formula::FormulaLocale;
+    pub fn formula_locale(self) -> deskwerk_sheets_engine::formula::FormulaLocale {
+        use deskwerk_sheets_engine::formula::FormulaLocale;
         match self {
             Self::Es => FormulaLocale::Es,
             Self::De => FormulaLocale::De,
@@ -199,8 +199,8 @@ impl Language {
 
     /// The number and date conventions that go with the language (decimal comma, `31.12.2026`
     /// in German and `31/12/2026` in French); en-US for every other language.
-    pub fn number_locale(self) -> gridcraft_engine::core::Locale {
-        use gridcraft_engine::core::Locale;
+    pub fn number_locale(self) -> deskwerk_sheets_engine::core::Locale {
+        use deskwerk_sheets_engine::core::Locale;
         match self {
             Self::De => Locale::De,
             Self::Fr => Locale::Fr,
@@ -308,7 +308,7 @@ pub fn saved_language(ui_json: &serde_json::Value) -> Option<Language> {
 /// egui context-data key holding the language of the frame being drawn. Widgets that only get a
 /// `Ui` (not the app) read it to translate their labels; [`set_current`] writes it once per frame.
 fn lang_key() -> egui::Id {
-    egui::Id::unique("gridcraft.language")
+    egui::Id::unique("deskwerk-sheets.language")
 }
 
 /// The language the current frame is drawing in. `En` when unset.
@@ -494,7 +494,7 @@ mod tests {
 
     #[test]
     fn formula_syntax_follows_the_languages_with_a_table() {
-        use gridcraft_engine::formula::FormulaLocale;
+        use deskwerk_sheets_engine::formula::FormulaLocale;
         assert_eq!(Language::De.formula_locale(), FormulaLocale::De);
         assert_eq!(Language::Es.formula_locale(), FormulaLocale::Es);
         assert_eq!(Language::En.formula_locale(), FormulaLocale::En);
@@ -504,7 +504,7 @@ mod tests {
 
     #[test]
     fn numbers_follow_german_and_french_only() {
-        use gridcraft_engine::core::Locale;
+        use deskwerk_sheets_engine::core::Locale;
         assert_eq!(Language::De.number_locale(), Locale::De);
         assert_eq!(Language::Fr.number_locale(), Locale::Fr);
         for l in Language::ALL.into_iter().filter(|l| !matches!(l, Language::De | Language::Fr)) {
@@ -566,7 +566,7 @@ mod tests {
 
     #[test]
     fn language_commands_switch_and_persist() {
-        let mut app = crate::SheetApp::new(gridcraft_engine::Session::default(), Default::default());
+        let mut app = crate::SheetApp::new(deskwerk_sheets_engine::Session::default(), Default::default());
         for language in Language::ALL {
             app.run("app.language.set", serde_json::json!({"language": language.code()})).unwrap();
             assert_eq!(app.ui.language, language);

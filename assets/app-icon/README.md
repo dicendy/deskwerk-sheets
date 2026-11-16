@@ -2,7 +2,7 @@
 
 The Deskwerk Sheets icon: a green tile with a white sheet (formula bar with *fx*, a grid with a
 tinted header row and column, a selected cell) and a round **S** badge. It replaces the
-placeholder ledger page inherited from upstream GridCraft. It was made for Deskwerk Sheets as
+placeholder ledger page inherited from upstream. It was made for Deskwerk Sheets as
 AI-assisted raster art, chosen and approved by the owner; the 16 and 24 px sizes are drawn by
 hand. It is deliberately not modelled on any vendor's spreadsheet logo (no "X", no letter tile
 over layered panels).
@@ -21,12 +21,12 @@ App colour `#12875C` (the icon's green), ink `#0C6845` for text on light backgro
 
 | File | Use |
 |---|---|
-| `gridcraft-1024.png` | 1024 px master of the tile (transparent corners); the DMG background shows it |
-| `gridcraft-macos-512.png` | Runtime Dock icon on macOS, on Apple's grid (embedded by `apps/gridcraft`) |
-| `gridcraft.icns` | macOS bundle icon (`CFBundleIconFile`) |
-| `gridcraft.ico` | Windows exe and MSI icon, 16–256 px (embedded by `apps/gridcraft/build.rs`; MSI `ARPPRODUCTICON` and shortcuts; web favicon) |
+| `deskwerk-sheets-1024.png` | 1024 px master of the tile (transparent corners); the DMG background shows it |
+| `deskwerk-sheets-macos-512.png` | Runtime Dock icon on macOS, on Apple's grid (embedded by `apps/deskwerk-sheets`) |
+| `deskwerk-sheets.icns` | macOS bundle icon (`CFBundleIconFile`) |
+| `deskwerk-sheets.ico` | Windows exe and MSI icon, 16–256 px (embedded by `apps/deskwerk-sheets/build.rs`; MSI `ARPPRODUCTICON` and shortcuts; web favicon) |
 | `hicolor/<size>/apps/eu.deskwerk.Sheets.png` | Linux icon theme, 16–512 px; the 256 px one is also the runtime window icon on Windows and Linux, the 128 px one the update prompt's |
-| `web/icon-192.png`, `web/icon-512.png` | Web app manifest icons (`apps/gridcraft-web/manifest.webmanifest`) |
+| `web/icon-192.png`, `web/icon-512.png` | Web app manifest icons (`apps/deskwerk-sheets-web/manifest.webmanifest`) |
 | `hicolor/scalable/mimetypes/eu.deskwerk.Sheets.document.svg` | Document icon, source and Linux mime icon (`packaging/linux/eu.deskwerk.Sheets.mime.xml`) |
 | `document.ico` | Document icon for Windows: installed as `deskwerk-sheets-document.ico`, the ProgIds' `DefaultIcon` |
 | `document.icns` | Document icon for macOS: `Deskwerk Sheets Document.icns`, every `CFBundleTypeIconFile` |

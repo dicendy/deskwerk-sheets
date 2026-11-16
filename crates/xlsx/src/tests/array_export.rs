@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use gridcraft_core::{CellRef, RangeRef, Value};
-use gridcraft_model::{Cell, DefinedName, Formula, Sheet, Table, TableColumn, TotalsFn, Workbook};
+use deskwerk_sheets_core::{CellRef, RangeRef, Value};
+use deskwerk_sheets_model::{Cell, DefinedName, Formula, Sheet, Table, TableColumn, TotalsFn, Workbook};
 
 use crate::package::Package;
 use crate::xml::El;
@@ -222,7 +222,7 @@ const LEGACY_ROWS: &str = concat!(
     r#"<row r="3"><c r="A3"><v>3</v></c><c r="B3"><v>30</v></c><c r="C3"><v>7</v></c></row></sheetData>"#,
 );
 
-/// Excel intersects a multi-cell reference where a legacy formula takes one value; GridCraft
+/// Excel intersects a multi-cell reference where a legacy formula takes one value; Deskwerk Sheets
 /// shows (and evaluates) that as `@`. Saving writes the legacy formula back without them.
 #[test]
 fn legacy_formulas_intersect_with_at_and_are_saved_unchanged() {

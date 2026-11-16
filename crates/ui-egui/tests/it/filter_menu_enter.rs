@@ -2,10 +2,10 @@
 //! search box or with a value focused it applies the filter and closes the menu, and the key never
 //! reaches the grid underneath.
 
+use deskwerk_sheets_engine::Session;
+use deskwerk_sheets_ui_egui::SheetApp;
 use egui::{Event, Key, Modifiers, PointerButton};
 use egui_kittest::kittest::Queryable;
-use gridcraft_engine::Session;
-use gridcraft_ui_egui::SheetApp;
 use serde_json::json;
 
 type Harness = egui_kittest::Harness<'static, SheetApp>;

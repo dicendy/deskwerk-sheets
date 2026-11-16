@@ -3,7 +3,7 @@
 use crate::input_de::{GERMAN, GERMAN_ERRORS};
 use crate::input_fr::{FRENCH, FRENCH_ERRORS};
 use crate::{Expr, ParseError, parser};
-use gridcraft_core::CellError;
+use deskwerk_sheets_core::CellError;
 
 /// Formula-entry syntax selected by the interface language. Interface languages without a
 /// translation table use the canonical English syntax.

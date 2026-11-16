@@ -1,8 +1,8 @@
 //! Dialogs can be dragged by their title bar, like Excel's, and stay where they are dropped.
 
+use deskwerk_sheets_engine::Session;
+use deskwerk_sheets_ui_egui::SheetApp;
 use egui::{Event, Modifiers, PointerButton, vec2};
-use gridcraft_engine::Session;
-use gridcraft_ui_egui::SheetApp;
 use serde_json::json;
 
 type Harness = egui_kittest::Harness<'static, SheetApp>;

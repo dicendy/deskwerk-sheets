@@ -1,11 +1,11 @@
 //! "Highlight the active cell's row": a global preference, off by default, that tints the whole
 //! row of the active cell and leaves the workbook alone.
 
+use deskwerk_sheets_engine::Session;
+use deskwerk_sheets_engine::core::CellRef;
+use deskwerk_sheets_ui_egui::theme::Tokens;
+use deskwerk_sheets_ui_egui::{SheetApp, UiState, grid::Geo, grid::active_row_band};
 use egui::{Shape, vec2};
-use gridcraft_engine::Session;
-use gridcraft_engine::core::CellRef;
-use gridcraft_ui_egui::theme::Tokens;
-use gridcraft_ui_egui::{SheetApp, UiState, grid::Geo, grid::active_row_band};
 use serde_json::json;
 
 fn harness(session: Session) -> egui_kittest::Harness<'static, SheetApp> {

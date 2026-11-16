@@ -1,4 +1,4 @@
-//! File content GridCraft does not model, carried through unchanged so that saving a workbook
+//! File content Deskwerk Sheets does not model, carried through unchanged so that saving a workbook
 //! never silently drops it (XLSX pass-through: custom XML, external links, connections, query
 //! tables, form controls, OLE objects, chart sheets, and the original XML of embedded charts).
 //!
@@ -14,7 +14,7 @@ use crate::sheet::Visibility;
 /// to a kept part or to an external target.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PreservedRel {
-    /// The id in the source file (`rId7`). Ids of an owner GridCraft writes are reassigned on save.
+    /// The id in the source file (`rId7`). Ids of an owner Deskwerk Sheets writes are reassigned on save.
     pub id: String,
     /// The full relationship type URI.
     pub rel_type: String,
@@ -63,13 +63,13 @@ pub struct PreservedSheet {
 
 /// An embedded chart (a chart in a sheet's drawing) kept as it was in the source file, so that
 /// what the model doesn't hold (fonts, point colours, axis bounds, line dashes…) survives a save.
-/// It is written in place of GridCraft's own chart part only while the model's chart still equals
+/// It is written in place of Deskwerk Sheets' own chart part only while the model's chart still equals
 /// [`Self::chart`], apart from its id and position.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PreservedChart {
     /// The id of the model chart read from it.
     pub id: u32,
-    /// The chart as GridCraft read it from the kept part (id 0, default anchor).
+    /// The chart as Deskwerk Sheets read it from the kept part (id 0, default anchor).
     pub chart: Chart,
     /// Part name of the chart part in the source file (no leading `/`).
     pub part: String,

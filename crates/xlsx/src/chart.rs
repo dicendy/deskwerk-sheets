@@ -3,9 +3,9 @@
 
 use std::fmt::Write as _;
 
-use gridcraft_core::{RangeRef, Value, category_levels};
-use gridcraft_formula::{Expr, SheetSel};
-use gridcraft_model::{Chart, ChartAxis, ChartKind, Color, DefinedName, LegendPos, LineDash, Series, Trendline, TrendlineKind, Workbook};
+use deskwerk_sheets_core::{RangeRef, Value, category_levels};
+use deskwerk_sheets_formula::{Expr, SheetSel};
+use deskwerk_sheets_model::{Chart, ChartAxis, ChartKind, Color, DefinedName, LegendPos, LineDash, Series, Trendline, TrendlineKind, Workbook};
 
 use crate::drawing::{dml_color, srgb};
 use crate::xml::{El, esc, esc_attr, num};
@@ -323,7 +323,7 @@ pub fn read_chart(root: &El) -> Option<Chart> {
         series,
         legend,
         data_labels,
-        data_table: plot.child("dTable").map(|t| gridcraft_model::ChartDataTable {
+        data_table: plot.child("dTable").map(|t| deskwerk_sheets_model::ChartDataTable {
             show_keys: bool_val(t, "showKeys"),
             horizontal_border: bool_val(t, "showHorzBorder"),
             vertical_border: bool_val(t, "showVertBorder"),
@@ -389,7 +389,7 @@ const MAX_CACHE: u64 = 100_000;
 
 /// The sheet and range a same-workbook reference (`Sheet1!$B$2:$B$9`) names.
 fn ref_target(wb: &Workbook, sheet_idx: usize, f: &str) -> Option<(usize, RangeRef)> {
-    let e = gridcraft_formula::parse(f).ok()?;
+    let e = deskwerk_sheets_formula::parse(f).ok()?;
     let Expr::Ref(r) = e else { return None };
     let si = match &r.sheet {
         SheetSel::Current => sheet_idx,
@@ -419,14 +419,14 @@ pub(crate) fn ref_values(wb: &Workbook, sheet_idx: usize, f: &str) -> Option<Vec
 }
 
 pub(crate) fn is_ref(f: &str) -> bool {
-    matches!(gridcraft_formula::parse(f), Ok(Expr::Ref(_)))
+    matches!(deskwerk_sheets_formula::parse(f), Ok(Expr::Ref(_)))
 }
 
 /// A chart reference that is a name: its sheet when qualified (`Sheet1!Sales`), the bare
 /// name, and the definition formulas would find from sheet `si` (none when undefined). `None`
 /// when it isn't a name, or names a sheet the workbook doesn't have.
 fn chart_name<'a>(wb: &'a Workbook, si: usize, f: &str) -> Option<(Option<usize>, String, Option<&'a DefinedName>)> {
-    let Ok(Expr::Name(n)) = gridcraft_formula::parse(f.trim()) else { return None };
+    let Ok(Expr::Name(n)) = deskwerk_sheets_formula::parse(f.trim()) else { return None };
     // The parser has already unquoted the sheet (`'Bob''s'!Name` → `Bob's!Name`, #2012): split
     // at the last `!` (`'a!b'!Name`) and keep the name as is (`' Sales '` keeps its spaces).
     match n.rsplit_once('!') {
@@ -446,7 +446,7 @@ fn chart_name<'a>(wb: &'a Workbook, si: usize, f: &str) -> Option<(Option<usize>
 /// Microsoft 365). A workbook-scoped name is written `[0]!Name`, as Excel writes it, a
 /// sheet-scoped one `Sheet!Name`; an undefined name gets `[0]!`, as the file it came from had.
 pub(crate) fn chart_ref_to_file(wb: &Workbook, si: usize, f: &str) -> String {
-    let on_sheet = |i: usize, n: &str| wb.sheet(i).map(|sh| format!("{}!{n}", gridcraft_formula::quote_sheet(&sh.name)));
+    let on_sheet = |i: usize, n: &str| wb.sheet(i).map(|sh| format!("{}!{n}", deskwerk_sheets_formula::quote_sheet(&sh.name)));
     match chart_name(wb, si, f) {
         Some((Some(i), n, _)) => on_sheet(i, &n).unwrap_or_else(|| crate::fmla::text_to_file(f)),
         Some((None, n, def)) => def.and_then(|d| d.scope).and_then(|i| on_sheet(i, &n)).unwrap_or_else(|| format!("{THIS_BOOK}{n}")),

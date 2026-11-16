@@ -1,5 +1,5 @@
 //! Bringing a kept chart part (#1668) in line with an edited title, legend or chart type, so the
-//! chart keeps the formatting GridCraft's model doesn't hold (fonts, colours, line dashes, manual
+//! chart keeps the formatting Deskwerk Sheets' model doesn't hold (fonts, colours, line dashes, manual
 //! layout, style parts). The title and legend are edited where they are; a change between the
 //! 2-D column, bar, line and area types rewrites the one plot group, keeping each series' shape
 //! properties, points, labels, trendlines and data. Anything else (another plot group, a 3-D or
@@ -8,7 +8,7 @@
 use std::fmt::Write as _;
 use std::ops::Range;
 
-use gridcraft_model::{Chart, ChartKind, LegendPos};
+use deskwerk_sheets_model::{Chart, ChartKind, LegendPos};
 
 use super::chart_patch::{Doc, Edit};
 use crate::chart::{G, PLOT_GROUPS, group_for, read_chart};

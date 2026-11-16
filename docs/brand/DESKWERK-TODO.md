@@ -1,44 +1,40 @@
 # Deskwerk Sheets: rebranding leftovers
 
-Deskwerk Sheets is based on GridCraft by the ArtCraft team (MIT OR Apache-2.0). The user-facing
+Deskwerk Sheets is a fork of an upstream open-source spreadsheet (MIT OR Apache-2.0; the upstream
+copyright and licence notices are in `LICENSE-MIT`, `NOTICE` and `ATTRIBUTION.md`). The user-facing
 name, app id (`eu.deskwerk.Sheets`), binaries (`deskwerk-sheets`, `deskwerk-sheets-cli`),
-packages, installers and settings folders are renamed. This file lists what still carries the
-upstream look or name, and why.
+packages, installers and settings folders are renamed. This file lists what is still open.
 
 ## Art
 
 The upstream placeholder icons are replaced by Deskwerk art (app icon, document icon, accent
-`#12875C`; see `assets/app-icon/README.md`). Nothing left to replace.
+`#12875C`; see `assets/app-icon/README.md`). The macOS DMG background reads "Deskwerk Sheets" and
+`dmg-layout.DS_Store` describes the `Deskwerk Sheets` volume with `Deskwerk Sheets.app` (0.16.4).
 
-## macOS DMG layout
+## Names (0.16.4)
 
-- `packaging/macos/dmg/dmg-layout.DS_Store` still describes a volume named `GridCraft` with
-  `GridCraft.app`. The volume and bundle are now `Deskwerk Sheets` / `Deskwerk Sheets.app`, so
-  Finder falls back to default icon positions until it is regenerated with
-  `packaging/macos/dmg/generate.py` (already updated) on a Mac.
-- `packaging/macos/dmg/background.svg` / `background.tiff` show the new icon, but the
-  background text still reads `GridCraft`; redraw it (outlined text) to say Deskwerk Sheets.
+Every upstream name is gone from the code, packaging and docs: Cargo packages and crates
+(`deskwerk-sheets`, `deskwerk-sheets-cli`, `deskwerk-sheets-web`, `deskwerk-sheets-*`), directories
+(`apps/deskwerk-sheets*`), `DESKWERK_SHEETS_*` environment variables, log targets and the log file
+`deskwerk-sheets.log`, the control-token folder, the web page API (`window.deskwerk_sheets`,
+`deskwerk-sheets:ready` …, canvas `#deskwerk_sheets_canvas`), MCP resource URIs
+(`deskwerk-sheets://…`), the XLSX `appName`, WiX ids and file names. Upstream names remain only in
+the legal files (`LICENSE-MIT`, `NOTICE`, `ATTRIBUTION.md`) and in the compatibility constants of
+`deskwerk_sheets_core::legacy`, which read data written by the upstream builds: the old settings
+folder is copied on first start, web settings are read from the old browser storage keys, and the
+old equation marker in XLSX drawings and the old Solver option names are still read.
 
-## Internal names kept on purpose
+## About and licences
 
-- Cargo packages, crate names, module paths and directories: `gridcraft`, `gridcraft-cli`,
-  `gridcraft-web`, `gridcraft-*` crates, `apps/gridcraft*` (`cargo -p gridcraft…` keeps working,
-  `Cargo.lock` is unchanged).
-- The web build (`gridcraft-web` binary; the zip is renamed to `deskwerk-sheets-web-<version>.zip`) and its page messages
-  (`gridcraft:ready`, `gridcraft:open`, …), which are a host-page API.
-- `GRIDCRAFT_*` environment variables.
-- Log targets (`gridcraft_*`; the app binary now logs as `deskwerk_sheets`, which the default
-  filter includes), the log file name `gridcraft.log`, temp-file prefixes.
-- The control-channel token folder (`$XDG_RUNTIME_DIR/gridcraft`, `~/.cache/gridcraft`,
-  `%USERPROFILE%\.gridcraft`), shared by the app and the CLI.
-- The `gridcraft-check/1` report schema id of `deskwerk-sheets-cli check`.
-- File names `packaging/windows/gridcraft.wxs` and internal WiX ids (`GridcraftExe`, …).
-- The XLSX `appName` written into saved files.
+The About window is empty for now (its title and a Close button). The app shows no licence or
+credits: `LICENSE-MIT`, `LICENSE-APACHE`, `NOTICE`, `ATTRIBUTION.md` and the font licences ship as
+plain files in every package (MSI install folder, macOS `Contents/Resources`, Linux
+`/usr/share/doc/deskwerk-sheets`, flatpak, and the web build's static files).
 
 ## Windows installer identity
 
-- New UpgradeCode `CA81A1E0-D901-45D0-9E16-8859F2B95AF8` (fixed from now on; it does not upgrade
-  upstream GridCraft installs). Manufacturer `Deskwerk`, folder `Deskwerk\Sheets`, ProgIds
+- UpgradeCode `CA81A1E0-D901-45D0-9E16-8859F2B95AF8` (fixed; every Deskwerk Sheets MSI upgrades the
+  previous one in place). Manufacturer `Deskwerk`, folder `Deskwerk\Sheets`, ProgIds
   `DeskwerkSheets.Workbook` / `DeskwerkSheets.TextData`, registry `Software\Deskwerk\Sheets`.
 
 ## Release signing
@@ -63,7 +59,7 @@ The upstream placeholder icons are replaced by Deskwerk art (app icon, document 
   (`crates/ui-egui/src/lib.rs`): id `deskwerk-sheets`, repo `dicendy/deskwerk-sheets`, so it only
   asks `https://api.github.com/repos/dicendy/deskwerk-sheets/releases`. The AppImage update
   information points at the same releases.
-- craft-update (storytold/craft-libs) still assumes ArtCraft conventions when it looks for an
+- craft-update (storytold/craft-libs) still assumes upstream conventions when it looks for an
   installed copy to replace: publisher `Learning Machines LLC` for MSIs, bundle id
   `ai.storyteller.<id>` on macOS. So in-place install from the update prompt may not find
   Deskwerk installs and fall back to a download. Fixing it needs a craft-update change (or

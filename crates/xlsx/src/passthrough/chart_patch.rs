@@ -7,8 +7,8 @@
 
 use std::ops::Range;
 
-use gridcraft_core::Value;
-use gridcraft_model::Series;
+use deskwerk_sheets_core::Value;
+use deskwerk_sheets_model::Series;
 
 use super::write::{same_sheet, sheet_names_in};
 use super::*;

@@ -5,38 +5,38 @@
 > with the scripts in `packaging/` and drafts a GitHub Release `Deskwerk Sheets v<version>`.
 > Signing secrets are plain repository secrets and optional. How to cut a release, test runs and
 > the secret list: [`packaging/RELEASING.md`](../packaging/RELEASING.md). The rest of this page
-> describes upstream GridCraft's fuller pipeline (`release` branch and environment, FreeBSD,
+> describes the upstream project's fuller pipeline (`release` branch and environment, FreeBSD,
 > Flatpak, arm64, riscv64) and is kept as reference for what is not ported yet.
 
-This process comes from upstream GridCraft (by the ArtCraft team) and was renamed. User-facing names say
+This process comes from the upstream project and was renamed. User-facing names say
 **Deskwerk Sheets**. Files, binaries and ids stay lowercase
 (`deskwerk-sheets-<version>-<platform>-<arch>.<ext>`, `eu.deskwerk.Sheets`).
 
 | App-specific value | Where |
 |---|---|
-| Display name `Deskwerk Sheets`, binaries `deskwerk-sheets` + `deskwerk-sheets-cli` (Cargo packages stay `gridcraft`, `gridcraft-cli`) | every script and workflow |
+| Display name `Deskwerk Sheets`, binaries `deskwerk-sheets` + `deskwerk-sheets-cli` (Cargo packages of the same names) | every script and workflow |
 | Bundle / app id `eu.deskwerk.Sheets` | `packaging/macos/Info.plist.in`, `packaging/linux/*`, flatpak manifest |
-| WiX UpgradeCode `CA81A1E0-D901-45D0-9E16-8859F2B95AF8` (fixed forever) | `packaging/windows/gridcraft.wxs` |
+| WiX UpgradeCode `CA81A1E0-D901-45D0-9E16-8859F2B95AF8` (fixed forever) | `packaging/windows/deskwerk-sheets.wxs` |
 | File types `.xlsx` `.xlsm` `.xltx` `.xls` `.xlsb` `.ods` `.csv` `.tsv` | Info.plist (`CFBundleDocumentTypes`), WiX (ProgIds/OpenWithProgids/Capabilities), `.desktop` `MimeType=`, `eu.deskwerk.Sheets.mime.xml`, metainfo |
-| Web app dir `apps/gridcraft-web` | `packaging/web/package.sh` |
+| Web app dir `apps/deskwerk-sheets-web` | `packaging/web/package.sh` |
 | App colour `#12875C` (ink `#0C6845`) | `assets/app-icon/README.md`, `crates/ui-egui/src/theme.rs`, metainfo `<branding>`, web manifest |
 
 ## Application release prerequisites
 
-The `apps/gridcraft` and `apps/gridcraft-web` crates are workspace members, and
-`apps/gridcraft-cli` supports `--version`. The `cargo xtask` alias is defined in
+The `apps/deskwerk-sheets` and `apps/deskwerk-sheets-web` crates are workspace members, and
+`apps/deskwerk-sheets-cli` supports `--version`. The `cargo xtask` alias is defined in
 `.cargo/config.toml`. The current app-specific release setup includes:
 
-- **Windows resources:** `apps/gridcraft/build.rs` embeds the icon and version information with
+- **Windows resources:** `apps/deskwerk-sheets/build.rs` embeds the icon and version information with
   `winresource` (instructions at the top of the file). `package.ps1` sets
-  `GRIDCRAFT_REQUIRE_WINRES=1`, so a release build without the icon fails, and it checks that
-  `deskwerk-sheets.exe` is a GUI-subsystem binary. `apps/gridcraft/src/main.rs` sets
+  `DESKWERK_SHEETS_REQUIRE_WINRES=1`, so a release build without the icon fails, and it checks that
+  `deskwerk-sheets.exe` is a GUI-subsystem binary. `apps/deskwerk-sheets/src/main.rs` sets
   `windows_subsystem = "windows"` for release builds.
-- **Version information:** `deskwerk-sheets --version`, `deskwerk-sheets-cli --version` and the About dialog
+- **Version information:** `deskwerk-sheets --version`, `deskwerk-sheets-cli --version` and File › Account
   use `env!("CARGO_PKG_VERSION")` from `[workspace.package]`. `packaging/env.sh` also exports
-  `GRIDCRAFT_BUILD_SHA` and `GRIDCRAFT_BUILD_DATE` for artifact metadata.
-- **Runtime icon:** `apps/gridcraft/src/main.rs` embeds
-  `assets/app-icon/gridcraft-macos-512.png` (macOS Dock) and
+  `DESKWERK_SHEETS_BUILD_SHA` and `DESKWERK_SHEETS_BUILD_DATE` for artifact metadata.
+- **Runtime icon:** `apps/deskwerk-sheets/src/main.rs` embeds
+  `assets/app-icon/deskwerk-sheets-macos-512.png` (macOS Dock) and
   `hicolor/256x256/apps/eu.deskwerk.Sheets.png` (Windows/Linux) as the window icon, and
   uses `eu.deskwerk.Sheets` as the Wayland app id / `StartupWMClass`.
 
@@ -123,7 +123,7 @@ open dist/release/deskwerk-sheets-*-macos-*.dmg
 is GUI, `deskwerk-sheets-cli.exe` console), signs both executables, builds the MSI with WiX v5, signs
 the MSI, and zips a portable build.
 
-- `gridcraft.wxs`: a dual-scope package (per-user by default into
+- `deskwerk-sheets.wxs`: a dual-scope package (per-user by default into
   `%LOCALAPPDATA%\Programs\Deskwerk\Sheets`, per-machine into `Program Files\Deskwerk\Sheets` (`Program Files (x86)` for the 32-bit build),
   see `packaging/windows/INSTALLATION.md`), advertised Start Menu shortcut, App
   Paths (Win+R `deskwerk-sheets`). File types: ProgIds `DeskwerkSheets.Workbook` (`.xlsx`, `.xlsm`) and
@@ -198,7 +198,7 @@ comes back from the VM. No signing (checksums are in `SHA256SUMS.txt`).
 ### Web
 
 `packaging/web/package.sh` runs `trunk build --release --dist dist/web --public-url ./` in
-`apps/gridcraft-web` and zips the site with sample `_headers` / `.htaccess` and the hosting guide
+`apps/deskwerk-sheets-web` and zips the site with sample `_headers` / `.htaccess` and the hosting guide
 ([`packaging/web/README.md`](../packaging/web/README.md)). Relative URLs only, so it works under
 any path and in an iframe; the script fails on root-absolute URLs.
 
@@ -226,7 +226,7 @@ shows a `::warning::`. Never store these as org- or repo-level Actions secrets (
 `GITHUB_TOKEN` creates the release; only the final job gets `contents: write`.
 
 The repository setup commands, run by an org
-admin. Upstream GridCraft did this on 2026-10-07; for Deskwerk Sheets substitute the repo and team below; the `release-managers` team also has write
+admin. Upstream Deskwerk Sheets did this on 2026-10-07; for Deskwerk Sheets substitute the repo and team below; the `release-managers` team also has write
 access to the repo, which its ruleset bypass needs.
 
 ```sh

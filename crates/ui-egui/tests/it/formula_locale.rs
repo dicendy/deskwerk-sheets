@@ -1,9 +1,9 @@
 //! Language selection must affect UI entry, never the canonical engine/file boundary.
-use gridcraft_engine::{
+use deskwerk_sheets_engine::{
     Session,
     core::{CellError, CellRef, Value},
 };
-use gridcraft_ui_egui::{SheetApp, UiState, i18n::Language};
+use deskwerk_sheets_ui_egui::{SheetApp, UiState, i18n::Language};
 use serde_json::json;
 
 fn app() -> SheetApp {
@@ -97,7 +97,7 @@ fn localized_autocomplete_is_rendered_and_inserts_the_selected_name() {
     h.run_steps(4);
     assert!(h.state().editor.as_ref().unwrap().autocomplete.iter().any(|n| n == "SUMA"));
     assert!(!h.state().editor.as_ref().unwrap().autocomplete.iter().any(|n| n == "SUM"));
-    if let Ok(path) = std::env::var("GRIDCRAFT_LOCALE_SCREENSHOT") {
+    if let Ok(path) = std::env::var("DESKWERK_SHEETS_LOCALE_SCREENSHOT") {
         h.render().unwrap().save(path).unwrap();
     }
     let ed = h.state_mut().editor.as_mut().unwrap();
@@ -108,7 +108,7 @@ fn localized_autocomplete_is_rendered_and_inserts_the_selected_name() {
     h.input_mut().events.push(egui::Event::Text("1,5;".into()));
     h.run_steps(4);
     assert_eq!(h.state().editor.as_ref().unwrap().current_function(), Some(("SUMA".into(), 1)));
-    if let Ok(path) = std::env::var("GRIDCRAFT_LOCALE_SCREENSHOT") {
+    if let Ok(path) = std::env::var("DESKWERK_SHEETS_LOCALE_SCREENSHOT") {
         h.render().unwrap().save(std::path::Path::new(&path).with_file_name("spanish-hints.png")).unwrap();
         h.state_mut().cancel_edit();
         h.state_mut().ui.ribbon_tab = "View".into();
@@ -166,7 +166,7 @@ fn canonical_engine_templates_enter_the_selected_formula_language() {
     app.begin_edit(Some("=SUMA(1,5;2)".into()), false);
     assert_eq!(app.editor.as_ref().unwrap().text, "=SUMA(1,5;2)");
     assert!(app.commit_edit(0, 0, false, false));
-    if let Ok(path) = std::env::var("GRIDCRAFT_LOCALE_SCREENSHOT") {
+    if let Ok(path) = std::env::var("DESKWERK_SHEETS_LOCALE_SCREENSHOT") {
         app.ui.ribbon_tab = "Formulas".into();
         app.run("formulas.insertFunction", json!({"name":"SUM"})).unwrap();
         let mut h = crate::common::builder().with_size(egui::vec2(1200.0, 800.0)).build_ui_state(
@@ -275,9 +275,9 @@ fn only_german_takes_a_non_ascii_letter_after_a_sign_as_a_formula() {
 fn german_and_french_numbers_and_dates_follow_the_language_unless_chosen() {
     let value = |app: &SheetApp| app.session.active().unwrap().wb.active().unwrap().value(CellRef::new(0, 0));
     let mut app = app();
-    assert_eq!(app.session.locale(), gridcraft_engine::core::Locale::En);
+    assert_eq!(app.session.locale(), deskwerk_sheets_engine::core::Locale::En);
     app.run("app.language.set", json!({"language":"de"})).unwrap();
-    assert_eq!(app.session.locale(), gridcraft_engine::core::Locale::De);
+    assert_eq!(app.session.locale(), deskwerk_sheets_engine::core::Locale::De);
     assert!(enter(&mut app, "31.12.2026"));
     assert_eq!(value(&app), Value::Number(46387.0));
     app.begin_edit(None, true);
@@ -288,12 +288,12 @@ fn german_and_french_numbers_and_dates_follow_the_language_unless_chosen() {
     // A chosen locale outlasts a language change and is saved with the preferences.
     app.run("app.locale.set", json!({"locale":"en"})).unwrap();
     app.run("app.language.set", json!({"language":"fr"})).unwrap();
-    assert_eq!(app.session.locale(), gridcraft_engine::core::Locale::En);
+    assert_eq!(app.session.locale(), deskwerk_sheets_engine::core::Locale::En);
     let restored: UiState = serde_json::from_str(&serde_json::to_string(&app.ui).unwrap()).unwrap();
     assert_eq!(restored.number_locale.as_deref(), Some("en"));
     assert!(app.run("app.locale.set", json!({"locale":"xx"})).is_err());
     app.run("app.locale.set", json!({"locale":"auto"})).unwrap();
-    assert_eq!(app.session.locale(), gridcraft_engine::core::Locale::Fr);
+    assert_eq!(app.session.locale(), deskwerk_sheets_engine::core::Locale::Fr);
     assert!(enter(&mut app, "31/12/2026"));
     assert_eq!(value(&app), Value::Number(46387.0));
 }
@@ -342,7 +342,7 @@ fn pasted_text_and_opened_csv_follow_the_language() {
     assert_eq!(value(&app, "B3"), Value::Number(46387.0));
 
     // A file from the command line opens before the first frame: it still reads in the language.
-    let dir = std::env::temp_dir().join(format!("gridcraft-locale-csv-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("deskwerk-sheets-locale-csv-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("de.csv");
     std::fs::write(&path, "Betrag;Datum\n-1.234,56;31.12.2026\n").unwrap();

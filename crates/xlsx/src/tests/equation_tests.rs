@@ -5,8 +5,8 @@ use std::collections::BTreeMap;
 use std::io::{Read, Write};
 use std::sync::Arc;
 
-use gridcraft_core::CellRef;
-use gridcraft_model::*;
+use deskwerk_sheets_core::CellRef;
+use deskwerk_sheets_model::*;
 
 use crate::{read_xlsx, write_xlsx};
 
@@ -63,9 +63,9 @@ fn shapes(wb: &Workbook) -> Vec<Shape> {
     wb.sheets[0].shapes.clone()
 }
 
-/// Whether the drawing `d` describes an equation with `src`: `descr="gridcraft:latex:<16 hex>:src"`.
+/// Whether the drawing `d` describes an equation with `src`: `descr="deskwerk-sheets:latex:<16 hex>:src"`.
 fn described(d: &str, src: &str) -> bool {
-    d.match_indices("descr=\"gridcraft:latex:").any(|(i, m)| {
+    d.match_indices("descr=\"deskwerk-sheets:latex:").any(|(i, m)| {
         let rest = &d[i + m.len()..];
         rest.len() > 17
             && rest.as_bytes()[..16].iter().all(u8::is_ascii_hexdigit)
@@ -121,14 +121,14 @@ fn office_math_without_a_source_is_converted_to_latex() {
     let quad = "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}";
     let wb = book(vec![equation(1, "B2", quad, Color::Auto), equation(2, "B8", "\\sum_{k=0}^{n} \\binom{n}{k} \\le \\infty", Color::Auto)]);
     let mut parts = unzip(&write_xlsx(&wb).unwrap());
-    // Strip GridCraft's source, as a file saved by another application would be.
+    // Strip Deskwerk Sheets' source, as a file saved by another application would be.
     let name = parts.keys().find(|k| k.starts_with("xl/drawings/drawing")).unwrap().clone();
     let mut d = drawing(&parts);
-    while let Some(a) = d.find(" descr=\"gridcraft:latex:") {
+    while let Some(a) = d.find(" descr=\"deskwerk-sheets:latex:") {
         let b = d[a + 8..].find('"').unwrap() + a + 9;
         d.replace_range(a..b, "");
     }
-    assert!(!d.contains("gridcraft:latex"));
+    assert!(!d.contains("deskwerk-sheets:latex"));
     parts.insert(name, d.into_bytes());
     let (back, _) = read_xlsx(&rezip(&parts)).unwrap();
     let s = shapes(&back);
@@ -137,11 +137,11 @@ fn office_math_without_a_source_is_converted_to_latex() {
         assert_eq!(x.kind, ShapeKind::Equation, "{}", x.text);
         // The conversion lays out to the same glyphs as the original.
         let glyphs = |t: &str| -> String {
-            gridcraft_math::layout(t)
+            deskwerk_sheets_math::layout(t)
                 .unwrap()
                 .items
                 .iter()
-                .filter_map(|i| if let gridcraft_math::Item::Glyph(g) = i { Some(g.ch) } else { None })
+                .filter_map(|i| if let deskwerk_sheets_math::Item::Glyph(g) = i { Some(g.ch) } else { None })
                 .collect()
         };
         assert_eq!(glyphs(&x.text), glyphs(src), "{} from {src}", x.text);
@@ -175,7 +175,7 @@ fn a_text_box_stays_a_text_box_and_hostile_sources_survive() {
 
 #[test]
 fn office_math_edited_elsewhere_reads_back_as_edited() {
-    // GridCraft writes the source in the description and Office Math in the body. Another
+    // Deskwerk Sheets writes the source in the description and Office Math in the body. Another
     // application that edits the Office Math (Excel) leaves the description alone; the marker in
     // the description no longer matches the body, so the Office Math is converted and the stale
     // source dropped, and the next save writes the edited equation.
@@ -217,9 +217,9 @@ fn a_marker_over_garbage_office_math_falls_back_without_panicking() {
     assert_eq!(s.len(), 1);
     assert_eq!(s[0].kind, ShapeKind::Equation);
     assert_eq!(s[0].text, "x^2");
-    // A description whose marker is malformed is not GridCraft's source: with Office Math the
+    // A description whose marker is malformed is not Deskwerk Sheets' source: with Office Math the
     // maths is converted; without it the box is text.
-    let d2 = drawing(&unzip(&write_xlsx(&wb).unwrap())).replace("descr=\"gridcraft:latex:", "descr=\"gridcraft:latex:zz:");
+    let d2 = drawing(&unzip(&write_xlsx(&wb).unwrap())).replace("descr=\"deskwerk-sheets:latex:", "descr=\"deskwerk-sheets:latex:zz:");
     parts.insert(name, d2.into_bytes());
     let (back, _) = read_xlsx(&rezip(&parts)).unwrap();
     let s = shapes(&back);
@@ -228,14 +228,31 @@ fn a_marker_over_garbage_office_math_falls_back_without_panicking() {
 }
 
 #[test]
+fn a_source_saved_under_the_old_product_name_is_read() {
+    // Files saved before 0.16.4 carry the old name in the description; the source wins as before
+    // (converting the Office Math would give `{x}^{2}`).
+    let wb = book(vec![equation(1, "B2", "x^2", Color::Auto)]);
+    let mut parts = unzip(&write_xlsx(&wb).unwrap());
+    let name = parts.keys().find(|k| k.starts_with("xl/drawings/drawing")).unwrap().clone();
+    let old = format!("descr=\"{}:latex:", deskwerk_sheets_core::legacy::lower());
+    let d = drawing(&parts).replace("descr=\"deskwerk-sheets:latex:", &old);
+    assert!(d.contains(&old));
+    parts.insert(name, d.into_bytes());
+    let (back, _) = read_xlsx(&rezip(&parts)).unwrap();
+    let s = shapes(&back);
+    assert_eq!(s.len(), 1);
+    assert_eq!((s[0].kind, s[0].text.as_str()), (ShapeKind::Equation, "x^2"));
+}
+
+#[test]
 fn office_math_outside_the_subset_reads_the_fallback() {
     let wb = book(vec![equation(1, "B2", "x^2", Color::Auto)]);
     let mut parts = unzip(&write_xlsx(&wb).unwrap());
     let name = parts.keys().find(|k| k.starts_with("xl/drawings/drawing")).unwrap().clone();
     let mut d = drawing(&parts);
-    // Another writer: no GridCraft source, Office Math the reader does not convert (a
+    // Another writer: no Deskwerk Sheets source, Office Math the reader does not convert (a
     // pre-subscript), and a fallback text box with its own text.
-    while let Some(a) = d.find(" descr=\"gridcraft:latex:") {
+    while let Some(a) = d.find(" descr=\"deskwerk-sheets:latex:") {
         let b = d[a + 8..].find('"').unwrap() + a + 9;
         d.replace_range(a..b, "");
     }
@@ -312,7 +329,7 @@ fn hostile_sources_round_trip_exactly() {
 
 #[test]
 fn office_math_beside_text_or_other_math_is_not_an_equation() {
-    // Another writer's text box: no GridCraft source, and Office Math the reader converts, but
+    // Another writer's text box: no Deskwerk Sheets source, and Office Math the reader converts, but
     // sharing the box with ordinary text or with a second equation. Taking it as one equation
     // would drop the rest, so it stays a text box (or the writer's fallback is read).
     let saved = || {
@@ -320,7 +337,7 @@ fn office_math_beside_text_or_other_math_is_not_an_equation() {
         let parts = unzip(&write_xlsx(&wb).unwrap());
         let name = parts.keys().find(|k| k.starts_with("xl/drawings/drawing")).unwrap().clone();
         let mut d = drawing(&parts);
-        while let Some(a) = d.find(" descr=\"gridcraft:latex:") {
+        while let Some(a) = d.find(" descr=\"deskwerk-sheets:latex:") {
             let b = d[a + 8..].find('"').unwrap() + a + 9;
             d.replace_range(a..b, "");
         }
@@ -376,7 +393,7 @@ fn office_math_beside_text_or_other_math_is_not_an_equation() {
 #[test]
 fn a_brace_with_scripts_on_both_sides_round_trips() {
     // `\underbrace{x}_{n}^{2}`: the label is the brace's limit and the exponent a superscript
-    // around the whole. With GridCraft's source in the description, the marker matches the body
+    // around the whole. With Deskwerk Sheets' source in the description, the marker matches the body
     // and the source comes back as written; with the source stripped (a file another application
     // saved) the Office Math is converted and the exponent is still there.
     let src = "\\underbrace{x}_{n}^{2}";
@@ -389,7 +406,7 @@ fn a_brace_with_scripts_on_both_sides_round_trips() {
     let (back, _) = read_xlsx(&bytes).unwrap();
     assert_eq!(shapes(&back)[0].text, src, "the marker matches its own Office Math, so the source is taken");
     let name = parts.keys().find(|k| k.starts_with("xl/drawings/drawing")).unwrap().clone();
-    while let Some(a) = d.find(" descr=\"gridcraft:latex:") {
+    while let Some(a) = d.find(" descr=\"deskwerk-sheets:latex:") {
         let b = d[a + 8..].find('"').unwrap() + a + 9;
         d.replace_range(a..b, "");
     }
@@ -431,7 +448,7 @@ fn a_text_edit_to_an_equation_without_office_math_reads_back_as_the_edit() {
     let mut parts = unzip(&write_xlsx(&book(vec![equation(1, "B2", "x^2", Color::Auto)])).unwrap());
     let name = parts.keys().find(|k| k.starts_with("xl/drawings/drawing")).unwrap().clone();
     let mut d = drawing(&parts);
-    let markers: Vec<String> = d.match_indices("descr=\"gridcraft:latex:").map(|(i, m)| d[i + m.len()..i + m.len() + 16].to_string()).collect();
+    let markers: Vec<String> = d.match_indices("descr=\"deskwerk-sheets:latex:").map(|(i, m)| d[i + m.len()..i + m.len() + 16].to_string()).collect();
     assert_eq!(markers.len(), 2, "{d}");
     assert_ne!(markers[0], markers[1], "the Choice and the Fallback each carry their own body's marker");
     let (c0, c1) = (d.find("<mc:Choice").unwrap(), d.find("</mc:Choice>").unwrap() + "</mc:Choice>".len());

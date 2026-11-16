@@ -4,11 +4,11 @@
 
 use std::path::{Path, PathBuf};
 
+use deskwerk_sheets_ui_egui::i18n::Language;
+use deskwerk_sheets_ui_egui::{Services, SheetApp};
 use egui::accesskit::Role;
 use egui::{Event, Key, Modifiers};
 use egui_kittest::kittest::Queryable as _;
-use gridcraft_ui_egui::i18n::Language;
-use gridcraft_ui_egui::{Services, SheetApp};
 use serde_json::json;
 
 type H = egui_kittest::Harness<'static, SheetApp>;
@@ -24,7 +24,7 @@ struct Places {
 
 impl Places {
     fn new(tag: &str) -> Places {
-        let root = std::env::temp_dir().join(format!("gridcraft-save-file-{tag}-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("deskwerk-sheets-save-file-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         let p = Places {
             documents: root.join("Documents"),

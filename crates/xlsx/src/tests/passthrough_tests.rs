@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::io::Read;
 use std::sync::Arc;
 
-use gridcraft_model::Sheet;
+use deskwerk_sheets_model::Sheet;
 
 use super::make_zip;
 use crate::package::{normalize, resolve, split_dir};
@@ -280,7 +280,7 @@ fn assert_kept_sheet_parts(u: &Unpacked, sheet: &str, sx: &str) {
     assert!(pos("<pageSetup") < pos("<legacyDrawing") && pos("<legacyDrawing") < pos("<oleObjects") && pos("<oleObjects") < pos("<controls"));
     // Query table: a sheet relationship only.
     assert!(u.rels(sheet).iter().any(|r| r.1.ends_with("/queryTable") && u.parts.get(&r.2).is_some_and(|b| b == QUERY_TABLE.as_bytes())));
-    // One VML drawing: the kept control shapes plus GridCraft's note, in a fresh shape block.
+    // One VML drawing: the kept control shapes plus Deskwerk Sheets' note, in a fresh shape block.
     let vml_id = attr_of(sx, "legacyDrawing", "r:id");
     let vml_part = u.target(sheet, &vml_id).1;
     let vml = u.text(&vml_part);
@@ -293,7 +293,7 @@ fn assert_kept_sheet_parts(u: &Unpacked, sheet: &str, sx: &str) {
     assert_eq!(u.parts.get(&img[0].2).unwrap(), EMF);
 }
 
-fn assert_round_trip_kept_content(wb: &gridcraft_model::Workbook, out: &[u8]) {
+fn assert_round_trip_kept_content(wb: &deskwerk_sheets_model::Workbook, out: &[u8]) {
     // Reading the output keeps the same content again.
     let (wb2, rep2) = read_xlsx(out).unwrap();
     assert!(!rep2.warnings.iter().any(|w| w.contains("dropped")), "{:?}", rep2.warnings);
@@ -316,7 +316,7 @@ fn edited_workbooks_keep_consistent_relationships() {
     let s = wb.sheet_mut(1).unwrap();
     s.name = "Renamed".into();
     s.comments.clear();
-    s.set_value(gridcraft_core::CellRef::new(5, 5), gridcraft_core::Value::Number(3.0));
+    s.set_value(deskwerk_sheets_core::CellRef::new(5, 5), deskwerk_sheets_core::Value::Number(3.0));
     let u = Unpacked::new(&write_xlsx(&wb).unwrap());
     u.assert_valid();
     let sheet = sheet_part(&u, "Renamed");
@@ -386,7 +386,7 @@ fn damaged_kept_content_is_dropped_without_failing_the_read() {
         ("rId4", "customXml", "../customXml/missing.xml"),
         // A cycle: item1 → itemProps1 → item1.
         ("rId5", "customXml", "../customXml/item1.xml"),
-        // Kept content that points into a part GridCraft rewrites.
+        // Kept content that points into a part Deskwerk Sheets rewrites.
         ("rId6", "customXml", "../customXml/item2.xml"),
         // Damaged rels behind a kept part.
         ("rId7", "connections", "connections.xml"),
@@ -573,20 +573,20 @@ fn xml_maps_and_their_bindings_survive_a_round_trip() {
 /// Where a link with `target`, in a workbook read from `from`, points once saved into `to`.
 #[cfg(unix)]
 fn rebased(target: &str, from: &str, to: &str) -> String {
-    let link = |rel_type: &str| gridcraft_model::PreservedRel {
+    let link = |rel_type: &str| deskwerk_sheets_model::PreservedRel {
         id: "rId1".into(),
         rel_type: format!("{NS_R}/{rel_type}"),
         target: target.into(),
         external: true,
     };
-    let part = gridcraft_model::PreservedPart {
+    let part = deskwerk_sheets_model::PreservedPart {
         name: "xl/externalLinks/externalLink1.xml".into(),
         content_type: String::new(),
         data: Arc::from(&b""[..]),
         rels: vec![link("externalLinkPath"), link("hyperlink")],
     };
-    let mut wb = gridcraft_model::Workbook::new();
-    wb.preserved = Some(Arc::new(gridcraft_model::Preserved { parts: vec![part], ..Default::default() }));
+    let mut wb = deskwerk_sheets_model::Workbook::new();
+    wb.preserved = Some(Arc::new(deskwerk_sheets_model::Preserved { parts: vec![part], ..Default::default() }));
     wb.source_dir = Some(from.into());
     let Some(out) = crate::rebase_links(&wb, std::path::Path::new(to)) else { return target.into() };
     let rels = &out.preserved.as_ref().unwrap().parts[0].rels;
@@ -831,9 +831,9 @@ fn file_version_and_calc_features_survive_a_save() {
         assert!(text.contains(&format!("<extLst>{calc_features}</extLst>")), "{text}");
     }
 
-    // A workbook that had neither gets a <fileVersion> naming GridCraft (#1699), kept on the next
+    // A workbook that had neither gets a <fileVersion> naming Deskwerk Sheets (#1699), kept on the next
     // save, and no calcFeatures: Excel recalculates it on open.
-    let new = write_xlsx(&gridcraft_model::Workbook::new()).unwrap();
+    let new = write_xlsx(&deskwerk_sheets_model::Workbook::new()).unwrap();
     let (reread, _) = read_xlsx(&new).unwrap();
     for saved in [new, write_xlsx(&reread).unwrap()] {
         let u = Unpacked::new(&saved);
@@ -841,7 +841,7 @@ fn file_version_and_calc_features_survive_a_save() {
         let plain = u.text("xl/workbook.xml");
         let root = xml::parse(plain.as_bytes()).unwrap();
         assert_eq!(root.children.first().map(|e| e.name.as_str()), Some("fileVersion"), "{plain}");
-        assert!(plain.contains(r#"<fileVersion appName="gridcraft"/>"#) && !plain.contains("extLst"), "{plain}");
+        assert!(plain.contains(r#"<fileVersion appName="deskwerk-sheets"/>"#) && !plain.contains("extLst"), "{plain}");
     }
 }
 
@@ -854,7 +854,7 @@ const HF_VML: &str = r##"<xml xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="u
 const NOTE_VML: &str = r##"<xml xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><o:shapelayout v:ext="edit"><o:idmap v:ext="edit" data="1"/></o:shapelayout><v:shape id="_x0000_s1027" type="#_x0000_t202" style="position:absolute"><v:textbox><div>old note<br></div></v:textbox><x:ClientData ObjectType="Note"><x:Row>0</x:Row><x:Column>0</x:Column></x:ClientData></v:shape></xml>"##;
 
 /// #1257: a letterhead in the header and a picture in the footer (`&G`), drawn from a VML part
-/// that `<legacyDrawingHF>` names, next to a note whose VML drawing GridCraft rewrites.
+/// that `<legacyDrawingHF>` names, next to a note whose VML drawing Deskwerk Sheets rewrites.
 fn header_picture_package() -> Vec<u8> {
     let types = r#"<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="vml" ContentType="application/vnd.openxmlformats-officedocument.vmlDrawing"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/comments1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml"/></Types>"#;
     let workbook = format!(
@@ -945,10 +945,10 @@ fn notes_take_shape_blocks_the_header_pictures_dont_use() {
 
 #[test]
 fn modelled_form_controls_join_kept_ones_in_one_controls_element() {
-    use gridcraft_model::{Anchor, ControlKind, FormControl};
+    use deskwerk_sheets_model::{Anchor, ControlKind, FormControl};
     let (mut wb, _) = read_xlsx(&rich_package()).unwrap();
     assert!(wb.sheet(0).unwrap().controls.is_empty(), "a check box stays with pass-through");
-    let anchor = Anchor { cell: gridcraft_core::CellRef::new(8, 1), width: 120.0, height: 20.0, ..Default::default() };
+    let anchor = Anchor { cell: deskwerk_sheets_core::CellRef::new(8, 1), width: 120.0, height: 20.0, ..Default::default() };
     let slider = FormControl { id: 900, kind: ControlKind::Slider, anchor, link: Some("$B$9".into()), value: 40, ..Default::default() };
     if let Some(sh) = wb.sheet_mut(0) {
         sh.controls.push(slider);
@@ -991,8 +991,8 @@ fn modelled_form_controls_join_kept_ones_in_one_controls_element() {
 
 #[test]
 fn a_sheet_of_modelled_controls_keeps_nothing_for_them() {
-    use gridcraft_model::{ControlKind, FormControl};
-    let mut wb = gridcraft_model::Workbook::default();
+    use deskwerk_sheets_model::{ControlKind, FormControl};
+    let mut wb = deskwerk_sheets_model::Workbook::default();
     if let Some(sh) = wb.sheet_mut(0) {
         sh.controls.push(FormControl { id: 1, kind: ControlKind::Button, text: "Go".into(), ..Default::default() });
         sh.controls.push(FormControl { id: 2, kind: ControlKind::Spin, ..Default::default() });
@@ -1018,7 +1018,7 @@ const CHART_RELS: &[(&str, &str, &str)] = &[
     ("rId3", "chartUserShapes", "../drawings/drawing2.xml"),
 ];
 
-/// A column chart with what GridCraft's chart model doesn't hold: a title taken from a cell on
+/// A column chart with what Deskwerk Sheets' chart model doesn't hold: a title taken from a cell on
 /// another sheet, a title and a chart-wide font size, a series line dash, one point's colour, gap
 /// width and overlap, axis bounds and an axis number format.
 fn formatted_chart_xml() -> String {
@@ -1076,8 +1076,8 @@ fn written_chart(u: &Unpacked) -> String {
 }
 
 /// Two charts are the same apart from their id and position.
-fn same_chart(a: &gridcraft_model::Chart, b: &gridcraft_model::Chart) -> bool {
-    gridcraft_model::Chart { id: b.id, anchor: b.anchor, ..a.clone() } == *b
+fn same_chart(a: &deskwerk_sheets_model::Chart, b: &deskwerk_sheets_model::Chart) -> bool {
+    deskwerk_sheets_model::Chart { id: b.id, anchor: b.anchor, ..a.clone() } == *b
 }
 
 #[test]
@@ -1113,7 +1113,7 @@ fn a_moved_and_resized_kept_chart_keeps_its_xml() {
     let chart = formatted_chart_xml();
     let (mut wb, _) = read_xlsx(&embedded_chart_package(&chart, CHART_RELS)).unwrap();
     let ch = &mut wb.sheet_mut(0).unwrap().charts[0];
-    ch.anchor.cell = gridcraft_core::CellRef::new(20, 6);
+    ch.anchor.cell = deskwerk_sheets_core::CellRef::new(20, 6);
     ch.anchor.width += 120.0;
     ch.anchor.height /= 2.0;
     let moved = ch.anchor;
@@ -1121,7 +1121,7 @@ fn a_moved_and_resized_kept_chart_keeps_its_xml() {
     let u = Unpacked::new(&out);
     u.assert_valid();
     assert_eq!(u.text(&written_chart(&u)), chart);
-    // The drawing, which GridCraft writes, has the new position.
+    // The drawing, which Deskwerk Sheets writes, has the new position.
     let (wb2, _) = read_xlsx(&out).unwrap();
     let a = wb2.sheet(0).unwrap().charts[0].anchor;
     assert_eq!(a.cell, moved.cell);
@@ -1130,7 +1130,7 @@ fn a_moved_and_resized_kept_chart_keeps_its_xml() {
 
 #[test]
 fn a_kept_chart_with_a_new_title_legend_or_type_keeps_its_formatting() {
-    use gridcraft_model::{Chart, ChartKind, LegendPos};
+    use deskwerk_sheets_model::{Chart, ChartKind, LegendPos};
     type Edit = fn(&mut Chart);
     let chart = formatted_chart_xml();
     let edits: [(&str, Edit); 5] = [
@@ -1171,7 +1171,7 @@ fn a_kept_chart_with_a_new_title_legend_or_type_keeps_its_formatting() {
 
 #[test]
 fn an_edited_kept_chart_is_written_from_the_model() {
-    use gridcraft_model::{Chart, ChartKind};
+    use deskwerk_sheets_model::{Chart, ChartKind};
     type Edit = fn(&mut Chart);
     let chart = formatted_chart_xml();
     let edits: [(&str, Edit); 3] = [
@@ -1214,7 +1214,7 @@ fn a_surface_chart_is_kept_byte_for_byte() {
 }
 
 fn surface_chart_round_trips(group: &str, rot_x: u8) {
-    use gridcraft_model::ChartKind;
+    use deskwerk_sheets_model::ChartKind;
     let chart = format!(
         r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <c:chartSpace xmlns:c="{NS_C}" xmlns:a="{NS_A}" xmlns:r="{NS_R}"><c:chart><c:autoTitleDeleted val="1"/><c:view3D><c:rotX val="{rot_x}"/><c:rotY val="20"/><c:rAngAx val="0"/></c:view3D><c:plotArea><c:layout/><c:{group}><c:wireframe val="0"/><c:ser><c:idx val="0"/><c:order val="0"/><c:tx><c:strRef><c:f>Data!$B$1</c:f></c:strRef></c:tx><c:spPr><a:solidFill><a:srgbClr val="70AD47"/></a:solidFill></c:spPr><c:cat><c:strRef><c:f>Data!$A$2:$A$4</c:f></c:strRef></c:cat><c:val><c:numRef><c:f>Data!$B$2:$B$4</c:f></c:numRef></c:val></c:ser><c:bandFmts/><c:axId val="1"/><c:axId val="2"/><c:axId val="3"/></c:{group}><c:catAx><c:axId val="1"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="b"/><c:crossAx val="2"/></c:catAx><c:valAx><c:axId val="2"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="l"/><c:crossAx val="1"/></c:valAx><c:serAx><c:axId val="3"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="b"/><c:crossAx val="2"/></c:serAx></c:plotArea><c:legend><c:legendPos val="r"/><c:overlay val="0"/></c:legend><c:plotVisOnly val="1"/></c:chart></c:chartSpace>"#
@@ -1266,16 +1266,16 @@ fn a_kept_chart_naming_a_renamed_or_deleted_sheet_is_written_from_the_model() {
 }
 
 /// Sets cells of the first sheet: (row, column, value), zero-based.
-fn set_cells(wb: &mut gridcraft_model::Workbook, cells: &[(u32, u32, gridcraft_core::Value)]) {
+fn set_cells(wb: &mut deskwerk_sheets_model::Workbook, cells: &[(u32, u32, deskwerk_sheets_core::Value)]) {
     let sh = wb.sheet_mut(0).unwrap();
     for (r, c, v) in cells {
-        sh.set_value(gridcraft_core::CellRef::new(*r, *c), v.clone());
+        sh.set_value(deskwerk_sheets_core::CellRef::new(*r, *c), v.clone());
     }
 }
 
 #[test]
 fn a_kept_chart_follows_moved_series_references() {
-    use gridcraft_core::Value;
+    use deskwerk_sheets_core::Value;
     let chart = formatted_chart_xml();
     let (mut wb, _) = read_xlsx(&embedded_chart_package(&chart, CHART_RELS)).unwrap();
     // A row inserted above the table, as the engine leaves it: the cells one row down, the
@@ -1319,12 +1319,12 @@ fn a_kept_chart_follows_moved_series_references() {
 fn a_kept_chart_refreshes_the_cache_of_edited_cells() {
     let chart = formatted_chart_xml();
     let (mut wb, _) = read_xlsx(&embedded_chart_package(&chart, CHART_RELS)).unwrap();
-    set_cells(&mut wb, &[(2, 1, gridcraft_core::Value::Number(25.5))]);
+    set_cells(&mut wb, &[(2, 1, deskwerk_sheets_core::Value::Number(25.5))]);
     let u = Unpacked::new(&write_xlsx(&wb).unwrap());
     u.assert_valid();
     assert_eq!(u.text(&written_chart(&u)), chart.replace("<c:v>20</c:v>", "<c:v>25.5</c:v>"));
     // A cell emptied leaves its point out, as Excel does.
-    set_cells(&mut wb, &[(2, 1, gridcraft_core::Value::Empty)]);
+    set_cells(&mut wb, &[(2, 1, deskwerk_sheets_core::Value::Empty)]);
     let u = Unpacked::new(&write_xlsx(&wb).unwrap());
     assert_eq!(u.text(&written_chart(&u)), chart.replace(r#"<c:pt idx="1"><c:v>20</c:v></c:pt>"#, ""));
 }
@@ -1367,14 +1367,14 @@ fn a_kept_chart_whose_title_cell_may_have_moved_is_written_from_the_model() {
 #[test]
 fn damaged_or_oversized_kept_charts_fall_back_to_the_model() {
     let chart = formatted_chart_xml();
-    let check = |wb: &gridcraft_model::Workbook, what: &str| {
+    let check = |wb: &deskwerk_sheets_model::Workbook, what: &str| {
         let u = Unpacked::new(&write_xlsx(wb).unwrap());
         u.assert_valid();
         let written = u.text(&written_chart(&u));
         assert!(!written.contains("prstDash"), "{what}: {written}");
         assert!(u.find(CHART_STYLE.as_bytes()).is_empty(), "{what}");
     };
-    let kept = |wb: &gridcraft_model::Workbook| wb.sheet(0).unwrap().preserved.as_ref().is_some_and(|p| !p.charts.is_empty());
+    let kept = |wb: &deskwerk_sheets_model::Workbook| wb.sheet(0).unwrap().preserved.as_ref().is_some_and(|p| !p.charts.is_empty());
     // A missing style part, and a graph that reaches a worksheet: read as before, nothing kept.
     let missing: Vec<(&str, &str, &str)> = vec![("rId1", crate::chartex::REL_STYLE, "style9.xml")];
     let worksheet: Vec<(&str, &str, &str)> = vec![("rId1", "worksheet", "../worksheets/sheet2.xml")];
@@ -1392,7 +1392,7 @@ fn damaged_or_oversized_kept_charts_fall_back_to_the_model() {
     assert!(!kept(&wb));
     check(&wb, "too large");
     // Kept XML that no longer parses, or a kept chart without its chart part: the model writes it.
-    type Damage = fn(&mut gridcraft_model::PreservedChart);
+    type Damage = fn(&mut deskwerk_sheets_model::PreservedChart);
     let damages: [(&str, Damage); 2] = [
         ("damaged XML", |k| {
             let part = k.part.clone();

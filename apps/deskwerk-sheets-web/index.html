@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- A server's link carries its token (`?src=…&token=`): never send it on as a referrer. -->
+  <meta name="referrer" content="no-referrer">
+  <title>Deskwerk Sheets</title>
+  <link data-trunk rel="icon" href="../../assets/app-icon/deskwerk-sheets.ico" />
+  <!-- Web app manifest and its icons (192/512 px renders of the app icon), copied as named. -->
+  <link data-trunk rel="copy-file" href="manifest.webmanifest" />
+  <link data-trunk rel="copy-file" href="../../assets/app-icon/web/icon-192.png" />
+  <link data-trunk rel="copy-file" href="../../assets/app-icon/web/icon-512.png" />
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="theme-color" content="#12875C">
+  <link data-trunk rel="rust" data-bin="deskwerk-sheets-web" data-wasm-opt="z" data-weak-refs />
+  <!-- The font pack (deskwerk_sheets_ui_egui::font_pack): fetched from here, never from a font CDN. -->
+  <link data-trunk rel="copy-dir" href="fonts" />
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #f3f3f3; }
+    #deskwerk_sheets_canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    #deskwerk_sheets_loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: #555; font: 14px system-ui, sans-serif; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <canvas id="deskwerk_sheets_canvas"></canvas>
+  <div id="deskwerk_sheets_loading">Loading Deskwerk Sheets&hellip;</div>
+</body>
+</html>

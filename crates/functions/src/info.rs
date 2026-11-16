@@ -2,7 +2,7 @@
 
 use std::cmp::Ordering;
 
-use gridcraft_core::{Array, CellError, Value, compare_text};
+use deskwerk_sheets_core::{Array, CellError, Value, compare_text};
 
 use crate::util::{A, MAX_CELLS, R, S, has, scalar, text};
 use crate::{Arg, Ctx, FnSpec, VAR};
@@ -494,7 +494,7 @@ pub(crate) fn specs() -> Vec<FnSpec> {
 
 #[cfg(test)]
 mod tests {
-    use gridcraft_core::{CellError, Value};
+    use deskwerk_sheets_core::{CellError, Value};
 
     use crate::util::testutil::*;
 

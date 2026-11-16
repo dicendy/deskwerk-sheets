@@ -1,10 +1,10 @@
 //! Typing into a locked cell of a protected sheet warns before an editor opens, and the warning
 //! leaves Undo, Save and typing in unlocked cells working (#2945).
 
+use deskwerk_sheets_engine::Session;
+use deskwerk_sheets_engine::core::{CellRef, Value};
+use deskwerk_sheets_ui_egui::SheetApp;
 use egui::{Event, Key, Modifiers};
-use gridcraft_engine::Session;
-use gridcraft_engine::core::{CellRef, Value};
-use gridcraft_ui_egui::SheetApp;
 use serde_json::json;
 
 type Harness = egui_kittest::Harness<'static, SheetApp>;

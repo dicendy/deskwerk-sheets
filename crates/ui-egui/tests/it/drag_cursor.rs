@@ -1,10 +1,10 @@
 //! Drag cursors are asserted frame by frame through real egui pointer input (#936).
 
+use deskwerk_sheets_engine::Session;
+use deskwerk_sheets_engine::core::{CellRef, RangeRef, Value};
+use deskwerk_sheets_ui_egui::SheetApp;
+use deskwerk_sheets_ui_egui::grid::{Drag, Geo, freeze_handles};
 use egui::{CursorIcon, Event, Modifiers, PointerButton, Pos2, Rect, pos2, vec2};
-use gridcraft_engine::Session;
-use gridcraft_engine::core::{CellRef, RangeRef, Value};
-use gridcraft_ui_egui::SheetApp;
-use gridcraft_ui_egui::grid::{Drag, Geo, freeze_handles};
 use serde_json::json;
 
 type Harness = egui_kittest::Harness<'static, SheetApp>;
@@ -327,7 +327,16 @@ fn draw_tools_keep_crosshair_and_pen_still_creates_ink() {
         assert_cursor(&h, CursorIcon::Crosshair);
         if tool == "draw.pen" {
             assert!(
-                h.state().session.active().unwrap().wb.active().unwrap().shapes.iter().any(|s| s.kind == gridcraft_engine::model::ShapeKind::Ink)
+                h.state()
+                    .session
+                    .active()
+                    .unwrap()
+                    .wb
+                    .active()
+                    .unwrap()
+                    .shapes
+                    .iter()
+                    .any(|s| s.kind == deskwerk_sheets_engine::model::ShapeKind::Ink)
             );
         }
     }

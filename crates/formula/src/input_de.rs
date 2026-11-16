@@ -2,18 +2,18 @@
 //!
 //! Taken from PR #1201 by Herr-Enklo (`crates/formula/src/input/de.rs`), which observed them
 //! black-box in Excel 365 (German interface, de-DE regional format) on 2026-10-13 through its
-//! automation interface, in synthetic workbooks that were never saved: every function GridCraft
+//! automation interface, in synthetic workbooks that were never saved: every function Deskwerk Sheets
 //! knows was entered in canonical form (`Range.Formula2`) and read back as German Excel shows it
 //! (`Range.Formula2Local`). Functions not listed keep their English name in German Excel (ABS,
 //! FILTER, INDEX, LAMBDA, LET, MAP, MAX, MIN, TEXT and others).
 //!
 //! Separators: `;` between arguments, `,` decimal, `.` between array columns, `;` between rows.
 //! `#CALC!` stays English. German Excel does not take `#ÜBERLAUF!` or `#CALC!` as typed literals;
-//! GridCraft accepts them, as it accepts `#SPILL!` in English.
+//! Deskwerk Sheets accepts them, as it accepts `#SPILL!` in English.
 //! Table specifiers (`#Alle`, `#Daten`, `#Kopfzeilen`, `#Ergebnisse`, `#Diese Zeile`) are not
 //! localized yet.
 
-use gridcraft_core::CellError;
+use deskwerk_sheets_core::CellError;
 
 /// Canonical function name → German name, in the format of `input::SPANISH`.
 pub(crate) const GERMAN: &[(&str, &str)] = &[

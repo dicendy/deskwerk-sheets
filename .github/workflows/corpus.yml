@@ -105,7 +105,7 @@ jobs:
           cache-on-failure: true
 
       - name: Build deskwerk-sheets-cli (release)
-        run: cargo build --release --locked -p gridcraft-cli
+        run: cargo build --release --locked -p deskwerk-sheets-cli
 
       - name: Fetch corpus
         run: bash tools/corpus/fetch.sh "$RUNNER_TEMP/corpus"

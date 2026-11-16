@@ -1,4 +1,4 @@
-use gridcraft_model::ChartAxis;
+use deskwerk_sheets_model::ChartAxis;
 
 use super::frame::{Bx, CatAxis, ValAxis, frame, on, value_range};
 use super::legend::{cat_label, plot_kind};

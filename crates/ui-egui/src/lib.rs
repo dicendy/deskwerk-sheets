@@ -1,5 +1,5 @@
-//! GridCraft's egui frontend: an Excel-style window (title bar with Quick Access Toolbar,
-//! ribbon, formula bar, grid, sheet tabs, status bar) over `gridcraft-engine`.
+//! Deskwerk Sheets' egui frontend: an Excel-style window (title bar with Quick Access Toolbar,
+//! ribbon, formula bar, grid, sheet tabs, status bar) over `deskwerk-sheets-engine`.
 //!
 //! The UI is thin: it reads engine state and acts through [`SheetApp::run`] (engine commands by
 //! id). Everything it can do is also reachable over the control channel ([`control`]).
@@ -9,7 +9,7 @@
 /// Deskwerk Sheets as craft-update knows it, with its 128 px icon and accent colour: the update
 /// prompt shows both, and an AppImage's menu entry gets the icon. Releases come only from
 /// this fork's repository (`https://api.github.com/repos/dicendy/deskwerk-sheets/releases`),
-/// never from upstream GridCraft's; asset names start with `deskwerk-sheets-`.
+/// never from upstream; asset names start with `deskwerk-sheets-`.
 #[cfg(not(target_arch = "wasm32"))]
 pub const UPDATE_APP: craft_update::app::App = craft_update::app::App {
     id: "deskwerk-sheets",
@@ -18,7 +18,7 @@ pub const UPDATE_APP: craft_update::app::App = craft_update::app::App {
     developer: "Deskwerk",
     icon_png: Some(include_bytes!("../../../assets/app-icon/hicolor/128x128/apps/eu.deskwerk.Sheets.png")),
     accent: Some([0x12, 0x87, 0x5C]),
-    ..craft_update::suite::GRIDCRAFT
+    ..craft_update::suite::DESKWERK_SHEETS
 };
 
 pub mod backstage;
@@ -29,7 +29,6 @@ pub mod code_editor;
 pub mod control;
 pub mod control_ui;
 mod craft_fonts_policy;
-pub mod credits;
 pub mod dialogs;
 pub mod dnd;
 #[cfg(not(target_arch = "wasm32"))]
@@ -71,8 +70,8 @@ pub use window_ui::WindowUi;
 
 use std::collections::HashMap;
 
-use gridcraft_engine::core::{CellRef, RangeRef};
-use gridcraft_engine::{Session, UiRequest};
+use deskwerk_sheets_engine::core::{CellRef, RangeRef};
+use deskwerk_sheets_engine::{Session, UiRequest};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value as Json, json};
 
@@ -204,8 +203,8 @@ impl UiState {
 
     /// The number locale workbooks are shown and typed in: the one chosen with `app.locale.set`,
     /// else the language's.
-    pub fn number_locale(&self) -> gridcraft_engine::core::Locale {
-        self.number_locale.as_deref().and_then(gridcraft_engine::core::Locale::from_tag).unwrap_or_else(|| self.language.number_locale())
+    pub fn number_locale(&self) -> deskwerk_sheets_engine::core::Locale {
+        self.number_locale.as_deref().and_then(deskwerk_sheets_engine::core::Locale::from_tag).unwrap_or_else(|| self.language.number_locale())
     }
 
     pub fn theme_mode(&self) -> &'static str {
@@ -220,7 +219,7 @@ impl UiState {
 }
 
 /// A dismissible bar under the ribbon, in the spirit of Excel's message bar. Used to tell the
-/// user what an opened file carried that GridCraft handled differently (e.g. preserved macros).
+/// user what an opened file carried that Deskwerk Sheets handled differently (e.g. preserved macros).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Notice {
     pub text: String,
@@ -305,12 +304,12 @@ pub struct SheetApp {
     /// current input instead of reusing a stale recorded value.
     pub(crate) capture_geometry_from_raw: bool,
     /// The floating object selected on the sheet (chart, picture, shape, equation or slicer).
-    pub selected_object: Option<gridcraft_engine::model::ObjRef>,
-    /// The system clipboard's text when GridCraft last copied without publishing to it (a
+    pub selected_object: Option<deskwerk_sheets_engine::model::ObjRef>,
+    /// The system clipboard's text when Deskwerk Sheets last copied without publishing to it (a
     /// control-channel or MCP `edit.copy`/`edit.cut`). While the system clipboard still holds this
-    /// text, GridCraft's copy is the newer one and Paste uses it.
+    /// text, Deskwerk Sheets' copy is the newer one and Paste uses it.
     clipboard_text_at_copy: Option<String>,
-    /// The system clipboard's text right after GridCraft's last cut (the published text, or the
+    /// The system clipboard's text right after Deskwerk Sheets' last cut (the published text, or the
     /// text noted for an unpublished cut); `None` after a copy, or once the clipboard is seen
     /// holding other text. Once the cut has been pasted, Paste leaves this text alone.
     cut_text: Option<String>,

@@ -1,4 +1,4 @@
-//! GridCraft file formats: XLSX (transitional and strict) and CSV import/export, plus XLSB and ODS data import
+//! Deskwerk Sheets file formats: XLSX (transitional and strict) and CSV import/export, plus XLSB and ODS data import
 //! and legacy Excel 97-2003 `.xls` (BIFF8) import, and password-encrypted workbooks (Agile and Standard encryption).
 //!
 //! Clean-room implementation from ECMA-376 / ISO/IEC 29500 and observed behaviour. All entry
@@ -45,8 +45,8 @@ mod xml;
 #[cfg(test)]
 mod tests;
 
-use gridcraft_core::DateSystem;
-use gridcraft_model::Workbook;
+use deskwerk_sheets_core::DateSystem;
+use deskwerk_sheets_model::Workbook;
 
 pub use crypto::{DecryptError, check_encryption, decrypt};
 pub use csv::{MAX_CSV_BYTES, decode_text, read_csv, read_csv_with_report, write_csv, write_csv_limited};
@@ -96,7 +96,7 @@ pub fn read_xlsx(bytes: &[u8]) -> Result<(Workbook, ReadReport), IoError> {
 /// Google writes a formula that uses a function it thinks Excel lacks as
 /// `IFERROR(__xludf.DUMMYFUNCTION("<formula, quotes doubled>"),<cached value>)`; Excel shows the
 /// cached value. A cell formula holding that wrapper, whole or inside a larger formula, is read
-/// as the formula inside when it parses and `known` says GridCraft calculates every function it
+/// as the formula inside when it parses and `known` says Deskwerk Sheets calculates every function it
 /// calls. Otherwise (a Google-only function such as `GOOGLETRANSLATE`, inner text that doesn't
 /// parse, or nesting past the parser's limit) the wrapper stays, so the cell keeps showing the
 /// cached value as in Excel. `known` is passed in because this crate doesn't depend on the
@@ -183,12 +183,12 @@ pub struct CsvOptions {
     /// The conventions fields are read in: en-US by default; German and French read
     /// `1.234,56`, `1 234,56`, `31.12.2026`, `31/12/2026` and `12,5 %`, and read a column whose
     /// dates could be either order (`03/04/2026`) day first.
-    pub locale: gridcraft_core::Locale,
+    pub locale: deskwerk_sheets_core::Locale,
 }
 
 impl Default for CsvOptions {
     fn default() -> Self {
-        CsvOptions { delimiter: b',', quote: b'"', date_system: DateSystem::D1900, parse_values: true, locale: gridcraft_core::Locale::En }
+        CsvOptions { delimiter: b',', quote: b'"', date_system: DateSystem::D1900, parse_values: true, locale: deskwerk_sheets_core::Locale::En }
     }
 }
 

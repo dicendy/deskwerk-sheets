@@ -1,7 +1,7 @@
 //! GETPIVOTDATA over PivotTables built in the session.
 
-use gridcraft_core::{CellError, CellRef, Value};
-use gridcraft_engine::Session;
+use deskwerk_sheets_core::{CellError, CellRef, Value};
+use deskwerk_sheets_engine::Session;
 use serde_json::{Value as Json, json};
 
 fn run(s: &mut Session, command: &str, params: Json) -> Json {

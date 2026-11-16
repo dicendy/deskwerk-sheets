@@ -1,9 +1,9 @@
-# GridCraft control protocol
+# Deskwerk Sheets control protocol
 
 Start the desktop app with a control port:
 
 ```sh
-deskwerk-sheets --control 7979            # or GRIDCRAFT_CONTROL_PORT=7979
+deskwerk-sheets --control 7979            # or DESKWERK_SHEETS_CONTROL_PORT=7979
 ```
 
 ## Authentication
@@ -13,10 +13,10 @@ The control port is reachable by every program on the machine, and by a web page
 (#777). **There is no way to turn this off.**
 
 - The app makes a token at start (256 random bits from the operating system, kept in memory) and
-  writes it to a file only you can read: `$XDG_RUNTIME_DIR/gridcraft/control-<port>.token` (else
-  `~/.cache/gridcraft/…`; Windows: `%USERPROFILE%\.gridcraft\…`; the folder is mode 0700 and the
+  writes it to a file only you can read: `$XDG_RUNTIME_DIR/deskwerk-sheets/control-<port>.token` (else
+  `~/.cache/deskwerk-sheets/…`; Windows: `%USERPROFILE%\.deskwerk-sheets\…`; the folder is mode 0700 and the
   file 0600 on Unix). The path is printed on stderr. The token itself is never printed or logged.
-- Or choose the token yourself: `GRIDCRAFT_CONTROL_TOKEN=…` (preferred) or `--control-token …`
+- Or choose the token yourself: `DESKWERK_SHEETS_CONTROL_TOKEN=…` (preferred) or `--control-token …`
   (visible in the process list), at least 16 characters. The app then writes no file.
 - The first line of a connection must be
   `{"id":0,"method":"auth","params":{"token":"…"}}`; the reply is
@@ -25,8 +25,8 @@ The control port is reachable by every program on the machine, and by a web page
   one longer than 4 KiB) gets `{"ok":false,"error":"authentication required"}` and the
   connection is closed. At most 16 connections may be waiting to send their token at once; past that a new
   connection is closed before anything is read. After that, a line that isn't JSON also closes the connection.
-- `deskwerk-sheets-cli send`/`mcp --connect` and `gridcraft_mcp::Remote` do this themselves: they use
-  `GRIDCRAFT_CONTROL_TOKEN` if set, else the token file of that port (so they work for the same
+- `deskwerk-sheets-cli send`/`mcp --connect` and `deskwerk_sheets_mcp::Remote` do this themselves: they use
+  `DESKWERK_SHEETS_CONTROL_TOKEN` if set, else the token file of that port (so they work for the same
   user on the same machine without setup). Your own client reads the file or the variable.
 
 ## Requests
@@ -180,4 +180,4 @@ false. Set `printer` to a discovered name, integer `copies` from 1 to 999, `dupl
 rejected without changing earlier settings. `ui.printSubmit` explicitly submits the current
 print-ready PDF without opening a dialog; inspect `ui.printSettings` until `busy` becomes false
 and check `status`/`detail`. The browser keeps its own print hook. PDF export remains separate.
-GridCraft accepts the existing `file.print` sheet/pagination params on `ui.printSubmit`; the engine `file.print` command returns the PDF without spooling.
+Deskwerk Sheets accepts the existing `file.print` sheet/pagination params on `ui.printSubmit`; the engine `file.print` command returns the PDF without spooling.

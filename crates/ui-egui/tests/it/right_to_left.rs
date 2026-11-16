@@ -1,9 +1,9 @@
 //! Sheet Right-to-Left: the grid is mirrored on screen and pointer/keyboard input follows it.
 
+use deskwerk_sheets_engine::Session;
+use deskwerk_sheets_engine::core::{CellRef, RangeRef};
+use deskwerk_sheets_ui_egui::{SheetApp, grid::Geo};
 use egui::{Event, Key, Modifiers, PointerButton, Pos2};
-use gridcraft_engine::Session;
-use gridcraft_engine::core::{CellRef, RangeRef};
-use gridcraft_ui_egui::{SheetApp, grid::Geo};
 use serde_json::json;
 
 type Harness = egui_kittest::Harness<'static, SheetApp>;

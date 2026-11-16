@@ -1,7 +1,7 @@
 //! German and French notation: the short date built-ins as a German or French Excel shows them,
 //! and format codes as such an Excel reads them in `TEXT()`.
 
-use gridcraft_core::{DateSystem, Locale};
+use deskwerk_sheets_core::{DateSystem, Locale};
 
 use crate::{NumberFormat, builtin_id};
 
@@ -40,8 +40,8 @@ pub fn accounting_format(loc: Locale) -> &'static str {
 /// locale's separators and day-first dates.
 pub(crate) fn number_text(t: &str, sys: DateSystem, loc: Locale) -> Option<f64> {
     match loc {
-        Locale::En => gridcraft_core::parse::parse_number_text(t),
-        _ => gridcraft_core::parse::parse_number_text_local(t, sys, loc),
+        Locale::En => deskwerk_sheets_core::parse::parse_number_text(t),
+        _ => deskwerk_sheets_core::parse::parse_number_text_local(t, sys, loc),
     }
 }
 

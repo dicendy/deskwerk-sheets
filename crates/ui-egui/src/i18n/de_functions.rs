@@ -1,5 +1,5 @@
 //! German help for the worksheet functions: descriptions and argument names, keyed by the English
-//! function catalog (ported from storytold/gridcraft#2880, a machine-assisted draft reviewed
+//! function catalog (ported from upstream #2880, a machine-assisted draft reviewed
 //! against the English catalog upstream; it still wants a native speaker's review). Functions
 //! without a row keep their English help.
 

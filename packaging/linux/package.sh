@@ -38,16 +38,16 @@ case "$ARCH" in
   aarch64 | arm64) ARCH=aarch64; DEB_ARCH=arm64 ;;
   *) echo "unsupported architecture $ARCH" >&2; exit 2 ;;
 esac
-export GRIDCRAFT_MAINTAINER="${GRIDCRAFT_MAINTAINER:-Deskwerk Sheets maintainers <dicendy@users.noreply.github.com>}"
+export DESKWERK_SHEETS_MAINTAINER="${DESKWERK_SHEETS_MAINTAINER:-Deskwerk Sheets maintainers <dicendy@users.noreply.github.com>}"
 BASENAME="deskwerk-sheets-$VERSION-linux-$ARCH"
 
 echo "==> Deskwerk Sheets $VERSION for Linux $ARCH ($FORMATS)"
 
 if [[ "$SKIP_BUILD" = 0 ]]; then
   if [[ -n "${CROSS_TARGET:-}" ]]; then
-    (cd "$ROOT" && cargo build --release --locked -p gridcraft -p gridcraft-cli --target "$CROSS_TARGET")
+    (cd "$ROOT" && cargo build --release --locked -p deskwerk-sheets -p deskwerk-sheets-cli --target "$CROSS_TARGET")
   else
-    (cd "$ROOT" && cargo build --release --locked -p gridcraft -p gridcraft-cli)
+    (cd "$ROOT" && cargo build --release --locked -p deskwerk-sheets -p deskwerk-sheets-cli)
   fi
 fi
 BIN="$CARGO_TARGET_DIR/${CROSS_TARGET:+$CROSS_TARGET/}release"
@@ -62,7 +62,7 @@ install -Dm755 "$BIN/deskwerk-sheets-cli" "$STAGE/usr/bin/deskwerk-sheets-cli"
 install -Dm644 "$HERE/$APP_ID.desktop" "$STAGE/usr/share/applications/$APP_ID.desktop"
 install -Dm644 "$HERE/$APP_ID.mime.xml" "$STAGE/usr/share/mime/packages/$APP_ID.xml"
 mkdir -p "$STAGE/usr/share/metainfo"
-sed -e "s/@VERSION@/$VERSION/g" -e "s/@DATE@/$GRIDCRAFT_BUILD_DATE/g" \
+sed -e "s/@VERSION@/$VERSION/g" -e "s/@DATE@/$DESKWERK_SHEETS_BUILD_DATE/g" \
   "$HERE/$APP_ID.metainfo.xml.in" >"$STAGE/usr/share/metainfo/$APP_ID.metainfo.xml"
 mkdir -p "$STAGE/usr/share/icons"
 cp -R "$ROOT/assets/app-icon/hicolor" "$STAGE/usr/share/icons/"

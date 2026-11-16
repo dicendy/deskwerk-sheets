@@ -2,14 +2,14 @@
 
 use std::fmt::Write as _;
 
-use gridcraft_core::{CellRef, RangeRef};
-use gridcraft_model::{Sheet, Workbook};
+use deskwerk_sheets_core::{CellRef, RangeRef};
+use deskwerk_sheets_model::{Sheet, Workbook};
 
 use crate::{EngineError, Result};
 
 mod sylk;
 
-/// File formats GridCraft reads or writes.
+/// File formats Deskwerk Sheets reads or writes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FileKind {
     Xlsx,
@@ -67,33 +67,33 @@ pub fn open_bytes_with_password(name: &str, bytes: &[u8], password: Option<&str>
 /// the text it holds, with no number, date or boolean conversion (identifiers such as GTINs, SKUs
 /// and ZIP codes survive). It does not apply to other formats.
 pub fn open_bytes_with(name: &str, bytes: &[u8], password: Option<&str>, csv_as_text: bool) -> Result<(Workbook, Vec<String>)> {
-    open_bytes_in(name, bytes, password, csv_as_text, gridcraft_core::Locale::En)
+    open_bytes_in(name, bytes, password, csv_as_text, deskwerk_sheets_core::Locale::En)
 }
 
 /// [`open_bytes_with`], with a CSV, TSV or TXT file read in `loc`'s conventions: German and French
 /// read `1.234,56`, `1 234,56`, `31.12.2026`, `31/12/2026` and `12,5 %`, and a detected
-/// delimiter is `;` first (see [`gridcraft_xlsx::CsvOptions::locale`]). Other formats store
+/// delimiter is `;` first (see [`deskwerk_sheets_xlsx::CsvOptions::locale`]). Other formats store
 /// numbers and dates, so the locale changes nothing for them.
 pub fn open_bytes_in(
     name: &str,
     bytes: &[u8],
     password: Option<&str>,
     csv_as_text: bool,
-    loc: gridcraft_core::Locale,
+    loc: deskwerk_sheets_core::Locale,
 ) -> Result<(Workbook, Vec<String>)> {
-    if gridcraft_xlsx::sniff(bytes) != gridcraft_xlsx::Format::Encrypted {
+    if deskwerk_sheets_xlsx::sniff(bytes) != deskwerk_sheets_xlsx::Format::Encrypted {
         let (mut wb, warnings) = open_plain(name, bytes, csv_as_text, loc)?;
         fit_imported_rows(&mut wb);
         return Ok((wb, warnings));
     }
     // A scheme no password opens is said straight away, rather than after asking for one.
-    let decrypt_error = |e: gridcraft_xlsx::DecryptError| EngineError::Other(decrypt_message(name, e));
+    let decrypt_error = |e: deskwerk_sheets_xlsx::DecryptError| EngineError::Other(decrypt_message(name, e));
     let Some(password) = password else {
-        gridcraft_xlsx::check_encryption(bytes).map_err(decrypt_error)?;
+        deskwerk_sheets_xlsx::check_encryption(bytes).map_err(decrypt_error)?;
         return Err(EngineError::Other(format!("'{name}' {PASSWORD_REQUIRED}")));
     };
-    let plain = gridcraft_xlsx::decrypt(bytes, password).map_err(decrypt_error)?;
-    if gridcraft_xlsx::sniff(&plain) == gridcraft_xlsx::Format::Encrypted {
+    let plain = deskwerk_sheets_xlsx::decrypt(bytes, password).map_err(decrypt_error)?;
+    if deskwerk_sheets_xlsx::sniff(&plain) == deskwerk_sheets_xlsx::Format::Encrypted {
         return Err(EngineError::Other(format!("We can't open '{name}': the encrypted file is damaged (it holds another encrypted file).")));
     }
     let (mut wb, mut warnings) = open_plain(name, &plain, csv_as_text, loc)?;
@@ -127,20 +127,20 @@ fn fit_imported_rows(wb: &mut Workbook) {
 }
 
 /// What to tell the user when an encrypted workbook can't be decrypted. Never quotes the password.
-fn decrypt_message(name: &str, e: gridcraft_xlsx::DecryptError) -> String {
+fn decrypt_message(name: &str, e: deskwerk_sheets_xlsx::DecryptError) -> String {
     match e {
-        gridcraft_xlsx::DecryptError::WrongPassword => format!("{WRONG_PASSWORD} Check that Caps Lock is off and try again."),
-        gridcraft_xlsx::DecryptError::Unsupported(scheme) => {
+        deskwerk_sheets_xlsx::DecryptError::WrongPassword => format!("{WRONG_PASSWORD} Check that Caps Lock is off and try again."),
+        deskwerk_sheets_xlsx::DecryptError::Unsupported(scheme) => {
             format!("'{name}' uses {scheme} encryption, which Deskwerk Sheets can't open yet. Remove the password in Excel and try again.")
         }
-        gridcraft_xlsx::DecryptError::Malformed(detail) => format!("We can't open '{name}': the encrypted file is damaged ({detail})."),
+        deskwerk_sheets_xlsx::DecryptError::Malformed(detail) => format!("We can't open '{name}': the encrypted file is damaged ({detail})."),
     }
 }
 
 /// Parses bytes that aren't encrypted, then takes the workbook's macros, and the button actions
 /// xlsx has no place for, out of their hidden names, and adopts the Python cells they hold (see
 /// [`adopt_python`]) within the limits of [`enforce_python_limits`].
-fn open_plain(name: &str, bytes: &[u8], csv_as_text: bool, loc: gridcraft_core::Locale) -> Result<(Workbook, Vec<String>)> {
+fn open_plain(name: &str, bytes: &[u8], csv_as_text: bool, loc: deskwerk_sheets_core::Locale) -> Result<(Workbook, Vec<String>)> {
     let (mut wb, mut warnings) = read_plain(name, bytes, csv_as_text, loc)?;
     warnings.extend(crate::macros::load(&mut wb));
     crate::cmd::controls::load_action_names(&mut wb);
@@ -150,7 +150,7 @@ fn open_plain(name: &str, bytes: &[u8], csv_as_text: bool, loc: gridcraft_core::
 }
 
 /// The most result cells [`adopt_python`] rebuilds from a file's cached spills, over all its
-/// Python cells (each one is also limited to [`gridcraft_model::python::MAX_RESULT_CELLS`]).
+/// Python cells (each one is also limited to [`deskwerk_sheets_model::python::MAX_RESULT_CELLS`]).
 pub const MAX_ADOPTED_RESULT_CELLS: u64 = 4_000_000;
 
 /// Python cells from a file: a cell whose formula is `PY("…",0|1)` (a format that kept it as a
@@ -163,12 +163,12 @@ pub fn adopt_python(wb: &mut Workbook) -> Vec<String> {
     let mut skipped = 0usize;
     for si in 0..wb.sheets.len() {
         let Some(sh) = wb.sheets.get(si) else { continue };
-        let formulas: Vec<(CellRef, gridcraft_model::PyCode)> = sh
+        let formulas: Vec<(CellRef, deskwerk_sheets_model::PyCode)> = sh
             .cells
             .iter()
-            .filter_map(|(c, cell)| cell.formula.as_ref().and_then(|f| gridcraft_model::PyCode::from_formula(&f.text)).map(|p| (c, p)))
+            .filter_map(|(c, cell)| cell.formula.as_ref().and_then(|f| deskwerk_sheets_model::PyCode::from_formula(&f.text)).map(|p| (c, p)))
             .collect();
-        let max = gridcraft_model::python::MAX_RESULT_CELLS as u64;
+        let max = deskwerk_sheets_model::python::MAX_RESULT_CELLS as u64;
         let spills: Vec<(CellRef, RangeRef)> = sh
             .spill_ranges
             .iter()
@@ -194,12 +194,16 @@ pub fn adopt_python(wb: &mut Workbook) -> Vec<String> {
                 continue;
             };
             budget = left;
-            let data: Vec<gridcraft_core::Value> =
+            let data: Vec<deskwerk_sheets_core::Value> =
                 range.iter().map(|c| if c == anchor { sh.cell(c).map(|x| x.value.clone()).unwrap_or_default() } else { sh.value(c) }).collect();
-            let Some(array) = gridcraft_core::Array::new(range.height() as usize, range.width() as usize, data) else { continue };
+            let Some(array) = deskwerk_sheets_core::Array::new(range.height() as usize, range.width() as usize, data) else { continue };
             if let Some(py) = sh.cells.get_mut(anchor).and_then(|x| x.py.as_mut()) {
-                std::sync::Arc::make_mut(py).output =
-                    Some(gridcraft_model::PyOutput { value: array.into(), type_name: "list".into(), preview: String::new(), convertible: true });
+                std::sync::Arc::make_mut(py).output = Some(deskwerk_sheets_model::PyOutput {
+                    value: array.into(),
+                    type_name: "list".into(),
+                    preview: String::new(),
+                    convertible: true,
+                });
             }
         }
     }
@@ -213,9 +217,9 @@ pub fn adopt_python(wb: &mut Workbook) -> Vec<String> {
 
 /// A file is somebody else's work: a Python cell whose code doesn't fit in Excel's
 /// 8,192-character formula keeps only its cached value, and a kept result that is not a
-/// well-formed array of at most [`gridcraft_model::python::MAX_RESULT_CELLS`] cells is dropped
+/// well-formed array of at most [`deskwerk_sheets_model::python::MAX_RESULT_CELLS`] cells is dropped
 /// (the cell keeps its value). Either way the values the cell spilled stay as plain values
-/// ([`gridcraft_model::Sheet::settle_spill`]). Returns the warnings.
+/// ([`deskwerk_sheets_model::Sheet::settle_spill`]). Returns the warnings.
 pub fn enforce_python_limits(wb: &mut Workbook) -> Vec<String> {
     let mut long = Vec::new();
     for si in 0..wb.sheets.len() {
@@ -256,32 +260,32 @@ pub fn enforce_python_limits(wb: &mut Workbook) -> Vec<String> {
     let more = if long.len() > 1 { format!(" (and {} more)", long.len() - 1) } else { String::new() };
     vec![format!(
         "A Python cell's code is longer than Excel's {}-character formula limit, so {first}{more} kept only its last calculated value.",
-        gridcraft_model::python::MAX_FORMULA_CHARS
+        deskwerk_sheets_model::python::MAX_FORMULA_CHARS
     )]
 }
 
 /// A Python result a file may hold: a scalar, or an array whose size matches its data and has at
-/// most [`gridcraft_model::python::MAX_RESULT_CELLS`] cells.
-fn sane_python_output(v: &gridcraft_core::Value) -> bool {
+/// most [`deskwerk_sheets_model::python::MAX_RESULT_CELLS`] cells.
+fn sane_python_output(v: &deskwerk_sheets_core::Value) -> bool {
     match v {
-        gridcraft_core::Value::Array(a) => {
+        deskwerk_sheets_core::Value::Array(a) => {
             a.rows >= 1
                 && a.cols >= 1
-                && a.rows.checked_mul(a.cols).is_some_and(|n| n == a.data.len() && n <= gridcraft_model::python::MAX_RESULT_CELLS)
+                && a.rows.checked_mul(a.cols).is_some_and(|n| n == a.data.len() && n <= deskwerk_sheets_model::python::MAX_RESULT_CELLS)
         }
         _ => true,
     }
 }
 
 /// Parses bytes that aren't encrypted, as they are.
-fn read_plain(name: &str, bytes: &[u8], csv_as_text: bool, loc: gridcraft_core::Locale) -> Result<(Workbook, Vec<String>)> {
+fn read_plain(name: &str, bytes: &[u8], csv_as_text: bool, loc: deskwerk_sheets_core::Locale) -> Result<(Workbook, Vec<String>)> {
     let kind = FileKind::from_path(name);
-    let sniffed = gridcraft_xlsx::sniff(bytes);
-    if sniffed == gridcraft_xlsx::Format::Xls {
-        let (wb, report) = gridcraft_xlsx::read_xls(bytes).map_err(|e| EngineError::Other(format!("We can't open '{name}': {e}")))?;
+    let sniffed = deskwerk_sheets_xlsx::sniff(bytes);
+    if sniffed == deskwerk_sheets_xlsx::Format::Xls {
+        let (wb, report) = deskwerk_sheets_xlsx::read_xls(bytes).map_err(|e| EngineError::Other(format!("We can't open '{name}': {e}")))?;
         return Ok((wb, report.warnings));
     }
-    if sniffed == gridcraft_xlsx::Format::LegacyBinary {
+    if sniffed == deskwerk_sheets_xlsx::Format::LegacyBinary {
         return Err(EngineError::Other(format!(
             "'{name}' is a legacy binary file but not an Excel workbook (no workbook stream). Deskwerk Sheets can't open it."
         )));
@@ -289,23 +293,23 @@ fn read_plain(name: &str, bytes: &[u8], csv_as_text: bool, loc: gridcraft_core::
     // Content wins over the extension: an ODS or XLSB package is imported as what it is,
     // whatever it is called; the extension only decides when the bytes don't say.
     let import = match sniffed {
-        gridcraft_xlsx::Format::Ods => Some(FileKind::Ods),
-        gridcraft_xlsx::Format::Xlsb => Some(FileKind::Xlsb),
+        deskwerk_sheets_xlsx::Format::Ods => Some(FileKind::Ods),
+        deskwerk_sheets_xlsx::Format::Xlsb => Some(FileKind::Xlsb),
         // An XLSX package is never read as ODS/XLSB just because of its name.
-        gridcraft_xlsx::Format::Xlsx => None,
+        deskwerk_sheets_xlsx::Format::Xlsx => None,
         _ => kind.filter(|k| matches!(k, FileKind::Ods | FileKind::Xlsb)),
     };
     if let Some(import) = import {
-        let read = if import == FileKind::Ods { gridcraft_xlsx::read_ods } else { gridcraft_xlsx::read_xlsb };
+        let read = if import == FileKind::Ods { deskwerk_sheets_xlsx::read_ods } else { deskwerk_sheets_xlsx::read_xlsb };
         let (wb, report) = read(bytes).map_err(|e| EngineError::Other(format!("We can't import '{name}': {e}")))?;
         return Ok((wb, report.warnings));
     }
     // Text named `.xlsx` is read as text.
-    if sniffed == gridcraft_xlsx::Format::Xlsx || (kind == Some(FileKind::Xlsx) && sniffed != gridcraft_xlsx::Format::Csv) {
-        // Google Sheets' export wrapper is read as the formula inside when GridCraft calculates it (#2871).
-        let (wb, report) = gridcraft_xlsx::read_xlsx_with(bytes, &gridcraft_calc::is_known_function).map_err(|e| {
-            EngineError::Other(match (&e, gridcraft_xlsx::oversized_part(bytes)) {
-                (gridcraft_xlsx::IoError::TooLarge(_), Some((part, size))) => part_too_large_message(name, &part, size),
+    if sniffed == deskwerk_sheets_xlsx::Format::Xlsx || (kind == Some(FileKind::Xlsx) && sniffed != deskwerk_sheets_xlsx::Format::Csv) {
+        // Google Sheets' export wrapper is read as the formula inside when Deskwerk Sheets calculates it (#2871).
+        let (wb, report) = deskwerk_sheets_xlsx::read_xlsx_with(bytes, &deskwerk_sheets_calc::is_known_function).map_err(|e| {
+            EngineError::Other(match (&e, deskwerk_sheets_xlsx::oversized_part(bytes)) {
+                (deskwerk_sheets_xlsx::IoError::TooLarge(_), Some((part, size))) => part_too_large_message(name, &part, size),
                 _ => format!("We can't open '{name}': {e}"),
             })
         })?;
@@ -340,16 +344,16 @@ fn read_plain(name: &str, bytes: &[u8], csv_as_text: bool, loc: gridcraft_core::
             Ok((wb, warnings))
         }
         Some(FileKind::Tsv) => {
-            let opts = gridcraft_xlsx::CsvOptions { delimiter: b'\t', parse_values: !csv_as_text, locale: loc, ..Default::default() };
-            let (mut wb, report) = gridcraft_xlsx::read_csv_with_report(bytes, &opts).map_err(|e| EngineError::Other(e.to_string()))?;
+            let opts = deskwerk_sheets_xlsx::CsvOptions { delimiter: b'\t', parse_values: !csv_as_text, locale: loc, ..Default::default() };
+            let (mut wb, report) = deskwerk_sheets_xlsx::read_csv_with_report(bytes, &opts).map_err(|e| EngineError::Other(e.to_string()))?;
             // Tab is what makes it a .tsv/.txt; saved as .csv it gets the CSV default.
             wb.csv_delimiter = None;
             rename_first_sheet(&mut wb, name);
             Ok((wb, report.warnings))
         }
         _ => {
-            let opts = gridcraft_xlsx::CsvOptions { delimiter: 0, parse_values: !csv_as_text, locale: loc, ..Default::default() };
-            let (mut wb, report) = gridcraft_xlsx::read_csv_with_report(bytes, &opts).map_err(|e| EngineError::Other(e.to_string()))?;
+            let opts = deskwerk_sheets_xlsx::CsvOptions { delimiter: 0, parse_values: !csv_as_text, locale: loc, ..Default::default() };
+            let (mut wb, report) = deskwerk_sheets_xlsx::read_csv_with_report(bytes, &opts).map_err(|e| EngineError::Other(e.to_string()))?;
             rename_first_sheet(&mut wb, name);
             Ok((wb, report.warnings))
         }
@@ -361,7 +365,7 @@ fn read_plain(name: &str, bytes: &[u8], csv_as_text: bool, loc: gridcraft_core::
 /// per part, so smaller sheets fit; the shared strings are one part for every sheet, so only a
 /// CSV, which has no parts, helps there.
 fn part_too_large_message(name: &str, part: &str, size: u64) -> String {
-    let limit = gridcraft_xlsx::MAX_PART >> 20;
+    let limit = deskwerk_sheets_xlsx::MAX_PART >> 20;
     let mb = size >> 20;
     let size = if mb > limit { format!("{mb} MB") } else { format!("more than {limit} MB") };
     let remedy = if part.contains("worksheets/") {
@@ -389,14 +393,14 @@ fn read_html_table(
     kind: Option<FileKind>,
     bytes: &[u8],
     csv_as_text: bool,
-    loc: gridcraft_core::Locale,
+    loc: deskwerk_sheets_core::Locale,
 ) -> Option<Result<(Workbook, Vec<String>)>> {
     // Every other text file (CSV, TSV, JSON) passes through here: look at the start only, and decode
     // the whole file once it is known to be a page within the size a text import takes.
-    if matches!(kind, Some(FileKind::Json)) || bytes.len() > gridcraft_xlsx::MAX_CSV_BYTES {
+    if matches!(kind, Some(FileKind::Json)) || bytes.len() > deskwerk_sheets_xlsx::MAX_CSV_BYTES {
         return None;
     }
-    let start = gridcraft_xlsx::decode_text(bytes.get(..HTML_SNIFF_BYTES).unwrap_or(bytes));
+    let start = deskwerk_sheets_xlsx::decode_text(bytes.get(..HTML_SNIFF_BYTES).unwrap_or(bytes));
     // Comments an exporter writes before the page (`<!-- ... -->`) don't make it something else.
     let mut rest = start.trim_start_matches('\u{feff}').trim_start();
     while let Some(after) = rest.strip_prefix("<!--") {
@@ -410,8 +414,8 @@ fn read_html_table(
         return None;
     }
     // Decoded as a CSV is (BOM, UTF-8, else Windows-1252/1256), so a legacy page keeps its letters.
-    let text = gridcraft_xlsx::decode_text(bytes);
-    let rows = crate::clip_html::table_cells(&text, gridcraft_core::MAX_ROWS as usize, gridcraft_core::MAX_COLS as usize);
+    let text = deskwerk_sheets_xlsx::decode_text(bytes);
+    let rows = crate::clip_html::table_cells(&text, deskwerk_sheets_core::MAX_ROWS as usize, deskwerk_sheets_core::MAX_COLS as usize);
     if rows.iter().all(Vec::is_empty) {
         return None;
     }
@@ -425,7 +429,7 @@ fn read_html_table(
                 // cell keeps the text it shows. It is written with the locale's decimal separator
                 // (never grouped), so the reader takes it back as that number.
                 let field = match cell.num.filter(|_| !csv_as_text) {
-                    Some(n) => gridcraft_core::number_to_text(n).replace('.', &loc.decimal().to_string()),
+                    Some(n) => deskwerk_sheets_core::number_to_text(n).replace('.', &loc.decimal().to_string()),
                     // Whitespace is already collapsed; non-breaking spaces stay, as in Excel.
                     None => cell.text.clone(),
                 };
@@ -435,8 +439,8 @@ fn read_html_table(
         tsv.push_str(&fields.join("\t"));
         tsv.push('\n');
     }
-    let opts = gridcraft_xlsx::CsvOptions { delimiter: b'\t', parse_values: !csv_as_text, locale: loc, ..Default::default() };
-    let read = gridcraft_xlsx::read_csv_with_report(tsv.as_bytes(), &opts).map_err(|e| EngineError::Other(e.to_string()));
+    let opts = deskwerk_sheets_xlsx::CsvOptions { delimiter: b'\t', parse_values: !csv_as_text, locale: loc, ..Default::default() };
+    let read = deskwerk_sheets_xlsx::read_csv_with_report(tsv.as_bytes(), &opts).map_err(|e| EngineError::Other(e.to_string()));
     Some(read.map(|(mut wb, report)| {
         wb.csv_delimiter = None;
         // Header cells are bold and centred on top of the style the CSV reader gave them, so a
@@ -446,13 +450,13 @@ fn read_html_table(
             .enumerate()
             .flat_map(|(r, row)| row.iter().enumerate().filter(|(_, cell)| cell.header && !cell.text.trim().is_empty()).map(move |(c, _)| CellRef::new(r as u32, c as u32)))
             .collect();
-        let mut bold: std::collections::HashMap<gridcraft_model::StyleId, gridcraft_model::StyleId> = std::collections::HashMap::new();
+        let mut bold: std::collections::HashMap<deskwerk_sheets_model::StyleId, deskwerk_sheets_model::StyleId> = std::collections::HashMap::new();
         for at in headers {
             let Some(base) = wb.sheet(0).map(|sh| sh.style_id(at)) else { continue };
             let id = *bold.entry(base).or_insert_with(|| {
                 wb.styles.derive(base, |st| {
                     st.font.bold = true;
-                    st.align.h = gridcraft_model::HAlign::Center;
+                    st.align.h = deskwerk_sheets_model::HAlign::Center;
                 })
             });
             if let Some(sh) = wb.sheet_mut(0) {
@@ -525,7 +529,7 @@ pub fn save_bytes_as(wb: &Workbook, path: &str, kind: FileKind) -> Result<Vec<u8
                 None => named,
             };
             let book = std::path::Path::new(path).file_name().and_then(std::ffi::OsStr::to_str).unwrap_or_default();
-            gridcraft_xlsx::write_xlsx_named(named.as_ref().unwrap_or(wb), gridcraft_xlsx::XlsxKind::from_path(path), book)
+            deskwerk_sheets_xlsx::write_xlsx_named(named.as_ref().unwrap_or(wb), deskwerk_sheets_xlsx::XlsxKind::from_path(path), book)
                 .map_err(|e| EngineError::Other(e.to_string()))
         }
         FileKind::Xls => {
@@ -547,7 +551,7 @@ pub fn save_bytes_as(wb: &Workbook, path: &str, kind: FileKind) -> Result<Vec<u8
 /// [`save_bytes`] for the file at `path`: relative paths to linked workbooks are rewritten for
 /// its folder, so they still name the same files.
 pub fn save_file_bytes(wb: &Workbook, path: &str) -> Result<Vec<u8>> {
-    match source_dir(path).and_then(|f| gridcraft_xlsx::rebase_links(wb, &f)) {
+    match source_dir(path).and_then(|f| deskwerk_sheets_xlsx::rebase_links(wb, &f)) {
         Some(rebased) => save_bytes(&rebased, path),
         None => save_bytes(wb, path),
     }
@@ -568,11 +572,11 @@ pub fn source_path(path: &str) -> Option<std::path::PathBuf> {
 /// characters in each cell" (Microsoft Support, *Excel formatting and features that are not
 /// transferred to other file formats*): number formats applied, never column-width `#####`.
 fn csv(wb: &Workbook, sh: &Sheet, delimiter: u8) -> Result<Vec<u8>> {
-    gridcraft_xlsx::write_csv(sh, delimiter, |c| {
+    deskwerk_sheets_xlsx::write_csv(sh, delimiter, |c| {
         // General's grid-width formatting rounds large identifiers to scientific notation.
         // Delimited files have no column width, so preserve the whole numeric value instead.
         if wb.styles.get(sh.style_id(c)).num_fmt.as_str().eq_ignore_ascii_case("General")
-            && let gridcraft_core::Value::Number(number) = sh.value(c)
+            && let deskwerk_sheets_core::Value::Number(number) = sh.value(c)
             && number.is_finite()
         {
             number.to_string()
@@ -588,22 +592,22 @@ fn csv(wb: &Workbook, sh: &Sheet, delimiter: u8) -> Result<Vec<u8>> {
 /// writes displayed text instead ([`save_bytes`]) and stays the default.
 pub fn csv_values_bytes(wb: &Workbook) -> Result<Vec<u8>> {
     let Some(sh) = wb.sheet(wb.active_sheet()) else { return Ok(Vec::new()) };
-    gridcraft_xlsx::write_csv(sh, wb.csv_delimiter.unwrap_or(b','), |c| match sh.value(c) {
-        gridcraft_core::Value::Number(n) if n.is_finite() => {
+    deskwerk_sheets_xlsx::write_csv(sh, wb.csv_delimiter.unwrap_or(b','), |c| match sh.value(c) {
+        deskwerk_sheets_core::Value::Number(n) if n.is_finite() => {
             let shape = crate::display::number_format(wb.styles.get(sh.style_id(c)).num_fmt.as_str()).date_shape(n);
-            match shape.zip(gridcraft_core::date::datetime_from_serial(wb.date_system, n)) {
+            match shape.zip(deskwerk_sheets_core::date::datetime_from_serial(wb.date_system, n)) {
                 Some(((date, time), d)) => iso(&d, date, time),
                 None => n.to_string(),
             }
         }
-        gridcraft_core::Value::Text(t) => t.to_string(),
+        deskwerk_sheets_core::Value::Text(t) => t.to_string(),
         v => crate::display::value_text_as(wb, &v, "General"),
     })
     .map_err(|e| EngineError::Other(e.to_string()))
 }
 
 /// `date` and `time` say which parts the cell's format shows; a format with neither is not a date.
-fn iso(d: &gridcraft_core::date::DateTime, date: bool, time: bool) -> String {
+fn iso(d: &deskwerk_sheets_core::date::DateTime, date: bool, time: bool) -> String {
     let day = format!("{:04}-{:02}-{:02}", d.year, d.month, d.day);
     let mut clock = format!("{:02}:{:02}:{:02}", d.hour, d.minute, d.second);
     if d.milli != 0 {
@@ -632,16 +636,16 @@ fn html_cell_css(wb: &Workbook, sh: &Sheet, c: CellRef, dir: CellDir) -> String 
     if let Some(h) = st.font.color.hex(&wb.theme) {
         let _ = write!(css, "color:{h};");
     }
-    if st.fill.pattern != gridcraft_model::PatternType::None
+    if st.fill.pattern != deskwerk_sheets_model::PatternType::None
         && let Some(h) = st.fill.fg.hex(&wb.theme)
     {
         let _ = write!(css, "background:{h};");
     }
     let v = sh.value(c);
     let align = match st.align.h {
-        gridcraft_model::HAlign::Center => Some("center"),
-        gridcraft_model::HAlign::Right => Some("right"),
-        gridcraft_model::HAlign::Left => Some("left"),
+        deskwerk_sheets_model::HAlign::Center => Some("center"),
+        deskwerk_sheets_model::HAlign::Right => Some("right"),
+        deskwerk_sheets_model::HAlign::Left => Some("left"),
         _ if v.is_number() => Some(if sh.right_to_left { "left" } else { "right" }),
         _ if dir == CellDir::Auto => None,
         _ => Some("left"),
@@ -864,7 +868,7 @@ pub fn to_html(wb: &Workbook, sheet: usize) -> Result<String> {
     if fixed {
         // Sheet units are CSS pixels; the table starts at the used range, not at A1.
         let (left, top) = used.map_or((0.0, 0.0), |r| (sh.col_left(r.start.col), sh.row_top(r.start.row)));
-        let place = |a: &gridcraft_model::Anchor| {
+        let place = |a: &deskwerk_sheets_model::Anchor| {
             format!(
                 "position:absolute;left:{}px;top:{}px;width:{}px;height:{}px",
                 sh.col_left(a.cell.col) - left + f64::from(a.dx),

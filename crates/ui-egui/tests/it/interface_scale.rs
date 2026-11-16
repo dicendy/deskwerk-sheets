@@ -1,7 +1,7 @@
 //! Interface size preference (#230): a persistent zoom for the whole window, clamped.
 
-use gridcraft_engine::Session;
-use gridcraft_ui_egui::{SheetApp, UiState};
+use deskwerk_sheets_engine::Session;
+use deskwerk_sheets_ui_egui::{SheetApp, UiState};
 use serde_json::json;
 
 #[test]

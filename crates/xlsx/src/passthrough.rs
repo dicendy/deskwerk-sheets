@@ -1,4 +1,4 @@
-//! Pass-through of package content GridCraft does not model, so that open → edit → save keeps it.
+//! Pass-through of package content Deskwerk Sheets does not model, so that open → edit → save keeps it.
 //!
 //! On read, the raw bytes of unmodelled parts are kept with their content type and their
 //! relationship graph, per owner: the package root (custom document properties, ribbon
@@ -9,12 +9,12 @@
 //! of `<pageSetup>`, the legacy VML shapes those controls need and the pictures of the headers and
 //! footers, `&G`, with their `<legacyDrawingHF>`). The workbook also keeps its
 //! `<fileVersion>` and the calcFeatures extension, which Excel needs to trust the saved values.
-//! Chart sheets are kept whole, and each embedded chart GridCraft reads keeps its original chart
+//! Chart sheets are kept whole, and each embedded chart Deskwerk Sheets reads keeps its original chart
 //! part with the style, colour and shape parts behind it, together with the chart as it was read.
 //!
 //! On write, kept parts get fresh part names where needed and new relationship ids; the `r:id`s in
 //! kept XML are rewritten to match. Kept content is conservative:
-//! - Anything whose relationship graph reaches a part GridCraft reads and rewrites (worksheets,
+//! - Anything whose relationship graph reaches a part Deskwerk Sheets reads and rewrites (worksheets,
 //!   drawings, charts, tables, PivotTables, comments, slicers…) is not kept: it would point at
 //!   content that no longer exists in the same form.
 //! - External relationship targets (the path of a linked workbook) are kept as text and never
@@ -25,7 +25,7 @@
 //!   mapped to an XML element) are kept as they were, not adjusted to inserted or deleted rows.
 //! - An embedded chart's original XML is written back only while the model's chart still equals
 //!   what was read from it (its position, series references, title, legend and type aside) and
-//!   every sheet its formulas name still exists; otherwise GridCraft writes the chart from the
+//!   every sheet its formulas name still exists; otherwise Deskwerk Sheets writes the chart from the
 //!   model, as it does for charts it created. Series references that moved (rows inserted, a
 //!   sheet renamed) are rewritten in the kept XML and the caches of the series refreshed from the
 //!   cells; a formula the model doesn't hold (a title from a cell) on a sheet whose series moved
@@ -41,7 +41,7 @@ use std::fmt::Write as _;
 use std::path::{Component, Path};
 use std::sync::Arc;
 
-use gridcraft_model::{
+use deskwerk_sheets_model::{
     Anchor, Chart, Preserved, PreservedChart, PreservedPart, PreservedRel, PreservedSheet, PreservedXml, Sheet, Visibility, Workbook,
 };
 use quick_xml::events::attributes::Attribute;
@@ -120,7 +120,7 @@ const NS_CALC_FEATURES: &str = "http://schemas.microsoft.com/office/spreadsheetm
 /// Kept sheet elements, in schema order (all after `<legacyDrawing>`, before `<tableParts>`).
 const SHEET_SLOTS: &[&str] = &["legacyDrawingHF", "picture", "oleObjects", "controls"];
 
-/// Relationship kinds GridCraft reads and rewrites, or that depend on content it rewrites:
+/// Relationship kinds Deskwerk Sheets reads and rewrites, or that depend on content it rewrites:
 /// kept content whose graph reaches one of them is dropped.
 const REWRITTEN: &[&str] = &[
     "officedocument",
@@ -173,7 +173,7 @@ const CHART_SHEET_GRAPH: &[&str] = &["chartsheet", "drawing", "chart", "chartex"
 /// colour and user-shape parts are kept with it. A drawing or worksheet is never reached.
 const CHART_GRAPH: &[&str] = &["chart", "chartstyle", "chartcolorstyle", "chartusershapes"];
 
-/// Part-name prefixes (lower case) GridCraft's writer never produces: kept parts there keep their
+/// Part-name prefixes (lower case) Deskwerk Sheets' writer never produces: kept parts there keep their
 /// original names. Anything else is renamed so it can't collide with written parts.
 const OWN_DIRS: &[&str] = &[
     "customxml/",

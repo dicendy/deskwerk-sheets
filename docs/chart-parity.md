@@ -2,7 +2,7 @@
 
 > **Last reviewed:** 2026-10-18 · **Last updated:** 2026-11-08 · **Change:** minor (kept XLSX charts: a new title, legend position or type is patched into the original chart XML, keeping its fonts and series formatting; surface charts are kept byte for byte; pie/doughnut percentage labels; logarithmic value axis; secondary line/area/column groups keep their kind; earlier: value axis: fixed minimum/maximum, major unit and an own number format are read, drawn and written; charts opened from XLSX keep their original chart XML and its style, colour and shape parts on save, following moved series references and refreshing value caches; earlier: chart-data-table keys pass the series index to the shared combo plot-kind rule, restoring compilation after #1150; earlier: doughnut charts: every series is a concentric ring, the first series innermost; hole size and first slice angle kept; rotated slices cover their own sweep; legend names categories; earlier: charts resize from eight handles, chart data tables, legend keys and borders, native XLSX round-trip and print/PDF; earlier: selected chart source outlines stay beneath floating objects) · **Target:** Microsoft Excel (Microsoft 365), Excel for Mac 16.113.4
 
-Excel's chart types and chart elements against GridCraft. Part of
+Excel's chart types and chart elements against Deskwerk Sheets. Part of
 [target-app-parity.md](target-app-parity.md). **Breadth ~50%, ready ~30%, 35–55 h** (estimated).
 
 Sources: `crates/model/src/features.rs` (`ChartKind`, `Chart`, `Series`), `crates/chart/src`
@@ -13,7 +13,7 @@ Sources: `crates/model/src/features.rs` (`ChartKind`, `Chart`, `Series`), `crate
 
 ## Chart types
 
-| Excel type | Excel subtypes | GridCraft | Notes |
+| Excel type | Excel subtypes | Deskwerk Sheets | Notes |
 |---|---|---|---|
 | Column | clustered, stacked, 100% stacked, 3-D clustered/stacked/100%, 3-D column | 3 of 7 | no 3-D |
 | Bar | clustered, stacked, 100%, 3-D ×3 | 3 of 6 | no 3-D |
@@ -37,7 +37,7 @@ Sources: `crates/model/src/features.rs` (`ChartKind`, `Chart`, `Series`), `crate
 
 ## Chart elements and formatting
 
-| Element | Excel | GridCraft |
+| Element | Excel | Deskwerk Sheets |
 |---|---|---|
 | Move and resize the chart object | yes | yes (eight handles, each moving only its own edges; Format Chart Area Size fields) (#190) |
 | Selected chart source-data outline | visible on uncovered cells, beneath floating objects | painted above cells and below charts, shapes, pictures and slicers; retains pane clipping and right-to-left cell geometry (#2861) |
@@ -83,7 +83,7 @@ Format reference: [Microsoft's DrawingML data table documentation](https://learn
 
 Charts are read from and written to DrawingML chart parts. An embedded chart read from a file
 keeps its original chart part, with the chart style, colour and user-shape parts behind it, and
-that part is written back in place of GridCraft's own while the model's chart is unchanged but
+that part is written back in place of Deskwerk Sheets' own while the model's chart is unchanged but
 for its position, series references, title, legend position and type (#1668). So axis scaling,
 label options, error bars, per-point formats, fonts, layout and extensions survive open → edit
 cells → save:
@@ -112,16 +112,16 @@ cells → save:
 - Surface charts (`surfaceChart`, `surface3DChart`) are read as line charts over the same series,
   so they are shown and kept: untouched they are written back byte for byte, with a new title or
   legend they are patched in place, and with a new type they are written from the model (#2403).
-- Charts created in GridCraft and chartex charts (treemap, sunburst, histogram, box, waterfall,
+- Charts created in Deskwerk Sheets and chartex charts (treemap, sunburst, histogram, box, waterfall,
   funnel) are written from the model.
 
 What the model doesn't hold is still not shown on screen: label options other than values and
 slice percentages, per-point formats, and axis options other than the primary value axis's
-bounds, major unit, number format and log scale are kept in the file but drawn with GridCraft's
+bounds, major unit, number format and log scale are kept in the file but drawn with Deskwerk Sheets'
 defaults. A surface chart is drawn as lines.
 
 Series data, categories and names may refer to defined names, as dynamic (OFFSET) ranges do:
-Excel writes a workbook-scoped name as `[0]!Name` in `<c:f>`. GridCraft reads it as the bare
+Excel writes a workbook-scoped name as `[0]!Name` in `<c:f>`. Deskwerk Sheets reads it as the bare
 name and writes it back with `[0]!`; a sheet-scoped name is written `Sheet!Name`. Excel needs the
 qualifier: with a bare name in `<c:f>` it draws the whole chart blank, without a repair prompt
 (observed in Excel for Windows, Microsoft 365). External books (`[1]Sheet1!…`) are kept as they

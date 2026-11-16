@@ -1,5 +1,5 @@
 Deskwerk Sheets app and document icons (every file in this directory and in hicolor/ and web/:
-gridcraft-1024.png, gridcraft-macos-512.png, gridcraft.icns, gridcraft.ico, document.ico,
+deskwerk-sheets-1024.png, deskwerk-sheets-macos-512.png, deskwerk-sheets.icns, deskwerk-sheets.ico, document.ico,
 document.icns, hicolor/, web/).
 
 Made for Deskwerk Sheets (see README.md here for provenance). No third-party material. Licensed

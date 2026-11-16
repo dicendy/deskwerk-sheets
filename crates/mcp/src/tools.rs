@@ -388,7 +388,7 @@ fn base_tool_definitions() -> Vec<Value> {
         tool(
             "screenshot",
             "Screenshot",
-            "Save a PNG screenshot of the Deskwerk Sheets window to `path`. Desktop app only (`gridcraft-cli mcp --connect 7979`).",
+            "Save a PNG screenshot of the Deskwerk Sheets window to `path`. Desktop app only (`deskwerk-sheets-cli mcp --connect 7979`).",
             obj(json!({"path": string("Output PNG path")}), &["path"]),
             true,
         ),
@@ -677,7 +677,7 @@ impl Backend for Targeted<'_> {
     fn call(&mut self, method: &str, params: Value) -> Result<Value, String> {
         let envelope = if method == "engine.execute" {
             params
-        } else if gridcraft_engine::find_command(method).is_some() {
+        } else if deskwerk_sheets_engine::find_command(method).is_some() {
             json!({"command": method, "params": params})
         } else {
             return self.inner.call(method, params);

@@ -1,4 +1,4 @@
-//! The pack's files, generated from `apps/gridcraft-web/fonts/MANIFEST.tsv` (the manifest test keeps
+//! The pack's files, generated from `apps/deskwerk-sheets-web/fonts/MANIFEST.tsv` (the manifest test keeps
 //! the two in step).
 
 use super::PackFile;

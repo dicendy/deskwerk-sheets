@@ -351,7 +351,7 @@ fn new_tiles(app: &mut SheetApp, ui: &mut Ui, out: &mut Outcome) {
             app.run_or_alert("file.new", json!({}));
             out.close = true;
         }
-        for (i, (name, title)) in gridcraft_engine::sample::SAMPLES.iter().enumerate() {
+        for (i, (name, title)) in deskwerk_sheets_engine::sample::SAMPLES.iter().enumerate() {
             if tile(ui, title, Some(i)).clicked() {
                 app.run_or_alert("file.new", json!({"sample": name}));
                 out.close = true;
@@ -476,7 +476,7 @@ fn ask(ctx: egui::Context, paths: Vec<String>, found: Arc<Mutex<HashMap<String, 
             ASKING.store(false, Ordering::SeqCst);
         }
     }
-    let asking = std::thread::Builder::new().name("gridcraft-recent-files".into()).spawn(move || {
+    let asking = std::thread::Builder::new().name("deskwerk-sheets-recent-files".into()).spawn(move || {
         let _done = Done;
         for path in paths {
             let changed = std::fs::metadata(&path).and_then(|m| m.modified()).ok().and_then(|at| at.duration_since(std::time::UNIX_EPOCH).ok());
@@ -776,7 +776,7 @@ pub fn export_as(app: &mut SheetApp, fmt: &str) -> bool {
     app.store_view_state();
     match app.session.run("file.saveBytes", json!({"format": fmt})) {
         Ok(r) => {
-            let bytes = r.get("base64").and_then(Json::as_str).and_then(gridcraft_engine::io::base64_decode);
+            let bytes = r.get("base64").and_then(Json::as_str).and_then(deskwerk_sheets_engine::io::base64_decode);
             let name = r.get("name").and_then(Json::as_str).map_or_else(|| format!("{stem}.{fmt}"), str::to_string);
             match (bytes, &app.services.download) {
                 (Some(b), Some(dl)) => {
@@ -801,9 +801,7 @@ fn account(app: &mut SheetApp, ui: &mut Ui) {
     ui.label(RichText::new("Deskwerk Sheets").font(theme::ui_bold(16.0)).color(t.text));
     ui.add_space(8.0);
     egui::Grid::new("backstage_account").num_columns(2).spacing(vec2(18.0, 8.0)).show(ui, |ui| {
-        for (label, value) in
-            [("Version", env!("CARGO_PKG_VERSION").to_string()), ("Platform", platform()), ("Licence", env!("CARGO_PKG_LICENSE").to_string())]
-        {
+        for (label, value) in [("Version", env!("CARGO_PKG_VERSION").to_string()), ("Platform", platform())] {
             ui.label(RichText::new(lang.tr(label)).color(t.text_dim));
             ui.label(value);
             ui.end_row();
@@ -818,7 +816,6 @@ fn account(app: &mut SheetApp, ui: &mut Ui) {
         ui.vertical(|ui| {
             ui.add_space(14.0);
             ui.label(RichText::new(lang.tr("About Deskwerk Sheets")).font(theme::ui_bold(13.5)).color(t.text));
-            dim(ui, lang.tr("Version, contributors and the AI models that helped"));
         });
     });
 }
@@ -869,7 +866,7 @@ mod tests {
 
     #[test]
     fn the_recent_list_learns_when_its_files_were_last_changed() {
-        let dir = std::env::temp_dir().join(format!("gridcraft-recent-files-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("deskwerk-sheets-recent-files-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let there = dir.join("There.xlsx").to_string_lossy().into_owned();

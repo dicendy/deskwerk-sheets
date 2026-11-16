@@ -1,8 +1,8 @@
-//! GridCraft macros: typed, declarative command lists, not VBA. The model is plain data in
-//! `gridcraft_model::Macro`; this module reads and writes it and keeps it within its limits.
+//! Deskwerk Sheets macros: typed, declarative command lists, not VBA. The model is plain data in
+//! `deskwerk_sheets_model::Macro`; this module reads and writes it and keeps it within its limits.
 //!
 //! Storage: the JSON format keeps `Workbook::macros` as a field. In xlsx each macro is one item of
-//! GridCraft's hidden workbook data ([`crate::cmd::stash`]), `_gc_macro_<n>_<k>`, written when the
+//! Deskwerk Sheets' hidden workbook data ([`crate::cmd::stash`]), `_gc_macro_<n>_<k>`, written when the
 //! file is saved and taken back out of the names when it is opened, so the names never linger in
 //! the open document. Scripts made with Automate › New Script or Record Actions are a separate,
 //! older feature with their own storage; macros neither read nor change it. A recording keeps the
@@ -10,7 +10,7 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use gridcraft_model::{DefinedName, Macro, Step, StepKind, Workbook};
+use deskwerk_sheets_model::{DefinedName, Macro, Step, StepKind, Workbook};
 use serde_json::{Value as Json, json};
 
 use crate::cmd::stash;
@@ -29,7 +29,7 @@ const MACRO_KEY: &str = "macro_";
 pub fn parse_macro(v: &Json) -> Result<Macro, String> {
     // A newer format is refused before its steps are read, so the message says why.
     if let Some(found) = v.get("v").and_then(Json::as_u64) {
-        gridcraft_model::check_version(found)?;
+        deskwerk_sheets_model::check_version(found)?;
     }
     let mut v = v.clone();
     if let Some(steps) = v.get_mut("steps") {
@@ -38,7 +38,7 @@ pub fn parse_macro(v: &Json) -> Result<Macro, String> {
     if v.get("v").is_none()
         && let Some(o) = v.as_object_mut()
     {
-        o.insert("v".into(), json!(gridcraft_model::MACRO_VERSION));
+        o.insert("v".into(), json!(deskwerk_sheets_model::MACRO_VERSION));
     }
     let mut m: Macro = serde_json::from_value(v).map_err(|e| format!("This isn't a valid macro: {e}"))?;
     m.name = m.name.trim().to_string();
@@ -95,10 +95,10 @@ pub fn count(wb: &Workbook) -> usize {
     wb.macros.len().saturating_add(wb.macros_unread.len())
 }
 
-/// Refuses one more macro in a workbook that holds [`gridcraft_model::MAX_MACROS`] already,
+/// Refuses one more macro in a workbook that holds [`deskwerk_sheets_model::MAX_MACROS`] already,
 /// counting the kept ones, so a save never holds more than the next open keeps.
 pub fn check_room(wb: &Workbook) -> Result<(), String> {
-    let max = gridcraft_model::MAX_MACROS;
+    let max = deskwerk_sheets_model::MAX_MACROS;
     if count(wb) < max {
         return Ok(());
     }
@@ -139,8 +139,8 @@ fn normalize_steps(steps: &mut Json, level: usize) -> Result<(), String> {
         }
         // A step with a body is a Repeat or an If: one at the top is nested 1 deep.
         let nested = ["body", "then", "else"].iter().any(|key| o.contains_key(*key));
-        if nested && level > gridcraft_model::MAX_MACRO_DEPTH {
-            return Err(format!("Repeat and If steps can nest at most {} deep.", gridcraft_model::MAX_MACRO_DEPTH));
+        if nested && level > deskwerk_sheets_model::MAX_MACRO_DEPTH {
+            return Err(format!("Repeat and If steps can nest at most {} deep.", deskwerk_sheets_model::MAX_MACRO_DEPTH));
         }
         for key in ["body", "then", "else"] {
             if let Some(body) = o.get_mut(key) {
@@ -200,7 +200,7 @@ pub fn with_names(wb: &Workbook) -> crate::Result<Option<Workbook>> {
     let items: Vec<(String, String)> = texts.zip(free).map(|(text, key)| (key, text)).collect();
     stash::set_many(&mut out, &items)?;
     // An empty list of its own, not a copy of the shared one cleared.
-    out.macros = gridcraft_model::Macros::default();
+    out.macros = deskwerk_sheets_model::Macros::default();
     out.macros_unread = std::sync::Arc::default();
     Ok(Some(out))
 }
@@ -228,7 +228,7 @@ pub fn json_bytes(wb: &Workbook) -> crate::Result<Vec<u8>> {
 
 /// Whether `v` is a macro in a newer format than this build reads.
 fn is_newer(v: &Json) -> bool {
-    v.get("v").and_then(Json::as_u64).is_some_and(|found| found > u64::from(gridcraft_model::MACRO_VERSION))
+    v.get("v").and_then(Json::as_u64).is_some_and(|found| found > u64::from(deskwerk_sheets_model::MACRO_VERSION))
 }
 
 /// Keeps a macro in a newer format unread, if it is small enough to save back
@@ -250,8 +250,8 @@ pub fn load(wb: &mut Workbook) -> Vec<String> {
     let mut unread = Vec::new();
     // Entries of the JSON format's field, each read on its own so a damaged one drops alone.
     let read = std::mem::take(&mut wb.macros_read);
-    bad = bad.saturating_add(read.len().saturating_sub(gridcraft_model::MAX_MACROS));
-    for v in read.into_iter().take(gridcraft_model::MAX_MACROS) {
+    bad = bad.saturating_add(read.len().saturating_sub(deskwerk_sheets_model::MAX_MACROS));
+    for v in read.into_iter().take(deskwerk_sheets_model::MAX_MACROS) {
         if is_newer(&v) {
             keep_unread(&mut unread, v, &mut bad);
             continue;
@@ -275,10 +275,10 @@ pub fn load(wb: &mut Workbook) -> Vec<String> {
     }
     wb.names = kept;
     // Past the macro limit, the rest are counted without being read.
-    bad = bad.saturating_add(stored.len().saturating_sub(gridcraft_model::MAX_MACROS));
+    bad = bad.saturating_add(stored.len().saturating_sub(deskwerk_sheets_model::MAX_MACROS));
     let mut found = Vec::new();
     let mut item = Workbook::new();
-    for ((_, key), names) in stored.into_iter().take(gridcraft_model::MAX_MACROS) {
+    for ((_, key), names) in stored.into_iter().take(deskwerk_sheets_model::MAX_MACROS) {
         item.names = names;
         let v = stash::get_json(&item, &key);
         if let Some(v) = v.as_ref().filter(|v| is_newer(v)) {
@@ -295,7 +295,7 @@ pub fn load(wb: &mut Workbook) -> Vec<String> {
     all.extend(found);
     let mut taken = Taken::default();
     for m in all {
-        if wb.macros.len() >= gridcraft_model::MAX_MACROS {
+        if wb.macros.len() >= deskwerk_sheets_model::MAX_MACROS {
             bad += 1;
             continue;
         }
@@ -314,7 +314,7 @@ pub fn load(wb: &mut Workbook) -> Vec<String> {
         }
     }
     // Readable and unread macros together stay within the limit, the readable ones first.
-    let room = gridcraft_model::MAX_MACROS.saturating_sub(wb.macros.len());
+    let room = deskwerk_sheets_model::MAX_MACROS.saturating_sub(wb.macros.len());
     bad = bad.saturating_add(unread.len().saturating_sub(room));
     unread.truncate(room);
     if !unread.is_empty() {
@@ -334,9 +334,9 @@ pub fn load(wb: &mut Workbook) -> Vec<String> {
             "{bad} macro{} in the workbook couldn't be opened: {} damaged or over the limits ({} macros, {} steps each, Repeat and If nested {} deep).",
             if bad == 1 { "" } else { "s" },
             if bad == 1 { "it is" } else { "they are" },
-            gridcraft_model::MAX_MACROS,
-            gridcraft_model::MAX_MACRO_STEPS,
-            gridcraft_model::MAX_MACRO_DEPTH
+            deskwerk_sheets_model::MAX_MACROS,
+            deskwerk_sheets_model::MAX_MACRO_STEPS,
+            deskwerk_sheets_model::MAX_MACRO_DEPTH
         ));
     }
     warnings
@@ -353,7 +353,7 @@ fn macro_item(n: &DefinedName) -> Option<(String, Option<u64>)> {
 
 /// `name`, or `name (2)`, `name (3)`… if a macro already has it, a kept one too. A free name comes back as it is;
 /// a renamed one is shortened to make room for the suffix, so it stays within
-/// [`gridcraft_model::MAX_MACRO_NAME`] characters. The result still goes through [`check`].
+/// [`deskwerk_sheets_model::MAX_MACRO_NAME`] characters. The result still goes through [`check`].
 pub fn unique_name(wb: &Workbook, name: &str) -> String {
     let mut taken = Taken::default();
     for m in &wb.macros {
@@ -398,7 +398,7 @@ impl Taken {
         let mut n: u64 = 2;
         loop {
             let suffix = format!(" ({n})");
-            let keep = gridcraft_model::MAX_MACRO_NAME.saturating_sub(suffix.chars().count());
+            let keep = deskwerk_sheets_model::MAX_MACRO_NAME.saturating_sub(suffix.chars().count());
             let base: String = name.chars().take(keep).collect();
             let base = base.trim_end();
             // Every candidate for this base and suffix width below `next` is in use already
@@ -420,7 +420,7 @@ impl Taken {
     }
 }
 
-/// Ctrl+Shift (Cmd+Shift on a Mac) letters that GridCraft already uses, on any platform, which a
+/// Ctrl+Shift (Cmd+Shift on a Mac) letters that Deskwerk Sheets already uses, on any platform, which a
 /// macro cannot take.
 pub const RESERVED_SHORTCUTS: &[(char, &str)] = &[
     ('F', "Format Cells (Font) or Filter"),
@@ -455,7 +455,7 @@ pub fn shortcut_text(letter: char) -> String {
     format!("Ctrl+Shift+{}", letter.to_ascii_uppercase())
 }
 
-/// Why macro `name` cannot use Ctrl+Shift+`letter`: GridCraft uses it, or another macro has it.
+/// Why macro `name` cannot use Ctrl+Shift+`letter`: Deskwerk Sheets uses it, or another macro has it.
 pub fn shortcut_conflict(wb: &Workbook, name: &str, letter: char) -> Option<String> {
     let letter = letter.to_ascii_uppercase();
     if let Some((_, what)) = RESERVED_SHORTCUTS.iter().find(|(c, _)| *c == letter) {

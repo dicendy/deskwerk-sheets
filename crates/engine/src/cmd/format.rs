@@ -1,7 +1,7 @@
 //! Formatting: Home › Font, Alignment, Number, Styles, Cells › Format.
 
-use gridcraft_core::{CellRef, RangeRef};
-use gridcraft_model::{BorderLine, BorderStyle, Borders, Color, Fill, HAlign, NumFmt, Style, StyleId, Theme, Underline, VAlign, VertAlign};
+use deskwerk_sheets_core::{CellRef, RangeRef};
+use deskwerk_sheets_model::{BorderLine, BorderStyle, Borders, Color, Fill, HAlign, NumFmt, Style, StyleId, Theme, Underline, VAlign, VertAlign};
 use serde_json::{Value as Json, json};
 
 use super::{
@@ -221,7 +221,7 @@ const COMMA: &str = "_(* #,##0.00_);_(* \\(#,##0.00\\);_(* \"-\"??_);_(@_)";
 /// control channel picks another one, e.g. `"L"` for lempiras.
 fn accounting(s: &mut Session, p: &Json) -> Result<Json> {
     let Some(symbol) = str_param(p, "symbol") else {
-        let code = gridcraft_numfmt::accounting_format(s.locale());
+        let code = deskwerk_sheets_numfmt::accounting_format(s.locale());
         return set_fmt(s, p, code);
     };
     // The symbol goes into a quoted literal: a quote or a backslash would end it, and a control
@@ -697,7 +697,7 @@ fn merge(s: &mut Session, p: &Json, how: &str) -> Result<Json> {
                 .iter_range(reach)
                 // A Python cell's result is blocked and unblocked like a formula's.
                 .filter(|(_, x)| {
-                    (x.formula.is_some() || x.py.is_some()) && x.value == gridcraft_core::Value::Error(gridcraft_core::CellError::Spill)
+                    (x.formula.is_some() || x.py.is_some()) && x.value == deskwerk_sheets_core::Value::Error(deskwerk_sheets_core::CellError::Spill)
                 });
             touched.extend(blocked.map(|(c, _)| (sheet, c)));
         }
@@ -713,11 +713,11 @@ fn merge(s: &mut Session, p: &Json, how: &str) -> Result<Json> {
 /// Ribbon format names → codes in the session's number locale: German and French take the euro
 /// for Currency and Accounting (`1.234,50 €`), as their Excel does; everything else is
 /// [`format_code_for`].
-pub fn format_code_for_in(name: &str, loc: gridcraft_core::Locale) -> &str {
+pub fn format_code_for_in(name: &str, loc: deskwerk_sheets_core::Locale) -> &str {
     match (name, loc) {
-        (_, gridcraft_core::Locale::En) => format_code_for(name),
+        (_, deskwerk_sheets_core::Locale::En) => format_code_for(name),
         ("Currency", _) => "#,##0.00\\ \"€\"",
-        ("Accounting", _) => gridcraft_numfmt::accounting_format(loc),
+        ("Accounting", _) => deskwerk_sheets_numfmt::accounting_format(loc),
         _ => format_code_for(name),
     }
 }
@@ -755,10 +755,10 @@ fn set_fmt(s: &mut Session, p: &Json, code: &str) -> Result<Json> {
 }
 
 /// Adds or removes one decimal place in the number format (Increase/Decrease Decimal).
-pub fn adjust_decimals(code: &str, value: &gridcraft_core::Value, delta: i32) -> String {
+pub fn adjust_decimals(code: &str, value: &deskwerk_sheets_core::Value, delta: i32) -> String {
     if code == "General" {
         // Start from the displayed number of decimals.
-        let text = value.as_f64().map(gridcraft_core::number_to_text).unwrap_or_default();
+        let text = value.as_f64().map(deskwerk_sheets_core::number_to_text).unwrap_or_default();
         let dec = text.split_once('.').map_or(0, |(_, d)| d.len()) as i32;
         let n = (dec + delta).max(0) as usize;
         return if n == 0 { "0".into() } else { format!("0.{}", "0".repeat(n)) };
@@ -829,7 +829,7 @@ fn decimals(s: &mut Session, p: &Json, delta: i32) -> Result<Json> {
     set_fmt(s, p, &new)
 }
 
-pub use gridcraft_model::points_to_chars;
+pub use deskwerk_sheets_model::points_to_chars;
 
 mod cell_styles;
 mod sizes;
@@ -863,7 +863,7 @@ mod tests {
 
     #[test]
     fn decimal_steps() {
-        let v = gridcraft_core::Value::Number(1.5);
+        let v = deskwerk_sheets_core::Value::Number(1.5);
         assert_eq!(adjust_decimals("General", &v, 1), "0.00");
         assert_eq!(adjust_decimals("General", &v, -1), "0");
         assert_eq!(adjust_decimals("0", &v, 1), "0.0");

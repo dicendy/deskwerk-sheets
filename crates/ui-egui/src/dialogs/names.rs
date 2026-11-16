@@ -62,7 +62,7 @@ pub(super) fn name_manager(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog
 pub(super) fn pasteable_names(app: &SheetApp) -> Vec<String> {
     app.session
         .active()
-        .map(|doc| gridcraft_engine::cmd::formulas::pasteable_names(&doc.wb).into_iter().map(|(n, _)| n).collect())
+        .map(|doc| deskwerk_sheets_engine::cmd::formulas::pasteable_names(&doc.wb).into_iter().map(|(n, _)| n).collect())
         .unwrap_or_default()
 }
 

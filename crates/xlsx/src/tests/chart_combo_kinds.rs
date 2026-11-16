@@ -1,7 +1,7 @@
 //! Importing a combination chart keeps each series' own group kind, the first group's included,
 //! and which series plot on the secondary value axis.
 
-use gridcraft_model::{ChartAxis, ChartKind, Workbook};
+use deskwerk_sheets_model::{ChartAxis, ChartKind, Workbook};
 
 use crate::chart::{read_chart, write_chart};
 use crate::xml::parse;
@@ -47,7 +47,7 @@ fn line_first_group_stays_a_line() {
 }
 
 /// Columns on axes 1/2 and a line on its own axes 3/4, the secondary value axis listed first.
-fn secondary_combo() -> gridcraft_model::Chart {
+fn secondary_combo() -> deskwerk_sheets_model::Chart {
     let xml = format!(
         "<c:chartSpace xmlns:c=\"http://schemas.openxmlformats.org/drawingml/2006/chart\"><c:chart><c:plotArea>{}\
          <c:lineChart><c:grouping val=\"standard\"/>{}<c:axId val=\"3\"/><c:axId val=\"4\"/></c:lineChart>\

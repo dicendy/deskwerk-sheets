@@ -1,4 +1,4 @@
-use gridcraft_formula::{FormulaLocale, parse, parse_input, print, print_input};
+use deskwerk_sheets_formula::{FormulaLocale, parse, parse_input, print, print_input};
 
 fn input(src: &str) -> String {
     print(&parse_input(src, FormulaLocale::Fr, |_| false).unwrap())

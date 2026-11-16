@@ -2,10 +2,10 @@
 
 use std::sync::{Arc, Mutex};
 
+use deskwerk_sheets_engine::{Session, core::CellRef, core::Value};
+use deskwerk_sheets_ui_egui::i18n::Language;
+use deskwerk_sheets_ui_egui::{Services, SheetApp};
 use egui_kittest::kittest::{NodeT as _, Queryable as _};
-use gridcraft_engine::{Session, core::CellRef, core::Value};
-use gridcraft_ui_egui::i18n::Language;
-use gridcraft_ui_egui::{Services, SheetApp};
 
 fn harness(services: Services) -> egui_kittest::Harness<'static, SheetApp> {
     crate::support::services_harness(services, 4)
@@ -153,7 +153,7 @@ fn save_actions_include_the_cell_draft_and_close_keeps_the_unsaved_prompt() {
     let saved = downloads.lock().unwrap();
     assert_eq!(saved.len(), 3);
     for (_, bytes) in saved.iter().take(2) {
-        let (wb, _) = gridcraft_engine::io::open_bytes("saved.xlsx", bytes).unwrap();
+        let (wb, _) = deskwerk_sheets_engine::io::open_bytes("saved.xlsx", bytes).unwrap();
         assert_eq!(wb.active().unwrap().value(CellRef::new(0, 0)), Value::Number(123.0));
     }
     assert!(saved[2].0.ends_with(".csv"));
@@ -225,9 +225,9 @@ fn file_account_shows_the_version_and_opens_about() {
     choose(&mut h, "Account");
     assert_eq!(page(&h), Some("account"));
     assert!(h.state().dialog.is_none());
-    // The About dialog also shows the version; it must not be open yet.
     h.get_by_label(env!("CARGO_PKG_VERSION"));
-    h.get_by_label(env!("CARGO_PKG_LICENSE"));
+    // No licence anywhere in the app: the licence texts ship as files next to it.
+    assert!(h.query_by_label(env!("CARGO_PKG_LICENSE")).is_none());
     click(&mut h, "About Deskwerk Sheets");
     assert_eq!(h.state().dialog.as_ref().map(|d| d.name()), Some("about"));
     assert_eq!(page(&h), Some("account"), "About opens over the File view, like Protect Workbook on Info");
@@ -250,7 +250,7 @@ fn export_as_pdf_is_delivered_as_a_download() {
 
 #[test]
 fn save_as_offers_pdf_and_leaves_the_workbook_file_alone() {
-    let dir = std::env::temp_dir().join(format!("gridcraft-save-as-type-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("deskwerk-sheets-save-as-type-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let asked = Arc::new(Mutex::new(Vec::<String>::new()));
     let (capture, target) = (asked.clone(), dir.clone());
@@ -324,7 +324,7 @@ fn closing_the_window_asks_about_every_unsaved_workbook() {
 
 #[test]
 fn closing_the_window_can_save_first_and_a_saved_workbook_closes_at_once() {
-    let dir = std::env::temp_dir().join(format!("gridcraft-close-window-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("deskwerk-sheets-close-window-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("Book.xlsx").to_string_lossy().into_owned();
     let mut h = harness(Services::default());
@@ -342,7 +342,7 @@ fn closing_the_window_can_save_first_and_a_saved_workbook_closes_at_once() {
     assert!(sent.contains(&egui::ViewportCommand::CancelClose), "{sent:?}");
     let sent = click_commands(&mut h, "Save");
     assert!(sent.contains(&egui::ViewportCommand::Close), "{sent:?}");
-    let (wb, _) = gridcraft_engine::io::open_bytes("Book.xlsx", &std::fs::read(&path).unwrap()).unwrap();
+    let (wb, _) = deskwerk_sheets_engine::io::open_bytes("Book.xlsx", &std::fs::read(&path).unwrap()).unwrap();
     assert_eq!(wb.active().unwrap().value(CellRef::new(0, 0)), Value::Number(123.0), "Save wrote the change before closing");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -434,7 +434,7 @@ fn a_draft_its_workbook_refuses_stops_the_switch_and_stays_open() {
 
 #[test]
 fn an_untouched_f2_draft_leaves_the_workbook_clean_on_a_file_command() {
-    let dir = std::env::temp_dir().join(format!("gridcraft-f2-draft-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("deskwerk-sheets-f2-draft-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("Book.xlsx").to_string_lossy().into_owned();
     let mut h = harness(Services::default());
@@ -469,7 +469,7 @@ fn pdf_picker_harness(dir: &std::path::Path) -> (Arc<Mutex<Vec<String>>>, egui_k
 
 #[test]
 fn the_palette_export_as_pdf_asks_where_to_save() {
-    let dir = std::env::temp_dir().join(format!("gridcraft-export-pdf-palette-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("deskwerk-sheets-export-pdf-palette-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let (asked, mut h) = pdf_picker_harness(&dir);
     h.state_mut().run("cell.set", serde_json::json!({"cell": "A1", "input": "42"})).unwrap();
@@ -616,7 +616,7 @@ fn options_sets_maximum_iterations_and_change_only_while_iteration_is_on() {
 /// directory, where nobody looks for it (#1212). The save picker chooses the folder instead.
 #[test]
 fn save_a_copy_with_a_bare_name_asks_where_to_save_it() {
-    let dir = std::env::temp_dir().join(format!("gridcraft-save-copy-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("deskwerk-sheets-save-copy-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let asked = Arc::new(Mutex::new(Vec::<String>::new()));
     let (capture, target) = (asked.clone(), dir.clone());
@@ -636,7 +636,7 @@ fn save_a_copy_with_a_bare_name_asks_where_to_save_it() {
         h.get_by_label("   OK   ").click();
         h.run_steps(3);
     };
-    let name = format!("gridcraft-save-copy-{}", std::process::id());
+    let name = format!("deskwerk-sheets-save-copy-{}", std::process::id());
     save_copy(&mut h, &name);
     let stray = std::path::PathBuf::from(format!("{name}.html"));
     let written_in_cwd = stray.exists();
@@ -689,7 +689,7 @@ fn new_window_shows_the_same_workbook_and_a_draft_settles_in_its_own_window() {
 
 #[test]
 fn control_requests_route_to_a_window_and_list_windows() {
-    use gridcraft_ui_egui::control::{Outcome, handle};
+    use deskwerk_sheets_ui_egui::control::{Outcome, handle};
     let mut h = harness(Services::default());
     let first = h.state().session.active_window().unwrap();
     h.state_mut().run_or_alert("file.new", serde_json::json!({}));
@@ -728,7 +728,7 @@ fn web_save_keeps_the_format_the_workbook_was_opened_in() {
             ..Default::default()
         };
         let mut app = SheetApp::new(Session::new(), services);
-        let csv = gridcraft_engine::io::base64_encode(b"a;b\n1;2\n");
+        let csv = deskwerk_sheets_engine::io::base64_encode(b"a;b\n1;2\n");
         app.run("file.open", serde_json::json!({"name": "data.csv", "base64": csv})).unwrap();
         (app, downloads)
     };
@@ -740,7 +740,7 @@ fn web_save_keeps_the_format_the_workbook_was_opened_in() {
         let saved = downloads.lock().unwrap();
         assert_eq!(saved.iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>(), ["data.csv", "data.xlsx"]);
         assert_eq!(String::from_utf8_lossy(&saved[0].1).lines().next(), Some("a;b"), "the separator is kept");
-        assert!(gridcraft_engine::io::open_bytes("data.xlsx", &saved[1].1).is_ok());
+        assert!(deskwerk_sheets_engine::io::open_bytes("data.xlsx", &saved[1].1).is_ok());
     }
     // A format Save can't write, or none, saves an .xlsx.
     for format in [None, Some("ods")] {

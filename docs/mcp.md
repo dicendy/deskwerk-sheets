@@ -1,4 +1,4 @@
-# GridCraft MCP server
+# Deskwerk Sheets MCP server
 
 `deskwerk-sheets-cli mcp` exposes Deskwerk Sheets to AI agents over the [Model Context Protocol](https://modelcontextprotocol.io):
 newline-delimited JSON-RPC 2.0 on stdin/stdout (protocol `2025-06-18`; `2025-03-26` and `2024-11-05` clients are
@@ -9,7 +9,7 @@ Two backends:
 | Mode | Command | What it drives |
 |---|---|---|
 | Headless (default) | `deskwerk-sheets-cli mcp [--in book.xlsx \| --sample budget]` | An in-process engine session — no window. |
-| Remote | `deskwerk-sheets-cli mcp --connect 7979` | A running app started with `deskwerk-sheets --control 7979` (TCP JSON lines on `127.0.0.1`, authenticated with the app's token: it is read from the app's token file or `GRIDCRAFT_CONTROL_TOKEN`, see [`control-protocol.md`](control-protocol.md)). |
+| Remote | `deskwerk-sheets-cli mcp --connect 7979` | A running app started with `deskwerk-sheets --control 7979` (TCP JSON lines on `127.0.0.1`, authenticated with the app's token: it is read from the app's token file or `DESKWERK_SHEETS_CONTROL_TOKEN`, see [`control-protocol.md`](control-protocol.md)). |
 
 ## Claude Code
 
@@ -24,8 +24,8 @@ JSON config (`.mcp.json`, Claude Desktop, other clients):
 ```json
 {
   "mcpServers": {
-    "gridcraft": {
-      "command": "gridcraft-cli",
+    "deskwerk-sheets": {
+      "command": "deskwerk-sheets-cli",
       "args": ["mcp"]
     }
   }
@@ -68,9 +68,9 @@ methods `-32601`.
 
 ## Resources
 
-- `gridcraft://workbook` — `document.inspect` of the active workbook.
-- `gridcraft://commands` — every command with its parameter docs.
-- `gridcraft://functions` — every worksheet function.
+- `deskwerk-sheets://workbook` — `document.inspect` of the active workbook.
+- `deskwerk-sheets://commands` — every command with its parameter docs.
+- `deskwerk-sheets://functions` — every worksheet function.
 
 `prompts/list` returns an empty list.
 
@@ -86,7 +86,7 @@ methods `-32601`.
 
 ## Embedding
 
-`gridcraft-mcp` is a library: `Server::new(Box::new(Headless::new()))` or
+`deskwerk-sheets-mcp` is a library: `Server::new(Box::new(Headless::new()))` or
 `Server::new(Box::new(Remote::connect(&control_addr("7979"))?))`, then `Server::serve(stdin, stdout)` or
 `Server::handle_line(line) -> Option<String>`. Implement the `Backend` trait (`call(method, params)`) to drive another
 host.

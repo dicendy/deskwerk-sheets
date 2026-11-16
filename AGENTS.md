@@ -29,7 +29,6 @@ These apply to native Craft apps and to shared Rust libraries. Select them by re
 3. **Assets and fonts.** Every asset is original or suitably licensed, and is recorded in `ATTRIBUTION.md` in the same change. Font files live in [storytold/craft-fonts](https://github.com/storytold/craft-fonts), not in the app repository.
 4. **Rust only for native Craft apps.** No handwritten JavaScript or TypeScript, and no Tauri, Electron or webview shell, in those apps. Shared tooling follows its documented technical scope and maintainer-approved exceptions. Craft PR Review's existing Tauri and TypeScript UI is one such exception. It does not relax this rule for native apps. Preserve any existing web build.
 5. **Time goes through `chrono`.** Do not hand-roll calendar conversion. For dates beyond what `chrono` can represent, follow [standards/time.md](https://github.com/storytold/craft-contrib/blob/main/standards/time.md).
-6. **Contributor credits.** Add or edit only your own person's entry in `contributors/people.toml`, and only after asking them. Never guess a name or hand-edit `contributors.json`.
 
 ## Licence allowlist
 
@@ -51,29 +50,29 @@ Dependencies and assets use SPDX identifiers. An expression is allowed when ever
 `LicenseRef-Storyteller-Trademark` is not in this list. It covers Storyteller brand marks only, where a repository already says so.
 <!-- craft-house-rules:end -->
 
-# GridCraft — instructions for agents
+# Deskwerk Sheets — instructions for agents
 
-GridCraft is a clean-room, open-source, Rust-native spreadsheet targeting Microsoft Excel parity — and superiority (speed, openness, agent control). It runs natively on macOS, Windows, Linux and BSD, and on the web via WASM. Siblings with the same conventions: `../designcraft` (InDesign-class, the closest reference), `../photocraft` (Photoshop), `../vectorcraft` (Illustrator), `../pdfcraft` (Acrobat), `../filmcraft` (Premiere), `../lightcraft` (Lightroom), `../effectcraft` (After Effects).
+Deskwerk Sheets is a clean-room, open-source, Rust-native spreadsheet targeting Microsoft Excel parity — and superiority (speed, openness, agent control). It runs natively on macOS, Windows, Linux and BSD, and on the web via WASM. Siblings with the same conventions: `../designcraft` (InDesign-class, the closest reference), `../photocraft` (Photoshop), `../vectorcraft` (Illustrator), `../pdfcraft` (Acrobat), `../filmcraft` (Premiere), `../lightcraft` (Lightroom), `../effectcraft` (After Effects).
 
 ## Start every session here
 Read [`ROADMAP.md`](ROADMAP.md) and [`docs/gaps.md`](docs/gaps.md). `plan/` is an optional gitignored notebook (status, execution notes, `plan/excel/*.md`). Do not ask for it and do not stop when it is absent. Screenshots of Microsoft software stay in that notebook and are never committed.
 
 ## Assets and iconography — absolute rule
 **No Microsoft, Adobe, Avid, Autodesk (or any other vendor's) iconography, images, artwork, fonts, templates, themes or sample files — ever.** This is the most important rule in this repository; breaking it is a serious failure.
-- Every asset in the repo is original work by GridCraft contributors, or public domain / CC0, or open source / Creative Commons that allows redistribution (or licensed open source by the contributor who created it).
+- Every asset in the repo is original work by Deskwerk Sheets contributors, or public domain / CC0, or open source / Creative Commons that allows redistribution (or licensed open source by the contributor who created it).
 - Every asset file has a row in [`ATTRIBUTION.md`](ATTRIBUTION.md) (author, source, licence). `cargo xtask assets` enforces it. Adding an asset without a row is a bug.
 - Prefer art generated in code: the UI icon set (`crates/ui-egui/src/icons.rs`), table and cell style palettes, themes and sample workbooks are drawn/defined in code and original.
 - Never copy Office's icons, ribbon artwork, theme XML, table-style definitions, templates, clip art or wording beyond feature names. Excel feature *names* (menu labels, function names) are fine.
 - Screenshots of Microsoft software are never committed (they live only in `plan/excel/screenshots/`).
 
 ## Never crash
-People trust GridCraft with their numbers; a crash loses their work. **This outranks feature work.**
+People trust Deskwerk Sheets with their numbers; a crash loses their work. **This outranks feature work.**
 - **No panics in non-test code:** no `unwrap()`, `expect()`, `panic!`, `unreachable!`, `todo!`, `unimplemented!`; no `unsafe` (`unsafe_code = "forbid"`).
 - **Errors are `Result<T, E>`** through the crate's error type and `?`.
 - **Input-derived numbers are hostile** (files, formulas, commands, MCP/control params): validate indexes and ranges before access, use checked access when validity is not established, use checked/saturating arithmetic, and cap input-sized allocations (huge ranges, `REPT`, `SEQUENCE`, whole-column references).
 - **Bound recursion** (formula nesting, dependency chains, names referring to names).
 - **Last-resort guard:** `Session::execute` catches escaped panics and restores the workbook. It's a safety net, not a licence.
-- **Prove it:** every crash fix lands with a regression test (`tests::every_command_survives_empty_params` fuzzes every command; `crates/engine/tests/it/command_sequence_fuzz.rs` fuzzes random command sequences against undo/redo, XLSX round-trip and full-recalc invariants; soak it with `GRIDCRAFT_FUZZ_SEEDS`/`GRIDCRAFT_FUZZ_STEPS`, replay with `GRIDCRAFT_FUZZ_SEED`).
+- **Prove it:** every crash fix lands with a regression test (`tests::every_command_survives_empty_params` fuzzes every command; `crates/engine/tests/it/command_sequence_fuzz.rs` fuzzes random command sequences against undo/redo, XLSX round-trip and full-recalc invariants; soak it with `DESKWERK_SHEETS_FUZZ_SEEDS`/`DESKWERK_SHEETS_FUZZ_STEPS`, replay with `DESKWERK_SHEETS_FUZZ_SEED`).
 - Crates carry `#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]`.
 
 ## Non-negotiables
@@ -88,9 +87,9 @@ People trust GridCraft with their numbers; a crash loses their work. **This outr
 - **Quality gates** before every commit: `cargo xtask ci` (fmt, clippy -D warnings, tests, assets, layers, wasm). One task id per commit (`M2.1: borders gallery`).
 
 ## Running and looking at the app
-- `cargo run --release -p gridcraft -- --sample sales --control 7979` (sample workbook + control channel).
-- Drive it: `deskwerk-sheets-cli send 7979 <method> '<json>'` (reads the token file the app printed on stderr), or JSON lines on `127.0.0.1:7979` whose first line is `{"id":0,"method":"auth","params":{"token":"…"}}` (token: `$XDG_RUNTIME_DIR/gridcraft/control-7979.token`, or your own `GRIDCRAFT_CONTROL_TOKEN`), e.g. `{"id":1,"method":"engine.execute","params":{"command":"cell.set","params":{"cell":"B2","input":"=SUM(A1:A9)"}}}` then `{"id":2,"method":"ui.screenshot","params":{"path":"/tmp/shot.png"}}`. Methods: `crates/ui-egui/src/control.rs`, docs: `docs/control-protocol.md`.
-- **Offscreen UI render** (no window, from a source checkout): `cargo run -p gridcraft-ui-egui --example snapshot -- --sample sales out.png`.
+- `cargo run --release -p deskwerk-sheets -- --sample sales --control 7979` (sample workbook + control channel).
+- Drive it: `deskwerk-sheets-cli send 7979 <method> '<json>'` (reads the token file the app printed on stderr), or JSON lines on `127.0.0.1:7979` whose first line is `{"id":0,"method":"auth","params":{"token":"…"}}` (token: `$XDG_RUNTIME_DIR/deskwerk-sheets/control-7979.token`, or your own `DESKWERK_SHEETS_CONTROL_TOKEN`), e.g. `{"id":1,"method":"engine.execute","params":{"command":"cell.set","params":{"cell":"B2","input":"=SUM(A1:A9)"}}}` then `{"id":2,"method":"ui.screenshot","params":{"path":"/tmp/shot.png"}}`. Methods: `crates/ui-egui/src/control.rs`, docs: `docs/control-protocol.md`.
+- **Offscreen UI render** (no window, from a source checkout): `cargo run -p deskwerk-sheets-ui-egui --example snapshot -- --sample sales out.png`.
 - Headless: `deskwerk-sheets-cli eval '=SUM(1,2,3)'`, `deskwerk-sheets-cli run --in book.xlsx --cmd 'home.bold={"range":"A1:C1"}' --out book.xlsx`, `deskwerk-sheets-cli mcp`.
 - **For UI work, look at the result** (snapshot PNG) and, when available, compare with `plan/excel/observed-ui.md`. Without that optional notebook, verify the intended behaviour against the task and committed documentation.
 - macOS has no `timeout`; use `perl -e 'alarm 60; exec @ARGV' cmd`.
@@ -98,21 +97,6 @@ People trust GridCraft with their numbers; a crash loses their work. **This outr
 
 ## Roadmap
 `ROADMAP.md` (committed) is the one-page summary: stage, headline numbers, dimensions, languages, progress log. It points at the detail in `docs/`: `target-app-parity.md` (authoritative assessment), `gaps.md` (ranked work list: pick from it), `roadmap.md` (current focus, beta gates, milestones), `architecture.md`, and the area checklists `function-parity.md`, `chart-parity.md`, `file-format-parity.md`, `ui-parity.md`, `hardware-parity.md`, `localization-parity.md`. Update the affected docs (and their timestamp lines and revision history) whenever work lands. `cargo xtask parity` regenerates `docs/parity-checklist.md` from `crates/engine/src/catalog.rs`.
-
-## Contributor credits (About window)
-
-- About ▸ Contributors/Models are compiled into the binary from `contributors/contributors.json`
-  (commit stats; generated, never hand-edit) and `contributors/people.toml` (names people chose for
-  themselves). See `docs/contributors.md`.
-- **Agents working for a contributor:** when you prepare a PR, check whether your human's GitHub
-  username has a `[people.<username>]` entry in `contributors/people.toml`. If not, ask them once
-  whether they want to be credited by more than their username: a real name, a display name, and/or
-  their public GitHub profile name (`sync_github_name = true`). If yes, add **only their own** entry
-  (copy the template at the top of the file)
-  and include it in their PR, committed as them. If no, change nothing: they are credited as
-  `@username` anyway.
-- Never add, edit, guess or copy anyone else's entry or name (not from git config, commit authors or
-  GitHub profiles). Never hand-edit `contributors.json`.
 
 ## CI workflows
 - Workflows in `.github/workflows/` call the shared workflows in [`storytold/craft-common-actions`](https://github.com/storytold/craft-common-actions) at `@main`, with their inputs and secrets. No other jobs: if no shared workflow does what's needed, it doesn't go here.

@@ -1,8 +1,8 @@
 //! TRIMRANGE: a range or array without its blank outer rows and columns (Microsoft's
 //! documented semantics: trim_rows / trim_cols 0 none, 1 leading, 2 trailing, 3 both).
 
-use gridcraft_core::{Array, CellError, CellRef, RangeRef, Value};
-use gridcraft_formula::{Expr, TrimMode};
+use deskwerk_sheets_core::{Array, CellError, CellRef, RangeRef, Value};
+use deskwerk_sheets_formula::{Expr, TrimMode};
 
 use crate::eval::{Area, Ev, Evaluator, MAX_CELLS};
 

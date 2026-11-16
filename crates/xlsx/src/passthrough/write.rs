@@ -15,14 +15,14 @@ pub struct KeptOut {
 }
 
 impl KeptOut {
-    /// Reserves a part name GridCraft writes itself, so kept parts don't take it. False when it is
+    /// Reserves a part name Deskwerk Sheets writes itself, so kept parts don't take it. False when it is
     /// taken.
     pub fn reserve(&mut self, name: &str) -> bool {
         self.used.insert(name.to_ascii_lowercase())
     }
 
     /// Reserves the VML shape blocks the kept header and footer drawings of `wb` use, so that the
-    /// notes drawings GridCraft writes don't reuse their shape ids.
+    /// notes drawings Deskwerk Sheets writes don't reuse their shape ids.
     pub fn reserve_vml_blocks(&mut self, wb: &Workbook) {
         let vmls =
             wb.sheets.iter().filter_map(|s| s.preserved.as_deref()).flat_map(|p| &p.parts).filter(|q| q.content_type.eq_ignore_ascii_case(CT_VML));
@@ -295,7 +295,7 @@ fn chart_sheet_usable(wb: &Workbook, p: &Preserved, s: &PreservedSheet) -> bool 
         .all(|n| wb.sheets.iter().any(|w| same_sheet(&w.name, &n)))
 }
 
-/// A kept chart that can be written in place of GridCraft's chart part (see [`kept_chart`]).
+/// A kept chart that can be written in place of Deskwerk Sheets' chart part (see [`kept_chart`]).
 pub struct KeptChart<'a> {
     kept: &'a PreservedChart,
     /// The kept parts, the chart part brought up to date with the model.
@@ -315,8 +315,8 @@ fn without_refs(mut ch: Chart) -> Chart {
 }
 
 /// The kept original of the embedded chart `ch` of sheet `si`, when it can be written in place of
-/// GridCraft's chart part: the chart is unchanged since it was read but for its series references,
-/// title, legend and type (moving or resizing it only changes the drawing, which GridCraft
+/// Deskwerk Sheets' chart part: the chart is unchanged since it was read but for its series references,
+/// title, legend and type (moving or resizing it only changes the drawing, which Deskwerk Sheets
 /// writes), the kept XML follows the references and refreshes their caches (#1676, #1677), takes
 /// the new title, legend and type and reads back as the model, and every sheet the kept formulas
 /// name still exists under the same name (a formula the model doesn't hold, such as a title from
@@ -352,7 +352,7 @@ pub fn kept_chart<'a>(wb: &Workbook, si: usize, sheet: &'a Sheet, ch: &Chart) ->
     names.iter().flatten().all(|n| wb.sheets.iter().any(|w| same_sheet(&w.name, n))).then_some(KeptChart { kept: k, parts })
 }
 
-/// Writes a kept chart (see [`kept_chart`]): the chart part as `name` (the name GridCraft's writer
+/// Writes a kept chart (see [`kept_chart`]): the chart part as `name` (the name Deskwerk Sheets' writer
 /// gives that chart), the parts behind it under fresh names. Returns the id of the drawing's new
 /// relationship to it.
 pub fn write_kept_chart(k: &KeptChart<'_>, name: &str, drawing_rels: &mut Rels, out: &mut Out) -> String {

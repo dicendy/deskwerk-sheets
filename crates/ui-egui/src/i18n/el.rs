@@ -1,4 +1,4 @@
-//! Greek (el) interface localization for GridCraft.
+//! Greek (el) interface localization for Deskwerk Sheets.
 //! Command ids, cell references and formula identifiers are not translated.
 //! Source labels are kept verbatim and unmatched labels fall back to English.
 

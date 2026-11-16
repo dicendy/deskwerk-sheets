@@ -22,7 +22,7 @@ $StartLink = Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'Deskwer
 $ChoiceKey = 'HKLM:\Software\Deskwerk\Sheets\Installer'
 $ComponentKey = 'HKLM:\Software\Deskwerk\Sheets\Installer'
 $UninstallRoot = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
-$Icon = Join-Path $Root 'assets\app-icon\gridcraft.ico'
+$Icon = Join-Path $Root 'assets\app-icon\deskwerk-sheets.ico'
 if ((Test-Path $InstallDir) -or (Test-Path $DesktopLink) -or (Test-Path $StartLink) -or
     (Test-Path 'HKLM:\Software\Deskwerk\Sheets') -or (Test-Path 'HKCU:\Software\Deskwerk\Sheets')) {
   throw 'Refusing to run against an existing Deskwerk Sheets installation or its settings.'
@@ -172,7 +172,7 @@ foreach ($fixture in @(@('deskwerk-sheets.exe', 'winexe'), @('deskwerk-sheets-cl
 $packages = @()
 foreach ($version in '90.0.0', '90.0.1', '90.0.2') {
   $msi = Join-Path $WorkDir "deskwerk-sheets-$version.msi"
-  & wix build (Join-Path $PSScriptRoot 'gridcraft.wxs') -arch x64 `
+  & wix build (Join-Path $PSScriptRoot 'deskwerk-sheets.wxs') -arch x64 `
     -d "Version=$version" -d "BinDir=$Bin" -d "IconPath=$Icon" -o $msi | Write-Host
   if ($LASTEXITCODE -ne 0) { throw "WiX failed to build $version" }
   $packages += [pscustomobject]@{ Path = $msi; Code = (Get-ProductCode $msi); Version = $version }

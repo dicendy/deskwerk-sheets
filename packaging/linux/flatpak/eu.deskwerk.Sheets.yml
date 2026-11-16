@@ -95,14 +95,14 @@ modules:
         CARGO_HOME: /run/build/deskwerk-sheets/cargo
         CARGO_NET_OFFLINE: 'true'
     build-commands:
-      - cargo --offline build --release --locked -p gridcraft -p gridcraft-cli
+      - cargo --offline build --release --locked -p deskwerk-sheets -p deskwerk-sheets-cli
       - install -Dm755 target/release/deskwerk-sheets /app/bin/deskwerk-sheets
       - install -Dm755 target/release/deskwerk-sheets-cli /app/bin/deskwerk-sheets-cli
       - install -Dm644 packaging/linux/eu.deskwerk.Sheets.desktop /app/share/applications/eu.deskwerk.Sheets.desktop
       - install -Dm644 packaging/linux/eu.deskwerk.Sheets.mime.xml /app/share/mime/packages/eu.deskwerk.Sheets.xml
       - mkdir -p /app/share/icons && cp -R assets/app-icon/hicolor /app/share/icons/
-      - install -Dm644 NOTICE /app/share/doc/deskwerk-sheets/NOTICE
-      - install -Dm644 ATTRIBUTION.md /app/share/doc/deskwerk-sheets/ATTRIBUTION.md
+      - install -Dm644 -t /app/share/doc/deskwerk-sheets LICENSE-MIT LICENSE-APACHE NOTICE ATTRIBUTION.md
+      - install -Dm644 -t /app/share/doc/deskwerk-sheets/font-licences apps/deskwerk-sheets-web/fonts/licenses/*.txt apps/deskwerk-sheets-web/fonts/MANIFEST.tsv
       - >-
         version=$(awk '/^\[/{p=($0=="[workspace.package]");next} p&&$1=="version"{gsub(/[" ]/,"",$3);print $3;exit}' Cargo.toml);
         install -d /app/share/metainfo;

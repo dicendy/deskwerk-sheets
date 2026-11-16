@@ -10,9 +10,9 @@
 /// Largest clipboard HTML we look at; past this the paste uses the plain text alone.
 const MAX_HTML: usize = 16 * 1024 * 1024;
 /// Widest `colspan` honoured (the sheet's column count).
-const MAX_SPAN: usize = gridcraft_core::MAX_COLS as usize;
+const MAX_SPAN: usize = deskwerk_sheets_core::MAX_COLS as usize;
 /// Tallest `rowspan` honoured (the sheet's row count).
-const MAX_ROW_SPAN: usize = gridcraft_core::MAX_ROWS as usize;
+const MAX_ROW_SPAN: usize = deskwerk_sheets_core::MAX_ROWS as usize;
 /// Most cells, span placeholders included, one paste reads from the HTML. Past it the rest of the
 /// table is ignored: the HTML only refines cells of the tab-separated text, which stays the source.
 const MAX_HTML_CELLS: usize = 1_000_000;
@@ -341,12 +341,12 @@ pub(crate) fn normalized(s: &str) -> String {
 /// `shown` back character for character. en-US; see [`format_for_in`].
 #[cfg(test)]
 pub(crate) fn format_for(shown: &str, n: f64) -> Option<String> {
-    format_for_in(shown, n, gridcraft_core::Locale::En)
+    format_for_in(shown, n, deskwerk_sheets_core::Locale::En)
 }
 
 /// [`format_for`] for text shown in `loc`'s conventions: German "Rp10.000,00" and French
 /// "Rp10 000,00" are `"Rp"#,##0.00` too (the code is stored en-US, as in an `.xlsx` file).
-pub(crate) fn format_for_in(shown: &str, n: f64, loc: gridcraft_core::Locale) -> Option<String> {
+pub(crate) fn format_for_in(shown: &str, n: f64, loc: deskwerk_sheets_core::Locale) -> Option<String> {
     let shown = normalized(shown);
     let start = shown.find(|c: char| c.is_ascii_digit())?;
     let end = shown.rfind(|c: char| c.is_ascii_digit()).map(|i| i + 1)?;
@@ -356,7 +356,7 @@ pub(crate) fn format_for_in(shown: &str, n: f64, loc: gridcraft_core::Locale) ->
     let decimal = loc.decimal();
     // French groups with a (narrow) no-break space, which `normalized` made a plain space.
     let group = match loc {
-        gridcraft_core::Locale::Fr => ' ',
+        deskwerk_sheets_core::Locale::Fr => ' ',
         _ => loc.group(),
     };
     if core.chars().any(|c| !(c.is_ascii_digit() || c == group || c == decimal)) {
@@ -378,12 +378,19 @@ pub(crate) fn format_for_in(shown: &str, n: f64, loc: gridcraft_core::Locale) ->
     code.push_str(&quote(suffix));
     // The code is en-US (as stored), shown in `loc`'s separators: `TEXT()` would read the code
     // itself in the locale's notation.
-    let value = gridcraft_core::Value::number(n);
+    let value = deskwerk_sheets_core::Value::number(n);
     let rendered = match loc {
-        gridcraft_core::Locale::En => gridcraft_numfmt::text_function(&value, &code, gridcraft_core::date::DateSystem::D1900).ok()?,
+        deskwerk_sheets_core::Locale::En => {
+            deskwerk_sheets_numfmt::text_function(&value, &code, deskwerk_sheets_core::date::DateSystem::D1900).ok()?
+        }
         _ => {
-            gridcraft_numfmt::format_value_in(&value, &gridcraft_numfmt::NumberFormat::parse(&code), gridcraft_core::date::DateSystem::D1900, loc)
-                .text
+            deskwerk_sheets_numfmt::format_value_in(
+                &value,
+                &deskwerk_sheets_numfmt::NumberFormat::parse(&code),
+                deskwerk_sheets_core::date::DateSystem::D1900,
+                loc,
+            )
+            .text
         }
     };
     (normalized(&rendered) == shown).then_some(code)
@@ -492,7 +499,7 @@ mod tests {
 
     #[test]
     fn infers_a_format_from_german_and_french_text() {
-        use gridcraft_core::Locale;
+        use deskwerk_sheets_core::Locale;
         assert_eq!(format_for_in("Rp10.000,00", 10000.0, Locale::De).as_deref(), Some("\"Rp\"#,##0.00"));
         assert_eq!(format_for_in("10.000,50 kr", 10000.5, Locale::De).as_deref(), Some("#,##0.00\" kr\""));
         assert_eq!(format_for_in("Rp10\u{202F}000,00", 10000.0, Locale::Fr).as_deref(), Some("\"Rp\"#,##0.00"));

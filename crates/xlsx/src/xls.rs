@@ -19,8 +19,8 @@ mod styles;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use gridcraft_core::{CellRef, DateSystem, MAX_COLS, MAX_ROWS, RangeRef, Value};
-use gridcraft_model::{CalcMode, CalcSettings, Cell, DefinedName, Formula, LineInfo, Sheet, StyleId, Visibility, Workbook};
+use deskwerk_sheets_core::{CellRef, DateSystem, MAX_COLS, MAX_ROWS, RangeRef, Value};
+use deskwerk_sheets_model::{CalcMode, CalcSettings, Cell, DefinedName, Formula, LineInfo, Sheet, StyleId, Visibility, Workbook};
 
 use crate::cfb::Compound;
 use crate::tables::{col_width_to_px, pt_to_px};
@@ -457,7 +457,7 @@ impl SheetState<'_> {
     fn attach(&mut self, pos: CellRef, p: &Parsed, mode: Mode, array: Option<RangeRef>) {
         match decode(&p.rgce, &p.rgcb, pos, mode, &self.g.links) {
             Ok(e) => {
-                let text = gridcraft_formula::print(&e);
+                let text = deskwerk_sheets_formula::print(&e);
                 let mut f = Formula::new(&text);
                 if f.expr.is_none() {
                     self.unsupported("syntax Deskwerk Sheets can't parse yet");
@@ -853,7 +853,7 @@ fn defined_names(g: &Globals, model_index: &[Option<usize>], wb: &mut Workbook, 
     for lbl in &g.names {
         let Some(scope) = scope_of(lbl.itab) else { continue };
         let text = match decode(&lbl.rgce, &lbl.rgcb, CellRef::new(0, 0), Mode::Name, &g.links) {
-            Ok(e) => gridcraft_formula::print(&e),
+            Ok(e) => deskwerk_sheets_formula::print(&e),
             Err(_) if lbl.rgce.is_empty() => continue,
             Err(Unsupported(why)) => {
                 report.warn(format!("Some defined names use {why} and were skipped."));

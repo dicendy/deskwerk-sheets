@@ -101,7 +101,7 @@ fn number_locale_option(app: &mut SheetApp, ui: &mut Ui, lang: Language) {
         [("en", "English (US): 1,234.5  12/31/2026"), ("de", "Deutsch: 1.234,5  31.12.2026"), ("fr", "Français : 1 234,5  31/12/2026")];
     let label = ui.label(lang.tr("Number and date format"));
     let auto = lang.tr("Like the interface language");
-    let chosen = app.ui.number_locale.as_deref().and_then(gridcraft_engine::core::Locale::from_tag).map(|l| l.tag());
+    let chosen = app.ui.number_locale.as_deref().and_then(deskwerk_sheets_engine::core::Locale::from_tag).map(|l| l.tag());
     let selected = NAMES.iter().find(|(tag, _)| Some(*tag) == chosen).map_or(auto, |(_, name)| *name);
     craft_ui::ComboBox::from_id_salt("backstage_number_locale")
         .width(240.0)
@@ -122,8 +122,8 @@ fn number_locale_option(app: &mut SheetApp, ui: &mut Ui, lang: Language) {
 }
 
 /// The calculation mode, and iterative calculation, of the active workbook.
-fn calc_options(app: &mut SheetApp, ui: &mut Ui, lang: Language, calc: &gridcraft_engine::model::CalcSettings) {
-    use gridcraft_engine::model::CalcMode;
+fn calc_options(app: &mut SheetApp, ui: &mut Ui, lang: Language, calc: &deskwerk_sheets_engine::model::CalcSettings) {
+    use deskwerk_sheets_engine::model::CalcMode;
     for (mode, id, label) in [
         (CalcMode::Automatic, "automatic", "Automatic"),
         (CalcMode::AutomaticExceptTables, "automaticExceptTables", "Automatic Except for Data Tables"),
@@ -145,7 +145,7 @@ fn calc_options(app: &mut SheetApp, ui: &mut Ui, lang: Language, calc: &gridcraf
 }
 
 /// Maximum Iterations and Maximum Change, live only while iterative calculation is on.
-fn iteration_options(app: &mut SheetApp, ui: &mut Ui, lang: Language, calc: &gridcraft_engine::model::CalcSettings, iterative: bool) {
+fn iteration_options(app: &mut SheetApp, ui: &mut Ui, lang: Language, calc: &deskwerk_sheets_engine::model::CalcSettings, iterative: bool) {
     ui.add_enabled_ui(iterative, |ui| {
         ui.horizontal(|ui| {
             ui.add_space(24.0);
@@ -198,12 +198,12 @@ fn refuse(app: &mut SheetApp, ui: &mut Ui, text: &str) {
 /// Maximum Iterations as typed: a whole number from 1 to 32767, or `None` (Excel refuses others).
 fn parse_max_iterations(text: &str) -> Option<u32> {
     let n = text.trim().parse::<u32>().ok()?;
-    (1..=gridcraft_engine::model::CalcSettings::MAX_ITERATIONS).contains(&n).then_some(n)
+    (1..=deskwerk_sheets_engine::model::CalcSettings::MAX_ITERATIONS).contains(&n).then_some(n)
 }
 
 /// Maximum Change as typed: a finite number of 0 or more, or `None`. The interface's decimal
 /// separator is accepted as well as a dot.
-fn parse_max_change(text: &str, locale: gridcraft_engine::formula::FormulaLocale) -> Option<f64> {
+fn parse_max_change(text: &str, locale: deskwerk_sheets_engine::formula::FormulaLocale) -> Option<f64> {
     let d = text.trim().replace(locale.decimal_separator(), ".").parse::<f64>().ok()?;
     (d.is_finite() && d >= 0.0).then_some(d)
 }

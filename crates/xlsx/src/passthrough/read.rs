@@ -366,7 +366,7 @@ impl KeptReader {
             }
         }
         // Header and footer pictures (`&G`): a VML drawing of their own and the images it shows,
-        // kept byte for byte (GridCraft writes the header text, not the pictures).
+        // kept byte for byte (Deskwerk Sheets writes the header text, not the pictures).
         if let Some(id) = scan.legacy_drawing_hf.as_deref()
             && scan.legacy_drawing.as_deref() != Some(id)
             && let Some(r) = rels.iter().find(|r| r.id == id && is_kind(r, &["vmlDrawing"]))
@@ -426,7 +426,7 @@ impl KeptReader {
     }
 
     /// The sheet's VML drawing without its notes and the form controls read into the model
-    /// (GridCraft writes those), and the parts its shapes refer to (preview images).
+    /// (Deskwerk Sheets writes those), and the parts its shapes refer to (preview images).
     fn vml(
         &mut self,
         cx: &mut Ctx<'_>,
@@ -645,13 +645,13 @@ pub(super) fn vml_block_max(vml: &str) -> u64 {
     used.max(claimed)
 }
 
-/// The first shape block free in kept VML: GridCraft's own shapes (notes, then form controls) are
+/// The first shape block free in kept VML: Deskwerk Sheets' own shapes (notes, then form controls) are
 /// numbered from `block * 1024 + 1` when they join it ([`merge_vml`]).
 pub(super) fn first_free_block(kept: &str) -> u64 {
     shape_numbers(kept).into_iter().max().unwrap_or(0) / 1024 + 1
 }
 
-/// Kept VML (controls, OLE objects) plus GridCraft's note and form control shapes: ours get ids
+/// Kept VML (controls, OLE objects) plus Deskwerk Sheets' note and form control shapes: ours get ids
 /// in fresh shape blocks so they can't collide with the kept shapes the sheet XML refers to.
 pub(super) fn merge_vml(kept: &str, ours: &str) -> String {
     let Some(close) = kept.rfind("</xml>") else { return ours.to_string() };

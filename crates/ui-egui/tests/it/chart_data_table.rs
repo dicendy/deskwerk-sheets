@@ -1,7 +1,7 @@
+use deskwerk_sheets_engine::Session;
+use deskwerk_sheets_engine::model::{ObjKind, ObjRef};
 use egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
-use gridcraft_engine::Session;
-use gridcraft_engine::model::{ObjKind, ObjRef};
 use serde_json::json;
 
 #[test]
@@ -44,7 +44,7 @@ fn chart_pane(kind: &str) -> crate::common::Harness {
     h
 }
 
-fn first_chart(h: &crate::common::Harness) -> gridcraft_engine::model::Chart {
+fn first_chart(h: &crate::common::Harness) -> deskwerk_sheets_engine::model::Chart {
     h.state().session.active().unwrap().wb.active().unwrap().charts[0].clone()
 }
 

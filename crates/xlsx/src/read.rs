@@ -3,8 +3,8 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use gridcraft_core::{DateSystem, RangeRef};
-use gridcraft_model::{
+use deskwerk_sheets_core::{DateSystem, RangeRef};
+use deskwerk_sheets_model::{
     CalcMode, CellPicture, DefinedName, PhoneticString, Sheet, ShowObjects, Style, StyleId, StyleTable, Visibility, Workbook, WorkbookView,
 };
 
@@ -38,7 +38,7 @@ pub struct Ctx<'a> {
     /// Bytes charged so far for shared formulas expanded into dependent cells (see
     /// [`crate::sheet_read::MAX_SHARED_FORMULA_BYTES`]).
     pub shared_formula_bytes: u64,
-    /// Whether GridCraft calculates a function, when the caller says: cell formulas wrapped by
+    /// Whether Deskwerk Sheets calculates a function, when the caller says: cell formulas wrapped by
     /// Google Sheets' export are then read as the formula inside (see [`crate::read_xlsx_with`]).
     pub known_function: Option<&'a dyn Fn(&str) -> bool>,
     /// The code of the workbook's Python cells, from its Python part.
@@ -237,7 +237,7 @@ fn read_workbook_properties(cx: &mut Ctx<'_>, wb: &mut Workbook, xml: &El) {
     }
 }
 
-/// The single window modelled by GridCraft: prefer the first visible window,
+/// The single window modelled by Deskwerk Sheets: prefer the first visible window,
 /// including the format's default visibility, and otherwise retain the first one.
 fn selected_workbook_view(workbook: &El) -> Option<&El> {
     let views = workbook.child("bookViews")?;
@@ -448,7 +448,7 @@ pub fn read_xlsx<'a>(bytes: &'a [u8], known_function: Option<&'a dyn Fn(&str) ->
         wb.props.company = x.child("Company").map(|e| e.text.clone()).unwrap_or_default();
     }
 
-    // A VBA project is carried through unchanged: GridCraft never runs macros, but preserving the
+    // A VBA project is carried through unchanged: Deskwerk Sheets never runs macros, but preserving the
     // binary keeps macro-enabled workbooks from being silently stripped on save.
     if let Some(r) = find_rel(&wb_rels, "vbaProject").cloned() {
         match cx.pkg.read(&r.target) {
@@ -538,10 +538,10 @@ pub fn parse_print_titles(text: &str) -> (TitleSpan, TitleSpan) {
         let p = strip_sheet(part.trim()).replace('$', "");
         let Some((a, b)) = p.split_once(':') else { continue };
         if let (Ok(r0), Ok(r1)) = (a.parse::<u32>(), b.parse::<u32>()) {
-            if r0 >= 1 && r1 >= r0 && r1 <= gridcraft_core::MAX_ROWS {
+            if r0 >= 1 && r1 >= r0 && r1 <= deskwerk_sheets_core::MAX_ROWS {
                 rows = Some((r0 - 1, r1 - 1));
             }
-        } else if let (Some(c0), Some(c1)) = (gridcraft_core::letters_to_col(a), gridcraft_core::letters_to_col(b))
+        } else if let (Some(c0), Some(c1)) = (deskwerk_sheets_core::letters_to_col(a), deskwerk_sheets_core::letters_to_col(b))
             && c1 >= c0
         {
             cols = Some((c0, c1));

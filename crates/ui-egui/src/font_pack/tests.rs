@@ -3,9 +3,9 @@ use std::path::PathBuf;
 
 use super::*;
 
-/// The pack as committed: `apps/gridcraft-web/fonts`.
+/// The pack as committed: `apps/deskwerk-sheets-web/fonts`.
 fn pack_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../apps/gridcraft-web/fonts")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../apps/deskwerk-sheets-web/fonts")
 }
 
 fn pack_bytes(file: &str) -> Vec<u8> {
@@ -374,16 +374,16 @@ fn local_fonts_win_over_the_pack_and_join_the_list() {
 fn a_workbook_keeps_the_office_font_name_on_save() {
     with_pack(|| {
         deliver_set("Liberation Serif");
-        let mut s = gridcraft_engine::Session::new();
+        let mut s = deskwerk_sheets_engine::Session::new();
         s.new_workbook();
         s.execute("home.fontName", serde_json::json!({"range": "A1", "name": "Times New Roman"})).expect("set the font");
         let used = vec!["Times New Roman".to_string()];
         let _fonts = crate::theme::font_definitions_with(crate::i18n::Language::En, &used);
         assert!(crate::fonts::is_bound(&crate::fonts::role_key("Times New Roman", false, false)), "drawn with the twin");
         let doc = s.doc().expect("a workbook");
-        let bytes = gridcraft_engine::io::save_bytes(&doc.wb, "fonts.xlsx").expect("save");
-        let (wb, _) = gridcraft_engine::io::open_bytes("fonts.xlsx", &bytes).expect("open");
-        let a1 = gridcraft_engine::core::CellRef::parse("A1").expect("A1");
+        let bytes = deskwerk_sheets_engine::io::save_bytes(&doc.wb, "fonts.xlsx").expect("save");
+        let (wb, _) = deskwerk_sheets_engine::io::open_bytes("fonts.xlsx", &bytes).expect("open");
+        let a1 = deskwerk_sheets_engine::core::CellRef::parse("A1").expect("A1");
         let font = &wb.styles.get(wb.active().expect("a sheet").style_id(a1)).font;
         assert_eq!(font.name, "Times New Roman", "the file keeps the chosen name, not the twin's");
         let names: Vec<&str> = wb.styles.iter().map(|(_, st)| st.font.name.as_str()).collect();

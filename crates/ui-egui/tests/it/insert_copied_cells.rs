@@ -1,10 +1,10 @@
 //! The context menus offer Insert Copied Cells while the clipboard holds a copy (#21).
 
+use deskwerk_sheets_engine::Session;
+use deskwerk_sheets_engine::core::{CellRef, Value};
+use deskwerk_sheets_ui_egui::{SheetApp, grid};
 use egui::{Event, Modifiers, PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
-use gridcraft_engine::Session;
-use gridcraft_engine::core::{CellRef, Value};
-use gridcraft_ui_egui::{SheetApp, grid};
 use serde_json::json;
 
 type Harness = egui_kittest::Harness<'static, SheetApp>;

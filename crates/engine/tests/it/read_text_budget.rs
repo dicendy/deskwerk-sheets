@@ -3,8 +3,8 @@
 
 use std::sync::Arc;
 
-use gridcraft_core::{CellRef, Value};
-use gridcraft_engine::Session;
+use deskwerk_sheets_core::{CellRef, Value};
+use deskwerk_sheets_engine::Session;
 use serde_json::json;
 
 /// `rows` cells in column A that all hold the same `bytes`-long text.

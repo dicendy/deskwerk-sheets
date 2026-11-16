@@ -1,7 +1,7 @@
 //! The session's number locale (`app.locale.set`): German and French display, typed entry and
 //! the text the cell editor starts from. The control protocol stays en-US.
 
-use gridcraft_core::{CellRef, Locale, Value};
+use deskwerk_sheets_core::{CellRef, Locale, Value};
 use serde_json::json;
 
 use super::{s, v};
@@ -218,14 +218,14 @@ fn accounting_and_currency_take_the_locale_currency() {
     s.execute("home.accounting", json!({"range": "A1:A2"})).unwrap();
     s.execute("home.numberFormat", json!({"range": "B1", "format": "Currency"})).unwrap();
     s.execute("home.numberFormat", json!({"range": "B2", "format": "Accounting"})).unwrap();
-    assert_eq!(fmt(&s, "A1"), gridcraft_numfmt::ACCOUNTING_EUR);
-    assert_eq!(fmt(&s, "B2"), gridcraft_numfmt::ACCOUNTING_EUR);
+    assert_eq!(fmt(&s, "A1"), deskwerk_sheets_numfmt::ACCOUNTING_EUR);
+    assert_eq!(fmt(&s, "B2"), deskwerk_sheets_numfmt::ACCOUNTING_EUR);
     assert_eq!(bare(&s, "A1"), "1.234,50€");
     assert_eq!(bare(&s, "A2"), "-1.234,50€");
     assert_eq!(shown(&s, "B1"), "1.234,50 €");
     assert_eq!(bare(&s, "B2"), "0,50€");
     super::reopen(&mut s);
-    assert_eq!(fmt(&s, "A1"), gridcraft_numfmt::ACCOUNTING_EUR);
+    assert_eq!(fmt(&s, "A1"), deskwerk_sheets_numfmt::ACCOUNTING_EUR);
     assert_eq!(v(&s, "A1"), Value::Number(1234.5));
     assert_eq!(bare(&s, "A1"), "1.234,50€");
     assert_eq!(shown(&s, "B1"), "1.234,50 €");
@@ -233,14 +233,14 @@ fn accounting_and_currency_take_the_locale_currency() {
     s.execute("app.locale.set", json!({"locale": "fr"})).unwrap();
     assert_eq!(bare(&s, "A1"), "1\u{202F}234,50€");
     s.execute("home.accounting", json!({"range": "C1"})).unwrap();
-    assert_eq!(fmt(&s, "C1"), gridcraft_numfmt::ACCOUNTING_EUR);
+    assert_eq!(fmt(&s, "C1"), deskwerk_sheets_numfmt::ACCOUNTING_EUR);
     // An explicit symbol still wins, and en-US keeps the dollar format (built-in 44).
     s.execute("home.accounting", json!({"range": "C2", "symbol": "L"})).unwrap();
     assert!(fmt(&s, "C2").contains("\"L\""), "{}", fmt(&s, "C2"));
     s.execute("app.locale.set", json!({"locale": "en"})).unwrap();
     s.execute("home.accounting", json!({"range": "D1"})).unwrap();
     s.execute("home.numberFormat", json!({"range": "D2", "format": "Currency"})).unwrap();
-    assert_eq!(Some(fmt(&s, "D1").as_str()), gridcraft_numfmt::builtin_format(44));
+    assert_eq!(Some(fmt(&s, "D1").as_str()), deskwerk_sheets_numfmt::builtin_format(44));
     assert_eq!(fmt(&s, "D2"), "\"$\"#,##0.00");
 }
 

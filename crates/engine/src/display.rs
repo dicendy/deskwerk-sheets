@@ -3,9 +3,9 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use gridcraft_core::{CellRef, Locale, RangeRef, Value};
-use gridcraft_model::{Sheet, Workbook};
-use gridcraft_numfmt::{Formatted, NumberFormat, format_value_in};
+use deskwerk_sheets_core::{CellRef, Locale, RangeRef, Value};
+use deskwerk_sheets_model::{Sheet, Workbook};
+use deskwerk_sheets_numfmt::{Formatted, NumberFormat, format_value_in};
 
 /// Parsed number formats are cached by code.
 fn parsed(code: &str) -> NumberFormat {
@@ -37,7 +37,7 @@ pub fn format(v: &Value, code: &str, wb: &Workbook) -> Formatted {
 /// as a number, boolean, error, date or formula, or lose a leading apostrophe). Such text is shown
 /// for editing with a leading `'`, as Excel does for text carrying a quote prefix, so that
 /// committing the editor unchanged keeps the cell as text.
-fn text_needs_quote_prefix(t: &str, sys: gridcraft_core::date::DateSystem, loc: Locale) -> bool {
+fn text_needs_quote_prefix(t: &str, sys: deskwerk_sheets_core::date::DateSystem, loc: Locale) -> bool {
     if t.is_empty() {
         return false;
     }
@@ -49,7 +49,7 @@ fn text_needs_quote_prefix(t: &str, sys: gridcraft_core::date::DateSystem, loc: 
     if matches!(first, Some('+' | '-')) && second.is_some_and(|c| c.is_ascii_alphabetic() || c == '(') {
         return true;
     }
-    !matches!(gridcraft_core::parse::parse_input_in(t, sys, loc).value, Value::Text(ref x) if x.as_ref() == t)
+    !matches!(deskwerk_sheets_core::parse::parse_input_in(t, sys, loc).value, Value::Text(ref x) if x.as_ref() == t)
 }
 
 /// What the cell editor and the formula bar start from. Same as `Cell::input_text`, except that a
@@ -88,12 +88,12 @@ pub fn edit_text(wb: &Workbook, sheet: &Sheet, c: CellRef) -> String {
         return raw;
     }
     let reads_back =
-        |s: &str| matches!(gridcraft_core::parse::parse_input_in(s, wb.date_system, loc).value, Value::Number(m) if (m - n).abs() < 1e-9);
+        |s: &str| matches!(deskwerk_sheets_core::parse::parse_input_in(s, wb.date_system, loc).value, Value::Number(m) if (m - n).abs() < 1e-9);
     let shown = format(&cell.value, code, wb).text;
     if reads_back(&shown) {
         return shown;
     }
-    let Some(dt) = gridcraft_core::date::datetime_from_serial(wb.date_system, *n) else { return raw };
+    let Some(dt) = deskwerk_sheets_core::date::datetime_from_serial(wb.date_system, *n) else { return raw };
     let time = format!("{:02}:{:02}:{:02}", dt.hour, dt.minute, dt.second);
     let date = format!("{:04}-{:02}-{:02}", dt.year, dt.month, dt.day);
     let iso = if *n < 1.0 {
