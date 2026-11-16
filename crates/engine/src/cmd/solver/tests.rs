@@ -1721,7 +1721,8 @@ fn excel_iteration_and_time_limits_are_not_read_as_deskwerk_sheets_options() {
 fn options_saved_under_the_old_product_name_are_read_and_replaced() {
     let mut s = s();
     set(&mut s, &[("A1", "0"), ("B1", "=ABS(A1-3)")]);
-    let model = json!({"objective": "B1", "goal": "min", "variables": "A1", "constraints": ["A1 <= 4"], "method": "evolutionary", "maxEvaluations": 900});
+    let model =
+        json!({"objective": "B1", "goal": "min", "variables": "A1", "constraints": ["A1 <= 4"], "method": "evolutionary", "maxEvaluations": 900});
     s.execute("data.solver", model.clone()).unwrap();
     // As a version before 0.16.4 saved them.
     let old = deskwerk_sheets_core::legacy::lower();
