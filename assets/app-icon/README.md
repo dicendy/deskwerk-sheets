@@ -1,52 +1,44 @@
-# Deskwerk Sheets app icon (PLACEHOLDER)
+# Deskwerk Sheets app and document icons
 
-**This icon is temporary.** It is the placeholder inherited from upstream GridCraft (by the
-ArtCraft team), not an ArtCraft mark; Deskwerk Sheets' own icon hasn't been made yet (see
-`docs/brand/DESKWERK-TODO.md`). Until it is, this placeholder stands in: a simple ledger page with a header row, a row-number
-column, a selected cell with its fill handle and a double rule under a total, on a full-bleed
-GridCraft-green tile. It is original geometry written by hand for this repository, deliberately
-not modelled on any vendor's spreadsheet logo (no letters, no "X", no overlapping panels).
+The Deskwerk Sheets icon: a green tile with a white sheet (formula bar with *fx*, a grid with a
+tinted header row and column, a selected cell) and a round **S** badge. It replaces the
+placeholder ledger page inherited from upstream GridCraft. It was made for Deskwerk Sheets as
+AI-assisted raster art, chosen and approved by the owner; the 16 and 24 px sizes are drawn by
+hand. It is deliberately not modelled on any vendor's spreadsheet logo (no "X", no letter tile
+over layered panels).
 
-When the owner's art arrives, replace `gridcraft.svg`, run `packaging/icons.sh`, update this
-README (provenance, creature) and the rows in `ATTRIBUTION.md`, and drop the word placeholder.
+The document icon (files the app opens) is hand-written vector geometry: a white page with a
+green folded corner and a green band carrying the **S**.
 
-## Palette
+## Colour
 
-Exactly three colours:
-
-| Colour | Hex | Used for |
-|---|---|---|
-| Ink | `#0b0b0c` | Line work and contour |
-| Paper | `#efe9dc` | The page |
-| GridCraft green (app colour, **proposed**) | `#1f9d55` | The full-bleed field and the header cells |
-
-The app colour is a proposal pending the owner's approval: GridCraft green `#1f9d55`, with ink
-(darker) variant `#147a40` for text and accents on light backgrounds. It differs from
-DesignCraft's `#7bb51c`.
-
-## Geometry
-
-A 512 × 512 viewBox, clipped to a rounded square with `rx=112`. Windows and Linux use the full
-tile. The macOS icons (`.icns`, `gridcraft-macos-512.png`) sit on Apple's grid: an 824/1024
-body with a transparent margin.
+App colour `#12875C` (the icon's green), ink `#0C6845` for text on light backgrounds, tint
+`#D6F2E4`, and `#5CCB9A` in the dark theme. These are the UI accent tokens in
+`crates/ui-egui/src/theme.rs` and the metainfo `<branding>`. The green is shifted off Excel's
+`#107C41`.
 
 ## Files
 
 | File | Use |
 |---|---|
-| `gridcraft.svg` | Canonical artwork; also `hicolor/scalable` |
-| `gridcraft-1024.png` | 1024 px render of the full tile |
-| `gridcraft-macos-512.png` | Runtime Dock icon on macOS (for `apps/gridcraft` to embed) |
+| `gridcraft-1024.png` | 1024 px master of the tile (transparent corners); the DMG background shows it |
+| `gridcraft-macos-512.png` | Runtime Dock icon on macOS, on Apple's grid (embedded by `apps/gridcraft`) |
 | `gridcraft.icns` | macOS bundle icon (`CFBundleIconFile`) |
-| `gridcraft.ico` | Windows exe icon, 16–256 px (embedded by `apps/gridcraft/build.rs`) |
-| `hicolor/<size>/apps/eu.deskwerk.Sheets.png` | Linux icon theme, 16–512 px; the 256 px one is also the runtime window icon on Windows and Linux |
-| `hicolor/scalable/apps/eu.deskwerk.Sheets.svg` | Linux scalable icon |
+| `gridcraft.ico` | Windows exe and MSI icon, 16–256 px (embedded by `apps/gridcraft/build.rs`; MSI `ARPPRODUCTICON` and shortcuts; web favicon) |
+| `hicolor/<size>/apps/eu.deskwerk.Sheets.png` | Linux icon theme, 16–512 px; the 256 px one is also the runtime window icon on Windows and Linux, the 128 px one the update prompt's |
+| `web/icon-192.png`, `web/icon-512.png` | Web app manifest icons (`apps/gridcraft-web/manifest.webmanifest`) |
+| `hicolor/scalable/mimetypes/eu.deskwerk.Sheets.document.svg` | Document icon, source and Linux mime icon (`packaging/linux/eu.deskwerk.Sheets.mime.xml`) |
+| `document.ico` | Document icon for Windows: installed as `deskwerk-sheets-document.ico`, the ProgIds' `DefaultIcon` |
+| `document.icns` | Document icon for macOS: `Deskwerk Sheets Document.icns`, every `CFBundleTypeIconFile` |
 | `LICENSE.txt` | MIT OR Apache-2.0 |
+
+There is no scalable SVG of the app icon (the art is raster), so Linux gets the hicolor PNGs only.
 
 The app ID is `eu.deskwerk.Sheets`. It's used for the hicolor icon names, the Wayland app
 ID and `packaging/linux/eu.deskwerk.Sheets.desktop`.
 
-## Regenerate
+## Replace
 
-Edit `gridcraft.svg`, then run `packaging/icons.sh`. It needs `resvg`, and `iconutil` for the
-`.icns` (macOS only). It packs the `.ico` with `cargo xtask ico`.
+The files are committed; builds and packaging never generate them. To replace the art, put a new
+icon set in a folder and run `packaging/icons.sh <folder>` (see the script for the file names),
+then update this README and the rows in `ATTRIBUTION.md`.

@@ -76,7 +76,7 @@ fn comments(app: &mut SheetApp, ui: &mut Ui) {
                     }
                     ui.label(egui::RichText::new(&c.author).color(t.text_dim));
                     if c.resolved {
-                        ui.label(egui::RichText::new("Resolved").small().color(t.accent));
+                        ui.label(egui::RichText::new("Resolved").small().color(t.accent_text));
                     }
                 });
                 ui.label(&c.text);

@@ -70,7 +70,8 @@
   <string>Copyright © the Deskwerk contributors and the GridCraft authors. MIT OR Apache-2.0.</string>
 
   <!-- Files Deskwerk Sheets opens. Rank Alternate: it's offered under "Open With" without taking
-       over the default app (Numbers, another spreadsheet) for these types. -->
+       over the default app (Numbers, another spreadsheet) for these types. Files show the
+       document icon (Resources/Deskwerk Sheets Document.icns) where Deskwerk Sheets opens them. -->
   <key>CFBundleDocumentTypes</key>
   <array>
     <dict>
@@ -78,6 +79,8 @@
       <string>Excel Workbook</string>
       <key>CFBundleTypeRole</key>
       <string>Editor</string>
+      <key>CFBundleTypeIconFile</key>
+      <string>Deskwerk Sheets Document</string>
       <key>LSHandlerRank</key>
       <string>Alternate</string>
       <key>LSItemContentTypes</key>
@@ -94,6 +97,8 @@
       <string>Excel Macro-Enabled Workbook</string>
       <key>CFBundleTypeRole</key>
       <string>Editor</string>
+      <key>CFBundleTypeIconFile</key>
+      <string>Deskwerk Sheets Document</string>
       <key>LSHandlerRank</key>
       <string>Alternate</string>
       <key>LSItemContentTypes</key>
@@ -105,9 +110,29 @@
     </dict>
     <dict>
       <key>CFBundleTypeName</key>
+      <string>Excel Template</string>
+      <key>CFBundleTypeRole</key>
+      <string>Editor</string>
+      <key>CFBundleTypeIconFile</key>
+      <string>Deskwerk Sheets Document</string>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>org.openxmlformats.spreadsheetml.template</string>
+      </array>
+      <key>CFBundleTypeExtensions</key>
+      <array><string>xltx</string></array>
+      <key>CFBundleTypeMIMETypes</key>
+      <array><string>application/vnd.openxmlformats-officedocument.spreadsheetml.template</string></array>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key>
       <string>CSV Document</string>
       <key>CFBundleTypeRole</key>
       <string>Editor</string>
+      <key>CFBundleTypeIconFile</key>
+      <string>Deskwerk Sheets Document</string>
       <key>LSHandlerRank</key>
       <string>Alternate</string>
       <key>LSItemContentTypes</key>
@@ -124,6 +149,8 @@
       <string>TSV Document</string>
       <key>CFBundleTypeRole</key>
       <string>Editor</string>
+      <key>CFBundleTypeIconFile</key>
+      <string>Deskwerk Sheets Document</string>
       <key>LSHandlerRank</key>
       <string>Alternate</string>
       <key>LSItemContentTypes</key>
@@ -135,12 +162,32 @@
       <key>CFBundleTypeMIMETypes</key>
       <array><string>text/tab-separated-values</string></array>
     </dict>
-    <!-- .xlsb and .ods are imported (data only) into a new workbook that saves as .xlsx. -->
+    <!-- .xls, .xlsb and .ods are imported into a new workbook that saves as .xlsx. -->
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>Excel 97-2003 Workbook</string>
+      <key>CFBundleTypeRole</key>
+      <string>Editor</string>
+      <key>CFBundleTypeIconFile</key>
+      <string>Deskwerk Sheets Document</string>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>com.microsoft.excel.xls</string>
+      </array>
+      <key>CFBundleTypeExtensions</key>
+      <array><string>xls</string></array>
+      <key>CFBundleTypeMIMETypes</key>
+      <array><string>application/vnd.ms-excel</string></array>
+    </dict>
     <dict>
       <key>CFBundleTypeName</key>
       <string>Excel Binary Workbook</string>
       <key>CFBundleTypeRole</key>
       <string>Editor</string>
+      <key>CFBundleTypeIconFile</key>
+      <string>Deskwerk Sheets Document</string>
       <key>LSHandlerRank</key>
       <string>Alternate</string>
       <key>LSItemContentTypes</key>
@@ -157,6 +204,8 @@
       <string>OpenDocument Spreadsheet</string>
       <key>CFBundleTypeRole</key>
       <string>Editor</string>
+      <key>CFBundleTypeIconFile</key>
+      <string>Deskwerk Sheets Document</string>
       <key>LSHandlerRank</key>
       <string>Alternate</string>
       <key>LSItemContentTypes</key>

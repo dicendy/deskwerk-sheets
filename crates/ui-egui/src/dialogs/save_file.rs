@@ -190,7 +190,7 @@ pub(super) fn show(app: &mut SheetApp, ctx: &egui::Context, mut d: Dialog) {
         let frame = egui::Frame::window(&ctx.global_style()).inner_margin(egui::Margin::same(20)).corner_radius(8.0);
         egui::Modal::new(egui::Id::unique("save_file_replace")).frame(frame).show(ctx, |ui| {
             ui.set_width(360.0);
-            ui.label(RichText::new(lang.tr("Save file")).font(theme::ui_font(16.0)).color(t.accent));
+            ui.label(RichText::new(lang.tr("Save file")).font(theme::ui_font(16.0)).color(t.accent_text));
             ui.add_space(8.0);
             let file = Path::new(&path).file_name().and_then(|n| n.to_str()).unwrap_or(&path).to_string();
             let question = lang.tr("A file named {name} already exists. Do you want to replace it?").replace("{name}", &file);
@@ -250,7 +250,7 @@ fn form(app: &SheetApp, ui: &mut egui::Ui, d: &mut Dialog, t: &Tokens) -> Option
     let lang = app.ui.language;
     let mut action = None;
     ui.horizontal(|ui| {
-        ui.label(RichText::new(lang.tr("Save file")).font(theme::ui_font(20.0)).color(t.accent));
+        ui.label(RichText::new(lang.tr("Save file")).font(theme::ui_font(20.0)).color(t.accent_text));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let close = crate::widgets::icon_button(ui, Icon::Close, t.text_dim, "Close", vec2(28.0, 28.0));
             close.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, lang.tr("Close")));
@@ -275,7 +275,7 @@ fn form(app: &SheetApp, ui: &mut egui::Ui, d: &mut Dialog, t: &Tokens) -> Option
 
     let can_save = !file_stem(d).is_empty() && !text(d, "folder").is_empty();
     ui.horizontal(|ui| {
-        let more = ui.add(egui::Link::new(RichText::new(lang.tr("More options…")).color(t.accent)));
+        let more = ui.add(egui::Link::new(RichText::new(lang.tr("More options…")).color(t.accent_text)));
         if more.clicked() {
             action = Some(Action::MoreOptions);
         }

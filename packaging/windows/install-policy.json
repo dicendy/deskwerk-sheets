@@ -30,7 +30,7 @@
       "-1",
       "Software\\Classes\\DeskwerkSheets.Workbook\\DefaultIcon",
       "",
-      "\"[#GridcraftExe]\",0"
+      "\"[#GridcraftDocIcon]\",0"
     ],
     [
       "-1",
@@ -48,7 +48,7 @@
       "-1",
       "Software\\Classes\\DeskwerkSheets.TextData\\DefaultIcon",
       "",
-      "\"[#GridcraftExe]\",0"
+      "\"[#GridcraftDocIcon]\",0"
     ],
     [
       "-1",
@@ -65,6 +65,18 @@
     [
       "-1",
       "Software\\Classes\\.xlsm\\OpenWithProgids",
+      "DeskwerkSheets.Workbook",
+      "DeskwerkSheets.Workbook"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\.xltx\\OpenWithProgids",
+      "DeskwerkSheets.Workbook",
+      "DeskwerkSheets.Workbook"
+    ],
+    [
+      "-1",
+      "Software\\Classes\\.xls\\OpenWithProgids",
       "DeskwerkSheets.Workbook",
       "DeskwerkSheets.Workbook"
     ],
@@ -114,6 +126,24 @@
       "-1",
       "Software\\Deskwerk\\Sheets\\Capabilities\\FileAssociations",
       ".xlsm",
+      "DeskwerkSheets.Workbook"
+    ],
+    [
+      "-1",
+      "Software\\Deskwerk\\Sheets\\Capabilities\\FileAssociations",
+      ".xltx",
+      "DeskwerkSheets.Workbook"
+    ],
+    [
+      "-1",
+      "Software\\Deskwerk\\Sheets\\Capabilities\\FileAssociations",
+      ".xls",
+      "DeskwerkSheets.Workbook"
+    ],
+    [
+      "-1",
+      "Software\\Deskwerk\\Sheets\\Capabilities\\FileAssociations",
+      ".ods",
       "DeskwerkSheets.Workbook"
     ],
     [

@@ -7,6 +7,13 @@
   <meta name="referrer" content="no-referrer">
   <title>Deskwerk Sheets</title>
   <link data-trunk rel="icon" href="../../assets/app-icon/gridcraft.ico" />
+  <!-- Web app manifest and its icons (192/512 px renders of the app icon), copied as named. -->
+  <link data-trunk rel="copy-file" href="manifest.webmanifest" />
+  <link data-trunk rel="copy-file" href="../../assets/app-icon/web/icon-192.png" />
+  <link data-trunk rel="copy-file" href="../../assets/app-icon/web/icon-512.png" />
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="theme-color" content="#12875C">
   <link data-trunk rel="rust" data-bin="gridcraft-web" data-wasm-opt="z" data-weak-refs />
   <!-- The font pack (gridcraft_ui_egui::font_pack): fetched from here, never from a font CDN. -->
   <link data-trunk rel="copy-dir" href="fonts" />

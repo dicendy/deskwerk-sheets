@@ -160,19 +160,22 @@
         <RegistryValue Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\deskwerk-sheets.exe" Value="[#GridcraftExe]" Type="string" />
 
         <!-- ProgIds: how Explorer opens a file with Deskwerk Sheets. Nothing here sets HKCR\.<ext>'s
-             default value, so the user's current default app is left alone. -->
+             default value, so the user's current default app is left alone. Files show the
+             document icon (deskwerk-sheets-document.ico, installed next to the exe). -->
         <RegistryValue Root="HKMU" Key="Software\Classes\DeskwerkSheets.Workbook" Value="Deskwerk Sheets Workbook" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\DeskwerkSheets.Workbook\DefaultIcon" Value="&quot;[#GridcraftExe]&quot;,0" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\DeskwerkSheets.Workbook\DefaultIcon" Value="&quot;[#GridcraftDocIcon]&quot;,0" Type="string" />
         <RegistryValue Root="HKMU" Key="Software\Classes\DeskwerkSheets.Workbook\shell\open\command" Value="&quot;[#GridcraftExe]&quot; &quot;%1&quot;" Type="string" />
         <RegistryValue Root="HKMU" Key="Software\Classes\DeskwerkSheets.TextData" Value="Deskwerk Sheets Text Data" Type="string" />
-        <RegistryValue Root="HKMU" Key="Software\Classes\DeskwerkSheets.TextData\DefaultIcon" Value="&quot;[#GridcraftExe]&quot;,0" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\DeskwerkSheets.TextData\DefaultIcon" Value="&quot;[#GridcraftDocIcon]&quot;,0" Type="string" />
         <RegistryValue Root="HKMU" Key="Software\Classes\DeskwerkSheets.TextData\shell\open\command" Value="&quot;[#GridcraftExe]&quot; &quot;%1&quot;" Type="string" />
 
         <!-- "Open with": Windows reads only the value names under OpenWithProgids; the data is
              ignored (WiX rejects an empty Value, so it repeats the ProgId). -->
         <RegistryValue Root="HKMU" Key="Software\Classes\.xlsx\OpenWithProgids" Name="DeskwerkSheets.Workbook" Value="DeskwerkSheets.Workbook" Type="string" />
         <RegistryValue Root="HKMU" Key="Software\Classes\.xlsm\OpenWithProgids" Name="DeskwerkSheets.Workbook" Value="DeskwerkSheets.Workbook" Type="string" />
-        <!-- .xlsb and .ods are imported (data only) into a new workbook that saves as .xlsx. -->
+        <RegistryValue Root="HKMU" Key="Software\Classes\.xltx\OpenWithProgids" Name="DeskwerkSheets.Workbook" Value="DeskwerkSheets.Workbook" Type="string" />
+        <!-- .xls, .xlsb and .ods are imported into a new workbook that saves as .xlsx. -->
+        <RegistryValue Root="HKMU" Key="Software\Classes\.xls\OpenWithProgids" Name="DeskwerkSheets.Workbook" Value="DeskwerkSheets.Workbook" Type="string" />
         <RegistryValue Root="HKMU" Key="Software\Classes\.xlsb\OpenWithProgids" Name="DeskwerkSheets.Workbook" Value="DeskwerkSheets.Workbook" Type="string" />
         <RegistryValue Root="HKMU" Key="Software\Classes\.ods\OpenWithProgids" Name="DeskwerkSheets.Workbook" Value="DeskwerkSheets.Workbook" Type="string" />
         <RegistryValue Root="HKMU" Key="Software\Classes\.csv\OpenWithProgids" Name="DeskwerkSheets.TextData" Value="DeskwerkSheets.TextData" Type="string" />
@@ -183,10 +186,18 @@
         <RegistryValue Root="HKMU" Key="Software\Deskwerk\Sheets\Capabilities" Name="ApplicationDescription" Value="Open-source spreadsheet for .xlsx, CSV and TSV files" Type="string" />
         <RegistryValue Root="HKMU" Key="Software\Deskwerk\Sheets\Capabilities\FileAssociations" Name=".xlsx" Value="DeskwerkSheets.Workbook" Type="string" />
         <RegistryValue Root="HKMU" Key="Software\Deskwerk\Sheets\Capabilities\FileAssociations" Name=".xlsm" Value="DeskwerkSheets.Workbook" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Deskwerk\Sheets\Capabilities\FileAssociations" Name=".xltx" Value="DeskwerkSheets.Workbook" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Deskwerk\Sheets\Capabilities\FileAssociations" Name=".xls" Value="DeskwerkSheets.Workbook" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Deskwerk\Sheets\Capabilities\FileAssociations" Name=".ods" Value="DeskwerkSheets.Workbook" Type="string" />
         <RegistryValue Root="HKMU" Key="Software\Deskwerk\Sheets\Capabilities\FileAssociations" Name=".csv" Value="DeskwerkSheets.TextData" Type="string" />
         <RegistryValue Root="HKMU" Key="Software\Deskwerk\Sheets\Capabilities\FileAssociations" Name=".tsv" Value="DeskwerkSheets.TextData" Type="string" />
         <RegistryValue Root="HKMU" Key="Software\RegisteredApplications" Name="Deskwerk Sheets" Value="Software\Deskwerk\Sheets\Capabilities" Type="string" />
       <RegistryValue Root="HKMU" Key="Software\Deskwerk\Sheets" Name="InstallDir" Value="[INSTALLFOLDER]" Type="string" />
+      </Component>
+
+      <!-- Document icon for the ProgIds' DefaultIcon (assets/app-icon/document.ico). -->
+      <Component Id="GridcraftDocIcon">
+        <File Id="GridcraftDocIcon" Source="$(sys.SOURCEFILEDIR)..\..\assets\app-icon\document.ico" Name="deskwerk-sheets-document.ico" KeyPath="yes" />
       </Component>
 
       <Component Id="GridcraftCli">

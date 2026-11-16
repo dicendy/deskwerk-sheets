@@ -117,6 +117,8 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 # Executable and icon carry the display name (CFBundleExecutable / CFBundleIconFile).
 cp "$WORK/bin/deskwerk-sheets" "$APP/Contents/MacOS/Deskwerk Sheets"
 cp "$ROOT/assets/app-icon/gridcraft.icns" "$APP/Contents/Resources/Deskwerk Sheets.icns"
+# Document icon (CFBundleTypeIconFile of every CFBundleDocumentTypes entry).
+cp "$ROOT/assets/app-icon/document.icns" "$APP/Contents/Resources/Deskwerk Sheets Document.icns"
 # Bundled dependency font notices are installed before the app is signed.
 cp "$ROOT/NOTICE" "$ROOT/ATTRIBUTION.md" "$APP/Contents/Resources/"
 # Licences of the embedded craft-fonts fonts (only when built with CRAFT_FONTS_DIR).

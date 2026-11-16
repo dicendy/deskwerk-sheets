@@ -17,9 +17,9 @@ This process comes from upstream GridCraft (by the ArtCraft team) and was rename
 | Display name `Deskwerk Sheets`, binaries `deskwerk-sheets` + `deskwerk-sheets-cli` (Cargo packages stay `gridcraft`, `gridcraft-cli`) | every script and workflow |
 | Bundle / app id `eu.deskwerk.Sheets` | `packaging/macos/Info.plist.in`, `packaging/linux/*`, flatpak manifest |
 | WiX UpgradeCode `CA81A1E0-D901-45D0-9E16-8859F2B95AF8` (fixed forever) | `packaging/windows/gridcraft.wxs` |
-| File types `.xlsx` `.xlsm` `.xlsb` `.ods` `.csv` `.tsv` | Info.plist (`CFBundleDocumentTypes`), WiX (ProgIds/OpenWithProgids), `.desktop` `MimeType=`, `eu.deskwerk.Sheets.mime.xml`, metainfo |
+| File types `.xlsx` `.xlsm` `.xltx` `.xls` `.xlsb` `.ods` `.csv` `.tsv` | Info.plist (`CFBundleDocumentTypes`), WiX (ProgIds/OpenWithProgids/Capabilities), `.desktop` `MimeType=`, `eu.deskwerk.Sheets.mime.xml`, metainfo |
 | Web app dir `apps/gridcraft-web` | `packaging/web/package.sh` |
-| App colour `#1f9d55` (ink `#147a40`), **proposed** | `assets/app-icon/README.md`, metainfo `<branding>` |
+| App colour `#12875C` (ink `#0C6845`) | `assets/app-icon/README.md`, `crates/ui-egui/src/theme.rs`, metainfo `<branding>`, web manifest |
 
 ## Application release prerequisites
 
@@ -164,7 +164,7 @@ Locally on Windows: `dotnet tool install -g wix --version 5.0.2`, then
 
 `packaging/linux/package.sh` stages one FHS tree (both binaries,
 `eu.deskwerk.Sheets.desktop` with `MimeType=` for the four types, hicolor icons 16–512 px
-+ scalable SVG, AppStream metainfo, shared-mime-info) and builds the AppImage (appimagetool),
++ the scalable document (mime) icon, AppStream metainfo, shared-mime-info) and builds the AppImage (appimagetool),
 `.deb` and `.rpm` (nfpm, `nfpm.yaml`) and `.tar.gz` from it. Built on Ubuntu 22.04, so the
 binaries need glibc ≥ 2.35. X11/Wayland/xkbcommon/Vulkan/EGL are loaded at runtime; the
 packages declare them (see `nfpm.yaml`).
@@ -274,11 +274,11 @@ the publisher.
 
 ## Icons
 
-`assets/app-icon/gridcraft.svg` is a **placeholder** (an original ledger-page drawing on
-green, inherited from upstream GridCraft) until Deskwerk art replaces it (see `docs/brand/DESKWERK-TODO.md`). `packaging/icons.sh` regenerates the 1024 px PNG, the macOS 512 px
-PNG, the `.icns` (iconutil), the `.ico` (`cargo xtask ico`) and the hicolor PNGs from it; it
-needs `resvg`. The outputs are committed, so packaging never needs those tools. Every file has a
-row in `ATTRIBUTION.md` (`cargo xtask assets`).
+The Deskwerk Sheets app icon and document icon live in `assets/app-icon/` (see its
+`README.md` for every file and where it is used). The app art is raster (no SVG); the document
+icon has an SVG source. `packaging/icons.sh <folder>` installs a delivered icon set and makes the
+web manifest PNGs. The outputs are committed, so packaging never needs those tools. Every file
+has a row in `ATTRIBUTION.md` (`cargo xtask assets`).
 
 ## Checks
 

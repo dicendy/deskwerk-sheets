@@ -5,24 +5,10 @@ name, app id (`eu.deskwerk.Sheets`), binaries (`deskwerk-sheets`, `deskwerk-shee
 packages, installers and settings folders are renamed. This file lists what still carries the
 upstream look or name, and why.
 
-## Art to replace
+## Art
 
-These icons are the original placeholder art from the upstream repository (a hand-drawn ledger
-page on a green tile, MIT OR Apache-2.0, see `ATTRIBUTION.md`). They are **not** ArtCraft
-trademarks, so shipping them is allowed, but Deskwerk should get its own icon:
-
-- `assets/app-icon/gridcraft.svg` (the source; everything below is generated from it by
-  `packaging/icons.sh`)
-- `assets/app-icon/gridcraft-1024.png`
-- `assets/app-icon/gridcraft-macos-512.png` (macOS Dock icon, embedded by `apps/gridcraft`)
-- `assets/app-icon/gridcraft.icns` (copied into the bundle as `Deskwerk Sheets.icns`)
-- `assets/app-icon/gridcraft.ico` (Windows exe and MSI icon, `cargo xtask ico`)
-- `assets/app-icon/hicolor/{16x16,24x24,32x32,48x48,64x64,128x128,256x256,512x512}/apps/eu.deskwerk.Sheets.png`
-- `assets/app-icon/hicolor/scalable/apps/eu.deskwerk.Sheets.svg`
-- The proposed app colour `#1f9d55` (`assets/app-icon/README.md`, metainfo `<branding>`).
-
-After replacing the SVG: run `packaging/icons.sh`, update `assets/app-icon/README.md` and the
-`ATTRIBUTION.md` rows (`cargo xtask assets` fails on any asset without a row).
+The upstream placeholder icons are replaced by Deskwerk art (app icon, document icon, accent
+`#12875C`; see `assets/app-icon/README.md`). Nothing left to replace.
 
 ## macOS DMG layout
 
@@ -30,8 +16,8 @@ After replacing the SVG: run `packaging/icons.sh`, update `assets/app-icon/READM
   `GridCraft.app`. The volume and bundle are now `Deskwerk Sheets` / `Deskwerk Sheets.app`, so
   Finder falls back to default icon positions until it is regenerated with
   `packaging/macos/dmg/generate.py` (already updated) on a Mac.
-- `packaging/macos/dmg/background.svg` / `background.tiff` embed the app icon; regenerate them
-  with the new icon.
+- `packaging/macos/dmg/background.svg` / `background.tiff` show the new icon, but the
+  background text still reads `GridCraft`; redraw it (outlined text) to say Deskwerk Sheets.
 
 ## Internal names kept on purpose
 

@@ -1,61 +1,38 @@
 #!/usr/bin/env bash
-# Regenerate every app icon from assets/app-icon/gridcraft.svg.
+# Install a delivered icon set into assets/app-icon/ (the art is raster; nothing is rendered here).
 #
-# Needs: resvg (brew install resvg / cargo install resvg). On macOS, iconutil also writes the
-# .icns. The outputs are committed, so builds and packaging never need these tools.
+#   packaging/icons.sh <folder>
 #
-#   packaging/icons.sh
+# <folder> holds: app.ico (16-256 px), app.icns, app-1024.png (full tile, transparent corners),
+# app-macos-512.png (on Apple's grid), hicolor/<N>x<N>.png for N in 16 24 32 48 64 128 256 512,
+# file.ico and file.svg (the document icon). Needs python3 with Pillow for the web manifest
+# icons. The outputs are committed, so builds and packaging never need this script.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIR="$ROOT/assets/app-icon"
-SVG="$DIR/gridcraft.svg"
 ID="eu.deskwerk.Sheets"
-TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
+SRC="${1:?usage: packaging/icons.sh <folder>}"
 
-command -v resvg >/dev/null || { echo "error: resvg not found (brew install resvg)" >&2; exit 1; }
-
-# The artwork is a full-bleed 512 tile (rx=112). Windows and Linux use it as is. macOS icons sit on
-# Apple's grid: an 824/1024 body with a transparent margin, so widen the viewBox to 512*1024/824.
-MAC="$TMP/mac.svg"
-sed 's/viewBox="0 0 512 512"/viewBox="-62.136 -62.136 636.272 636.272"/' "$SVG" >"$MAC"
-grep -q 'viewBox="-62.136' "$MAC" || { echo "error: expected viewBox=\"0 0 512 512\" in $SVG" >&2; exit 1; }
-
-render() {
-  local svg="$1" size="$2" out="$3"
-  resvg -w "$size" -h "$size" "$svg" "$out" </dev/null
-}
-
-render "$SVG" 1024 "$DIR/gridcraft-1024.png"
-# Runtime window/Dock icon on macOS (for apps/gridcraft to embed); other platforms use hicolor 256.
-render "$MAC" 512 "$DIR/gridcraft-macos-512.png"
-
-# Linux hicolor theme.
+cp "$SRC/app.ico" "$DIR/gridcraft.ico"
+cp "$SRC/app.icns" "$DIR/gridcraft.icns"
+cp "$SRC/app-1024.png" "$DIR/gridcraft-1024.png"
+cp "$SRC/app-macos-512.png" "$DIR/gridcraft-macos-512.png"
 for s in 16 24 32 48 64 128 256 512; do
   mkdir -p "$DIR/hicolor/${s}x${s}/apps"
-  render "$SVG" "$s" "$DIR/hicolor/${s}x${s}/apps/$ID.png"
+  cp "$SRC/hicolor/${s}x${s}.png" "$DIR/hicolor/${s}x${s}/apps/$ID.png"
 done
-mkdir -p "$DIR/hicolor/scalable/apps"
-cp "$SVG" "$DIR/hicolor/scalable/apps/$ID.svg"
-
-# Windows .ico.
-ICO_PNGS=()
-for s in 16 20 24 32 40 48 64 128 256; do
-  render "$SVG" "$s" "$TMP/ico-$s.png"
-  ICO_PNGS+=("$TMP/ico-$s.png")
-done
-(cd "$ROOT" && cargo run -q -p xtask --no-default-features -- ico "$DIR/gridcraft.ico" "${ICO_PNGS[@]}")
-
-# macOS .icns.
-if command -v iconutil >/dev/null; then
-  SET="$TMP/gridcraft.iconset"
-  mkdir -p "$SET"
-  for s in 16 32 128 256 512; do
-    render "$MAC" "$s" "$SET/icon_${s}x${s}.png"
-    render "$MAC" $((s * 2)) "$SET/icon_${s}x${s}@2x.png"
-  done
-  iconutil -c icns -o "$DIR/gridcraft.icns" "$SET"
-else
-  echo "warning: iconutil not found (macOS only); gridcraft.icns not regenerated" >&2
-fi
-echo "icons written to $DIR"
+cp "$SRC/file.ico" "$DIR/document.ico"
+mkdir -p "$DIR/hicolor/scalable/mimetypes"
+cp "$SRC/file.svg" "$DIR/hicolor/scalable/mimetypes/$ID.document.svg"
+mkdir -p "$DIR/web"
+python3 -I -c '
+import sys
+from PIL import Image
+im = Image.open(sys.argv[1]).convert("RGBA")
+for s in (192, 512):
+    im.resize((s, s), Image.Resampling.LANCZOS).save(f"{sys.argv[2]}/icon-{s}.png", optimize=True)
+' "$DIR/gridcraft-1024.png" "$DIR/web"
+# document.icns: render file.svg at 16-1024 px (any SVG renderer) and pack the PNGs with Pillow
+# or iconutil; not done here.
+echo "warning: document.icns not regenerated (render $SRC/file.svg and pack it by hand)" >&2
+echo "icons written to $DIR; update the DMG background with packaging/macos/dmg/generate.py"

@@ -82,7 +82,7 @@ pub fn show(app: &mut SheetApp, ui: &mut Ui) {
                             ui.painter().rect_filled(r.shrink2(vec2(2.0, 4.0)), 5.0, t.hover);
                         }
                         let color = if contextual {
-                            t.accent
+                            t.accent_text
                         } else if active {
                             t.text
                         } else {
@@ -250,7 +250,7 @@ fn scroll_arrows(ui: &mut Ui, t: &Tokens, tab: &str, scroll: egui::scroll_area::
 /// Excel's; the ribbon's tab and collapsed state are left as they were for when it closes.
 fn file_menu(app: &mut SheetApp, ui: &mut Ui) {
     let t = Tokens::get(ui.ctx());
-    let label = egui::RichText::new(app.ui.language.tr("File")).font(theme::ui_font(13.5)).color(t.accent);
+    let label = egui::RichText::new(app.ui.language.tr("File")).font(theme::ui_font(13.5)).color(t.accent_text);
     let file = ui.add(egui::Button::new(label).frame(false).min_size(vec2(46.0, 30.0)));
     if file.clicked() {
         app.open_backstage(crate::backstage::Page::Home);

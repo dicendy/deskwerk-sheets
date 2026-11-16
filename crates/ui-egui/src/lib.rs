@@ -17,7 +17,7 @@ pub const UPDATE_APP: craft_update::app::App = craft_update::app::App {
     repo: "dicendy/deskwerk-sheets",
     developer: "Deskwerk",
     icon_png: Some(include_bytes!("../../../assets/app-icon/hicolor/128x128/apps/eu.deskwerk.Sheets.png")),
-    accent: Some([0x1f, 0x9d, 0x55]),
+    accent: Some([0x12, 0x87, 0x5C]),
     ..craft_update::suite::GRIDCRAFT
 };
 

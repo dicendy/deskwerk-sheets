@@ -9,6 +9,7 @@ static site in `deskwerk-sheets-web-<version>/`:
 | `index.html` | The page. It loads everything through relative URLs. |
 | `gridcraft-web-<hash>.js` | wasm-bindgen glue (generated, ES module) |
 | `gridcraft-web-<hash>_bg.wasm` | The app (compresses to roughly a third with gzip/Brotli) |
+| `gridcraft-<hash>.ico`, `manifest.webmanifest`, `icon-192.png`, `icon-512.png` | Favicon, web app manifest and its icons |
 | `_headers`, `.htaccess` | Sample header rules for Netlify/Cloudflare Pages and Apache |
 | `fonts/` | The font pack: open fonts that draw the Office fonts a workbook names (Carlito for Calibri, Liberation for Arial/Times New Roman/Courier New, …) and popular open fonts, with `MANIFEST.tsv` (source, sha256, licence) and the licence texts in `fonts/licenses/`. About 46 MB in all (23 MB gzipped), but only Carlito (2.7 MB, 1.2 MB gzipped) loads at startup; every other file is fetched when a workbook or the user picks its font. |
 
