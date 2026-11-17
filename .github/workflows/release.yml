@@ -94,7 +94,7 @@ jobs:
 
   web:
     if: github.event_name == 'push' || contains(inputs.targets, 'web')
-    runs-on: ubuntu-24.04
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || fromJSON('["self-hosted", "deskwerk-fast"]') }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -110,10 +110,12 @@ jobs:
           rustc --version
 
       - uses: taiki-e/install-action@b80e2bb2635f28eb98b9fce1e2f0887e1535c6b2 # v2.90.0
+        if: runner.environment == 'github-hosted'
         with:
           tool: trunk@0.22.1
 
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        if: runner.environment == 'github-hosted'
         with:
           prefix-key: v1-release
           save-if: ${{ github.ref_name == github.event.repository.default_branch }}

@@ -15,7 +15,9 @@ concurrency:
 
 jobs:
   gate:
-    runs-on: ubuntu-24.04
+    # Pushes and manual runs use our own build server (warm cache); pull requests from
+    # forks never run there, they stay on GitHub-hosted runners.
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-24.04' || fromJSON('["self-hosted", "deskwerk-fast"]') }}
     timeout-minutes: 90
     env:
       CARGO_TERM_COLOR: always
@@ -60,9 +62,11 @@ jobs:
           fi
 
       - name: Free disk space
+        if: runner.environment == 'github-hosted'
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
 
       - name: System packages
+        if: runner.environment == 'github-hosted'
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends \
@@ -82,10 +86,12 @@ jobs:
           rustc --version
 
       - uses: taiki-e/install-action@b80e2bb2635f28eb98b9fce1e2f0887e1535c6b2 # v2.90.0
+        if: runner.environment == 'github-hosted'
         with:
           tool: cargo-nextest@0.9.150
 
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        if: runner.environment == 'github-hosted'
         with:
           prefix-key: v1-rust
           save-if: ${{ github.ref_name == github.event.repository.default_branch }}
