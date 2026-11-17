@@ -158,6 +158,15 @@ pub enum Icon {
     /// Header & Footer: a page with its top / bottom band marked.
     Header,
     Footer,
+    /// Insert › Header & Footer: a page with both bands marked.
+    HeaderFooter,
+    /// Go to Header / Go to Footer: a page and an arrow to its top / bottom band.
+    GoToHeader,
+    GoToFooter,
+    /// Header & Footer › File Path: a folder holding a page.
+    FilePath,
+    /// Header & Footer › Sheet Name: a sheet over its named tab.
+    SheetName,
     PageNumber,
     PageCount,
     Calendar,
@@ -1358,6 +1367,40 @@ fn paint_with(p: &Painter, rect: Rect, icon: Icon, c: Color32, pal: &Palette) {
             for yy in if icon == Icon::Header { [7.0, 9.5] } else { [4.5, 7.0] } {
                 g.stroke(&[(5.5, yy), (10.5, yy)], light);
             }
+        }
+        Icon::HeaderFooter => {
+            g.rect(3.5, 1.5, 9.0, 13.0, None, Some(c));
+            g.rect(4.5, 2.5, 7.0, 2.0, Some(blue), None);
+            g.rect(4.5, 11.5, 7.0, 2.0, Some(blue), None);
+            for yy in [6.5, 9.0] {
+                g.stroke(&[(5.5, yy), (10.5, yy)], light);
+            }
+        }
+        Icon::GoToHeader | Icon::GoToFooter => {
+            let header = icon == Icon::GoToHeader;
+            g.rect(1.5, 1.5, 8.0, 13.0, None, Some(c));
+            let band = if header { 2.5 } else { 11.0 };
+            g.rect(2.5, band, 6.0, 2.5, Some(blue), None);
+            for yy in if header { [7.0, 9.5] } else { [4.5, 7.0] } {
+                g.stroke(&[(3.5, yy), (7.5, yy)], light);
+            }
+            let (from, to) = if header { (13.0, 2.0) } else { (2.0, 13.0) };
+            arrow(&g, (12.5, from), (12.5, to), c);
+        }
+        Icon::FilePath => {
+            g.poly(&[(1.0, 3.0), (5.0, 3.0), (6.5, 4.5), (12.0, 4.5), (12.0, 11.5), (1.0, 11.5)], yellow);
+            g.rect(8.0, 6.5, 6.5, 8.5, Some(paper), Some(c));
+            for yy in [9.0, 11.0, 13.0] {
+                g.stroke(&[(9.5, yy), (13.0, yy)], light);
+            }
+        }
+        Icon::SheetName => {
+            g.rect(1.5, 1.5, 13.0, 8.0, None, Some(c));
+            g.stroke(&[(6.0, 1.5), (6.0, 9.5)], light);
+            g.stroke(&[(10.5, 1.5), (10.5, 9.5)], light);
+            g.stroke(&[(1.5, 5.5), (14.5, 5.5)], light);
+            g.poly(&[(2.0, 10.0), (11.0, 10.0), (10.0, 14.5), (3.0, 14.5)], blue);
+            g.stroke(&[(4.5, 12.25), (8.5, 12.25)], paper);
         }
         Icon::PageNumber | Icon::PageCount => {
             if icon == Icon::PageCount {

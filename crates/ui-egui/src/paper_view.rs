@@ -907,19 +907,19 @@ pub fn ribbon_tab(app: &mut SheetApp, ui: &mut egui::Ui) {
         (Icon::PageCount, "Number\nof Pages", "Number of Pages", "&[Pages]"),
         (Icon::Calendar, "Current\nDate", "Current Date", "&[Date]"),
         (Icon::Clock, "Current\nTime", "Current Time", "&[Time]"),
-        (Icon::Folder, "File\nPath", "File Path", "&[Path]&[File]"),
+        (Icon::FilePath, "File\nPath", "File Path", "&[Path]&[File]"),
         (Icon::FileName, "File\nName", "File Name", "&[File]"),
-        (Icon::Sheet, "Sheet\nName", "Sheet Name", "&[Tab]"),
+        (Icon::SheetName, "Sheet\nName", "Sheet Name", "&[Tab]"),
     ] {
         if big_button(ui, icon, label, tip, false).clicked() {
             insert_field(app, field);
         }
     }
     sep(ui);
-    if big_button(ui, Icon::Header, "Go to\nHeader", "Go to Header", false).clicked() && footer {
+    if big_button(ui, Icon::GoToHeader, "Go to\nHeader", "Go to Header", false).clicked() && footer {
         go_to(app, false);
     }
-    if big_button(ui, Icon::Footer, "Go to\nFooter", "Go to Footer", false).clicked() && !footer {
+    if big_button(ui, Icon::GoToFooter, "Go to\nFooter", "Go to Footer", false).clicked() && !footer {
         go_to(app, true);
     }
     sep(ui);

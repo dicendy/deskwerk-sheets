@@ -213,7 +213,7 @@ pub(super) fn insert(app: &mut SheetApp, ui: &mut Ui) {
     if __k.clicked() {
         act(app, "insert.textBox", json!({}));
     }
-    let __k = big_button(ui, Icon::Header, "Header &\nFooter", "Header & Footer", false);
+    let __k = big_button(ui, Icon::HeaderFooter, "Header &\nFooter", "Header & Footer", false);
     control_keytip(app, ui, &__k, "dialog:headerFooter");
     if __k.clicked() {
         // As in Excel: Page Layout view, editing the header in place (the dialog is under Page Setup).
