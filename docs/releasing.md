@@ -151,8 +151,8 @@ the MSI, and zips a portable build.
   `packaging/windows/test-desktop-shortcut.ps1` builds small fixture installers from the same
   sources plus 0.16.4's, and on the disposable runner checks installation, repair, upgrades
   (including from 0.16.4), opt-in/out and cleanup, including removal by SYSTEM. Previews show
-  the authored layout with default values; interactive checkbox behaviour still needs a
-  Windows desktop check.
+  the authored layout only (checkboxes are drawn unselected, as a preview has no property
+  state); interactive checkbox behaviour still needs a Windows desktop check.
 - **Signing:** `packaging/windows/sign.ps1` uses `signtool` with SHA-256 and an RFC 3161
   timestamp, from a `.pfx` (`WINDOWS_CERTIFICATE*`) if present, otherwise **Azure Trusted
   Signing** (`AZURE_*`, the storytold setup). With neither it warns and leaves files unsigned.

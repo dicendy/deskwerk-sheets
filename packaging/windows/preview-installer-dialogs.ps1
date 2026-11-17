@@ -7,8 +7,10 @@
   Each wizard page is saved as <NN>-<Dialog>.png in the order a new installation (01-05)
   and a maintenance run (06-07) show them. The same script is used by Deskwerk Docs and
   Deskwerk Sheets; the dialog window is found by its title, "<ProductName> Setup".
-  A preview cannot set properties: checkboxes show their Property-table defaults, and
-  conditional texts show the new-installation case.
+  A preview has no property state: checkboxes and radio buttons are drawn unselected
+  whatever their defaults (see the Property table for those), and conditional texts
+  show the new-installation case. Capture uses PW_RENDERFULLCONTENT so that transparent
+  texts drawn over the dialog bitmaps are included.
   https://learn.microsoft.com/windows/win32/msi/previewing-the-user-interface
 #>
 param(
@@ -107,7 +109,12 @@ try {
       Start-Sleep -Milliseconds 50
     }
     if ($window -eq [IntPtr]::Zero) { throw "No native window found for $dialog" }
-    [Windows.Forms.Application]::DoEvents()
+    # Let the dialog finish painting (its transparent texts are drawn after the bitmaps).
+    $paint = [Diagnostics.Stopwatch]::StartNew()
+    while ($paint.ElapsedMilliseconds -lt 500) {
+      [Windows.Forms.Application]::DoEvents()
+      Start-Sleep -Milliseconds 25
+    }
     $rect = New-Object DeskwerkMsiPreview+Rect
     if (-not [DeskwerkMsiPreview]::GetWindowRect($window, [ref] $rect)) { throw "Cannot measure $dialog" }
     $width = $rect.Right - $rect.Left
@@ -118,7 +125,9 @@ try {
     try {
       $dc = $graphics.GetHdc()
       try {
-        if (-not [DeskwerkMsiPreview]::PrintWindow($window, $dc, 0)) { throw "Capture failed for $dialog" }
+        # PW_RENDERFULLCONTENT (2) captures the composed window; plain PrintWindow is the fallback.
+        if (-not [DeskwerkMsiPreview]::PrintWindow($window, $dc, 2) -and
+            -not [DeskwerkMsiPreview]::PrintWindow($window, $dc, 0)) { throw "Capture failed for $dialog" }
       } finally { $graphics.ReleaseHdc($dc) }
       $colors = New-Object 'Collections.Generic.HashSet[int]'
       for ($y = 0; $y -lt $height; $y += [Math]::Max(1, [int] ($height / 32))) {
@@ -136,7 +145,7 @@ try {
     $preview = 0
     Write-Host "Saved native MSI dialog preview: $dialog"
   }
-  "$ProductName`: native MSI dialog previews only. No installation was run. Checkboxes show their defaults; progress has no live data." |
+  "$ProductName`: native MSI dialog previews only. No installation was run. Checkboxes and radio buttons are drawn unselected (a preview has no property state; defaults are in the Property table); progress has no live data." |
     Set-Content -LiteralPath (Join-Path $OutputDir 'README.txt') -Encoding utf8
 } finally {
   if ($preview -ne 0) {
