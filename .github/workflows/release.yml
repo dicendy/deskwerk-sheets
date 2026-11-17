@@ -187,6 +187,38 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      # Pictures of the installer wizard's pages, rendered by Windows Installer's dialog preview
+      # from the MSI just built (nothing is installed).
+      - name: Installer dialog previews
+        run: |
+          $msi = @(Get-ChildItem dist/release -Filter *.msi)
+          if ($msi.Count -ne 1) { throw "Expected one MSI in dist/release, found $($msi.Count)." }
+          pwsh -NoProfile -File packaging/windows/preview-installer-dialogs.ps1 -Msi $msi[0].FullName -OutputDir dist/installer-dialogs
+          if ($LASTEXITCODE -ne 0) { throw 'Dialog previews failed.' }
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: installer-dialogs
+          path: dist/installer-dialogs/*
+          if-no-files-found: error
+          retention-days: 7
+
+      # The last release before the shared installer UI (0.16.4), for the upgrade test below.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 31684d3ea1e84dd3cd3fe18400e0257709085f72
+          path: legacy-installer
+          sparse-checkout: |
+            packaging/windows
+            assets/app-icon
+          persist-credentials: false
+
+      # Installs fixture MSIs (no-op exes, the real packaging) on this disposable runner: desktop
+      # shortcut default, explicit choices, repair, upgrades (also from 0.16.4), uninstall.
+      - name: Installer desktop-shortcut smoke test
+        run: pwsh -NoProfile -File packaging/windows/test-desktop-shortcut.ps1 -LegacySource "$env:GITHUB_WORKSPACE\legacy-installer"
+
   macos:
     if: github.event_name == 'push' || contains(inputs.targets, 'macos')
     runs-on: macos-15

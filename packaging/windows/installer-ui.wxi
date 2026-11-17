@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The installer wizard and the desktop-shortcut choice. Deskwerk Docs and Deskwerk Sheets
+     carry the same copy of this file, so both installers go through the same pages with the
+     same texts; only the product name differs. Keep the two copies identical.
+
+     The including package defines, before the include:
+       AppName       product name, e.g. "Deskwerk Docs" (the finish page's launch checkbox)
+       AppExeId      File Id of the app's exe (launched from the finish page)
+       InstallerKey  registry key (under HKLM or HKCU) of the saved desktop-shortcut choice
+       LegacyInstallerKey  optional: an older key whose DesktopShortcut marker still counts
+                           as the saved choice (an upgrade from a version that used it)
+     and installs a component that writes InstallerKey\DesktopShortcut = [DESKTOPSHORTCUT].
+
+     Full UI, new installation or upgrade (after the "Who should use" page of install-policy.wxi):
+       WelcomeDlg -> DeskwerkReadyDlg (with "Create a desktop shortcut") -> ProgressDlg
+       -> ExitDialog (with "Launch <app>", ticked)
+     Maintenance (Programs and Features or running the same MSI again):
+       MaintenanceWelcomeDlg -> MaintenanceTypeDlg (Repair / Remove) -> DeskwerkReadyDlg
+       -> ProgressDlg -> ExitDialog
+     WelcomeDlg, ProgressDlg, ExitDialog, the maintenance pages and the error, cancel and
+     files-in-use dialogs are WiX's own (WixToolset.UI.wixext). DeskwerkReadyDlg is WiX 5.0.2's
+     VerifyReadyDlg with the shortcut checkbox added; it has its own Id so it can never clash
+     with the library's dialog. There is no licence page and no folder page. -->
+<Include xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <!-- Desktop shortcut. DESKTOPSHORTCUT=0/1 on the msiexec command line wins. Otherwise the
+       choice saved by the previous installation in the same context is reused, and a new
+       installation creates the shortcut. The two DESKTOPSHORTCUT actions run only in the first
+       sequence, so the execute sequence cannot reload the old choice after the user changed
+       the checkbox. -->
+  <Property Id="DESKTOPSHORTCUT" Secure="yes" />
+  <Property Id="SAVEDDESKTOPSHORTCUT" Secure="yes" />
+  <Property Id="CRAFT_OPTION_1_M" Secure="yes"><RegistrySearch Id="CRAFT_OPTION_1_MSearch" Root="HKLM" Key="$(var.InstallerKey)" Name="DesktopShortcut" Type="raw" /></Property>
+  <Property Id="CRAFT_OPTION_1_U" Secure="yes"><RegistrySearch Id="CRAFT_OPTION_1_USearch" Root="HKCU" Key="$(var.InstallerKey)" Name="DesktopShortcut" Type="raw" /></Property>
+  <SetProperty Id="SAVEDDESKTOPSHORTCUT" Action="CraftLoadOption1M" Value="[CRAFT_OPTION_1_M]" After="LaunchConditions" Sequence="both" Condition="ALLUSERS = 1" />
+  <SetProperty Id="SAVEDDESKTOPSHORTCUT" Action="CraftLoadOption1U" Value="[CRAFT_OPTION_1_U]" After="CraftLoadOption1M" Sequence="both" Condition="ALLUSERS &lt;&gt; 1" />
+  <?ifdef LegacyInstallerKey ?>
+  <!-- The older version kept only a marker (DesktopShortcut, an integer) next to its desktop
+       shortcut: present means the shortcut was installed. Its InstallDir record without the
+       marker means it was installed with DESKTOPSHORTCUT=0. -->
+  <Property Id="CRAFT_LEGACY_SHORTCUT_M" Secure="yes"><RegistrySearch Id="CRAFT_LEGACY_SHORTCUT_MSearch" Root="HKLM" Key="$(var.LegacyInstallerKey)" Name="DesktopShortcut" Type="raw" /></Property>
+  <Property Id="CRAFT_LEGACY_SHORTCUT_U" Secure="yes"><RegistrySearch Id="CRAFT_LEGACY_SHORTCUT_USearch" Root="HKCU" Key="$(var.LegacyInstallerKey)" Name="DesktopShortcut" Type="raw" /></Property>
+  <SetProperty Id="SAVEDDESKTOPSHORTCUT" Action="CraftLegacyShortcutOn" Value="1" After="CraftLoadOption1U" Sequence="both" Condition="NOT SAVEDDESKTOPSHORTCUT AND ((ALLUSERS = 1 AND CRAFT_LEGACY_SHORTCUT_M) OR (ALLUSERS &lt;&gt; 1 AND CRAFT_LEGACY_SHORTCUT_U))" />
+  <SetProperty Id="SAVEDDESKTOPSHORTCUT" Action="CraftLegacyShortcutOff" Value="0" After="CraftLegacyShortcutOn" Sequence="both" Condition="NOT SAVEDDESKTOPSHORTCUT AND ((ALLUSERS = 1 AND CRAFT_M_DIR) OR (ALLUSERS &lt;&gt; 1 AND CRAFT_U_DIR))" />
+  <SetProperty Id="DESKTOPSHORTCUT" Action="LoadDesktopShortcutPreference" Value="0" After="CraftLegacyShortcutOff" Sequence="first" Condition="NOT DESKTOPSHORTCUT AND SAVEDDESKTOPSHORTCUT = &quot;0&quot;" />
+  <?else?>
+  <SetProperty Id="DESKTOPSHORTCUT" Action="LoadDesktopShortcutPreference" Value="0" After="CraftLoadOption1U" Sequence="first" Condition="NOT DESKTOPSHORTCUT AND SAVEDDESKTOPSHORTCUT = &quot;0&quot;" />
+  <?endif?>
+  <SetProperty Id="DESKTOPSHORTCUT" Action="DefaultDesktopShortcut" Value="1" After="LoadDesktopShortcutPreference" Sequence="first" Condition="NOT DESKTOPSHORTCUT" />
+  <!-- The checkbox's own property: ticked unless the choice above is 0 (cleared when leaving
+       the welcome page, once). The Install button turns it into an explicit DESKTOPSHORTCUT
+       of 1 or 0 for the execute sequence. -->
+  <Property Id="DesktopShortcutChoice" Value="1" />
+
+  <!-- Finish page: "Launch <app>", ticked. ExitDialog exists only in full UI, so silent and
+       basic-UI installs never start the app; maintenance runs hide the checkbox. -->
+  <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch $(var.AppName)" />
+  <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+  <Property Id="WixShellExecTarget" Value="[#$(var.AppExeId)]" />
+  <CustomAction Id="LaunchApplication" BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)" DllEntry="WixShellExec" Impersonate="yes" Return="ignore" />
+
+  <UI>
+    <TextStyle Id="WixUI_Font_Normal" FaceName="Tahoma" Size="8" />
+    <TextStyle Id="WixUI_Font_Bigger" FaceName="Tahoma" Size="12" />
+    <TextStyle Id="WixUI_Font_Title" FaceName="Tahoma" Size="9" Bold="yes" />
+    <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
+    <!-- No Change in Programs and Features: there is nothing to change (one feature, no folder page). -->
+    <Property Id="ARPNOMODIFY" Value="1" />
+
+    <DialogRef Id="ErrorDlg" />
+    <DialogRef Id="FatalError" />
+    <DialogRef Id="FilesInUse" />
+    <DialogRef Id="MsiRMFilesInUse" />
+    <DialogRef Id="PrepareDlg" />
+    <DialogRef Id="ProgressDlg" />
+    <DialogRef Id="ResumeDlg" />
+    <DialogRef Id="UserExit" />
+    <DialogRef Id="WelcomeDlg" />
+    <DialogRef Id="ExitDialog" />
+    <DialogRef Id="MaintenanceWelcomeDlg" />
+    <DialogRef Id="MaintenanceTypeDlg" />
+
+    <!-- WiX 5.0.2 VerifyReadyDlg (src/ext/UI/wixlib/VerifyReadyDlg.wxs, Microsoft Reciprocal
+         License) plus DesktopShortcutCheckBox and the two DESKTOPSHORTCUT events on Install. -->
+    <Dialog Id="DeskwerkReadyDlg" Width="370" Height="270" Title="!(loc.VerifyReadyDlg_Title)" TrackDiskSpace="yes">
+      <Control Id="Install" Type="PushButton" ElevationShield="yes" X="212" Y="243" Width="80" Height="17" Default="yes" Hidden="yes" Disabled="yes" Text="!(loc.VerifyReadyDlgInstall)" ShowCondition="NOT Installed AND ALLUSERS" EnableCondition="NOT Installed" DefaultCondition="NOT Installed">
+        <Publish Property="DESKTOPSHORTCUT" Value="1" Condition="DesktopShortcutChoice" />
+        <Publish Property="DESKTOPSHORTCUT" Value="0" Condition="NOT DesktopShortcutChoice" />
+        <Publish Event="EndDialog" Value="Return" Condition="OutOfDiskSpace &lt;&gt; 1" />
+        <Publish Event="SpawnDialog" Value="OutOfRbDiskDlg" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND (PROMPTROLLBACKCOST=&quot;P&quot; OR NOT PROMPTROLLBACKCOST)" />
+        <Publish Event="EndDialog" Value="Return" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND PROMPTROLLBACKCOST=&quot;D&quot;" />
+        <Publish Event="EnableRollback" Value="False" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND PROMPTROLLBACKCOST=&quot;D&quot;" />
+        <Publish Event="SpawnDialog" Value="OutOfDiskDlg" Condition="(OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 1) OR (OutOfDiskSpace = 1 AND PROMPTROLLBACKCOST=&quot;F&quot;)" />
+      </Control>
+      <Control Id="InstallNoShield" Type="PushButton" ElevationShield="no" X="212" Y="243" Width="80" Height="17" Default="yes" Hidden="yes" Disabled="yes" Text="!(loc.VerifyReadyDlgInstall)" ShowCondition="NOT Installed AND NOT ALLUSERS" EnableCondition="NOT Installed" DefaultCondition="NOT Installed">
+        <Publish Property="DESKTOPSHORTCUT" Value="1" Condition="DesktopShortcutChoice" />
+        <Publish Property="DESKTOPSHORTCUT" Value="0" Condition="NOT DesktopShortcutChoice" />
+        <Publish Event="EndDialog" Value="Return" Condition="OutOfDiskSpace &lt;&gt; 1" />
+        <Publish Event="SpawnDialog" Value="OutOfRbDiskDlg" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND (PROMPTROLLBACKCOST=&quot;P&quot; OR NOT PROMPTROLLBACKCOST)" />
+        <Publish Event="EndDialog" Value="Return" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND PROMPTROLLBACKCOST=&quot;D&quot;" />
+        <Publish Event="EnableRollback" Value="False" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND PROMPTROLLBACKCOST=&quot;D&quot;" />
+        <Publish Event="SpawnDialog" Value="OutOfDiskDlg" Condition="(OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 1) OR (OutOfDiskSpace = 1 AND PROMPTROLLBACKCOST=&quot;F&quot;)" />
+      </Control>
+      <Control Id="Repair" Type="PushButton" X="212" Y="243" Width="80" Height="17" Default="yes" Hidden="yes" Disabled="yes" Text="!(loc.VerifyReadyDlgRepair)" ShowCondition="WixUI_InstallMode = &quot;Repair&quot;" EnableCondition="WixUI_InstallMode = &quot;Repair&quot;" DefaultCondition="WixUI_InstallMode = &quot;Repair&quot;">
+        <Publish Event="ReinstallMode" Value="ecmus" Condition="OutOfDiskSpace &lt;&gt; 1" />
+        <Publish Event="Reinstall" Value="All" Condition="OutOfDiskSpace &lt;&gt; 1" />
+        <Publish Event="EndDialog" Value="Return" Condition="OutOfDiskSpace &lt;&gt; 1" />
+        <Publish Event="SpawnDialog" Value="OutOfRbDiskDlg" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND (PROMPTROLLBACKCOST=&quot;P&quot; OR NOT PROMPTROLLBACKCOST)" />
+        <Publish Event="EndDialog" Value="Return" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND PROMPTROLLBACKCOST=&quot;D&quot;" />
+        <Publish Event="EnableRollback" Value="False" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND PROMPTROLLBACKCOST=&quot;D&quot;" />
+        <Publish Event="SpawnDialog" Value="OutOfDiskDlg" Condition="(OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 1) OR (OutOfDiskSpace = 1 AND PROMPTROLLBACKCOST=&quot;F&quot;)" />
+      </Control>
+      <Control Id="Remove" Type="PushButton" ElevationShield="yes" X="212" Y="243" Width="80" Height="17" Hidden="yes" Disabled="yes" Text="!(loc.VerifyReadyDlgRemove)" ShowCondition="WixUI_InstallMode = &quot;Remove&quot; AND ALLUSERS" EnableCondition="WixUI_InstallMode = &quot;Remove&quot;">
+        <Publish Event="Remove" Value="All" Condition="OutOfDiskSpace &lt;&gt; 1" />
+        <Publish Event="EndDialog" Value="Return" Condition="OutOfDiskSpace &lt;&gt; 1" />
+        <Publish Event="SpawnDialog" Value="OutOfRbDiskDlg" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND (PROMPTROLLBACKCOST=&quot;P&quot; OR NOT PROMPTROLLBACKCOST)" />
+        <Publish Event="EndDialog" Value="Return" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND PROMPTROLLBACKCOST=&quot;D&quot;" />
+        <Publish Event="EnableRollback" Value="False" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND PROMPTROLLBACKCOST=&quot;D&quot;" />
+        <Publish Event="SpawnDialog" Value="OutOfDiskDlg" Condition="(OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 1) OR (OutOfDiskSpace = 1 AND PROMPTROLLBACKCOST=&quot;F&quot;)" />
+      </Control>
+      <Control Id="RemoveNoShield" Type="PushButton" ElevationShield="no" X="212" Y="243" Width="80" Height="17" Hidden="yes" Disabled="yes" Text="!(loc.VerifyReadyDlgRemove)" ShowCondition="WixUI_InstallMode = &quot;Remove&quot; AND NOT ALLUSERS" EnableCondition="WixUI_InstallMode = &quot;Remove&quot;">
+        <Publish Event="Remove" Value="All" Condition="OutOfDiskSpace &lt;&gt; 1" />
+        <Publish Event="EndDialog" Value="Return" Condition="OutOfDiskSpace &lt;&gt; 1" />
+        <Publish Event="SpawnDialog" Value="OutOfRbDiskDlg" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND (PROMPTROLLBACKCOST=&quot;P&quot; OR NOT PROMPTROLLBACKCOST)" />
+        <Publish Event="EndDialog" Value="Return" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND PROMPTROLLBACKCOST=&quot;D&quot;" />
+        <Publish Event="EnableRollback" Value="False" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND PROMPTROLLBACKCOST=&quot;D&quot;" />
+        <Publish Event="SpawnDialog" Value="OutOfDiskDlg" Condition="(OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 1) OR (OutOfDiskSpace = 1 AND PROMPTROLLBACKCOST=&quot;F&quot;)" />
+      </Control>
+      <Control Id="Update" Type="PushButton" ElevationShield="yes" X="212" Y="243" Width="80" Height="17" Hidden="yes" Disabled="yes" Text="!(loc.VerifyReadyDlgUpdate)" ShowCondition="WixUI_InstallMode = &quot;Update&quot; AND ALLUSERS" EnableCondition="WixUI_InstallMode = &quot;Update&quot;">
+        <Publish Event="EndDialog" Value="Return" Condition="OutOfDiskSpace &lt;&gt; 1" />
+        <Publish Event="SpawnDialog" Value="OutOfRbDiskDlg" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND (PROMPTROLLBACKCOST=&quot;P&quot; OR NOT PROMPTROLLBACKCOST)" />
+        <Publish Event="EndDialog" Value="Return" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND PROMPTROLLBACKCOST=&quot;D&quot;" />
+        <Publish Event="EnableRollback" Value="False" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND PROMPTROLLBACKCOST=&quot;D&quot;" />
+        <Publish Event="SpawnDialog" Value="OutOfDiskDlg" Condition="(OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 1) OR (OutOfDiskSpace = 1 AND PROMPTROLLBACKCOST=&quot;F&quot;)" />
+      </Control>
+      <Control Id="UpdateNoShield" Type="PushButton" ElevationShield="no" X="212" Y="243" Width="80" Height="17" Hidden="yes" Disabled="yes" Text="!(loc.VerifyReadyDlgUpdate)" ShowCondition="WixUI_InstallMode = &quot;Update&quot; AND NOT ALLUSERS" EnableCondition="WixUI_InstallMode = &quot;Update&quot;">
+        <Publish Event="EndDialog" Value="Return" Condition="OutOfDiskSpace &lt;&gt; 1" />
+        <Publish Event="SpawnDialog" Value="OutOfRbDiskDlg" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND (PROMPTROLLBACKCOST=&quot;P&quot; OR NOT PROMPTROLLBACKCOST)" />
+        <Publish Event="EndDialog" Value="Return" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND PROMPTROLLBACKCOST=&quot;D&quot;" />
+        <Publish Event="EnableRollback" Value="False" Condition="OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND PROMPTROLLBACKCOST=&quot;D&quot;" />
+        <Publish Event="SpawnDialog" Value="OutOfDiskDlg" Condition="(OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 1) OR (OutOfDiskSpace = 1 AND PROMPTROLLBACKCOST=&quot;F&quot;)" />
+      </Control>
+      <Control Id="InstallTitle" Type="Text" X="15" Y="15" Width="300" Height="15" Transparent="yes" NoPrefix="yes" Hidden="yes" Text="!(loc.VerifyReadyDlgInstallTitle)" ShowCondition="NOT Installed" />
+      <Control Id="InstallText" Type="Text" X="25" Y="70" Width="320" Height="80" Hidden="yes" Text="!(loc.VerifyReadyDlgInstallText)" ShowCondition="NOT Installed" />
+      <Control Id="DesktopShortcutCheckBox" Type="CheckBox" X="25" Y="160" Width="320" Height="17" Hidden="yes" Property="DesktopShortcutChoice" CheckBoxValue="1" Text="Create a &amp;desktop shortcut" ShowCondition="NOT Installed" />
+      <Control Id="RepairTitle" Type="Text" X="15" Y="15" Width="300" Height="15" Transparent="yes" NoPrefix="yes" Hidden="yes" Text="!(loc.VerifyReadyDlgRepairTitle)" ShowCondition="WixUI_InstallMode = &quot;Repair&quot;" />
+      <Control Id="RepairText" Type="Text" X="25" Y="70" Width="320" Height="80" Hidden="yes" NoPrefix="yes" Text="!(loc.VerifyReadyDlgRepairText)" ShowCondition="WixUI_InstallMode = &quot;Repair&quot;" />
+      <Control Id="RemoveTitle" Type="Text" X="15" Y="15" Width="300" Height="15" Transparent="yes" NoPrefix="yes" Hidden="yes" Text="!(loc.VerifyReadyDlgRemoveTitle)" ShowCondition="WixUI_InstallMode = &quot;Remove&quot;" />
+      <Control Id="RemoveText" Type="Text" X="25" Y="70" Width="320" Height="80" Hidden="yes" NoPrefix="yes" Text="!(loc.VerifyReadyDlgRemoveText)" ShowCondition="WixUI_InstallMode = &quot;Remove&quot;" />
+      <Control Id="UpdateTitle" Type="Text" X="15" Y="15" Width="300" Height="15" Transparent="yes" NoPrefix="yes" Hidden="yes" Text="!(loc.VerifyReadyDlgUpdateTitle)" ShowCondition="WixUI_InstallMode = &quot;Update&quot;" />
+      <Control Id="UpdateText" Type="Text" X="25" Y="70" Width="320" Height="80" Hidden="yes" NoPrefix="yes" Text="!(loc.VerifyReadyDlgUpdateText)" ShowCondition="WixUI_InstallMode = &quot;Update&quot;" />
+      <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="!(loc.WixUICancel)">
+        <Publish Event="SpawnDialog" Value="CancelDlg" />
+      </Control>
+      <Control Id="Back" Type="PushButton" X="156" Y="243" Width="56" Height="17" Text="!(loc.WixUIBack)" DefaultCondition="WixUI_InstallMode = &quot;Remove&quot;" />
+      <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="!(loc.VerifyReadyDlgBannerBitmap)" />
+      <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+      <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+    </Dialog>
+
+    <Publish Dialog="WelcomeDlg" Control="Next" Property="DesktopShortcutChoice" Value="{}" Order="2" Condition="NOT Installed AND DESKTOPSHORTCUT = &quot;0&quot; AND NOT DesktopShortcutChoiceLoaded" />
+    <Publish Dialog="WelcomeDlg" Control="Next" Property="DesktopShortcutChoiceLoaded" Value="1" Order="3" Condition="NOT Installed" />
+    <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="DeskwerkReadyDlg" Order="4" Condition="NOT Installed" />
+    <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="DeskwerkReadyDlg" Order="5" Condition="Installed AND PATCH" />
+
+    <Publish Dialog="DeskwerkReadyDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="1" Condition="NOT Installed" />
+    <Publish Dialog="DeskwerkReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Order="2" Condition="Installed AND NOT PATCH" />
+    <Publish Dialog="DeskwerkReadyDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="3" Condition="Installed AND PATCH" />
+
+    <Publish Dialog="MaintenanceWelcomeDlg" Control="Next" Event="NewDialog" Value="MaintenanceTypeDlg" />
+    <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="DeskwerkReadyDlg" />
+    <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="DeskwerkReadyDlg" />
+    <Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg" />
+
+    <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication" Order="1" Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 AND NOT Installed" />
+    <Publish Dialog="ExitDialog" Control="Finish" Event="EndDialog" Value="Return" Order="999" />
+  </UI>
+  <UIRef Id="WixUI_Common" />
+</Include>

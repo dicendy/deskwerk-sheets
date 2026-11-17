@@ -12,6 +12,29 @@ choices stay app-owned. No new cleanup operation or model/settings migration is 
 Packaged resources remain package-owned; separately downloaded shared models are not caches
 and are outside this installer's ownership.
 
+## Setup wizard
+
+Deskwerk Docs and Deskwerk Sheets share one wizard (`installer-ui.wxi`, the same file in both
+repositories; WiX's standard dialogs from WixToolset.UI.wixext). A new installation or an
+upgrade shows: who should use the app (the scope page above), Welcome, Ready to install with
+**Create a desktop shortcut**, progress, and Finish with **Launch Deskwerk <App>** (ticked;
+never in `/qn` or `/qb` installs). There is no licence page and no folder page; the licence
+texts are installed as plain files next to the app. Running the MSI again shows Repair /
+Remove (Change is off: there is nothing to change), then the same Ready page and progress.
+
+The desktop shortcut goes on the desktop of the selected context (the common desktop for
+everyone, the user's own for the current account) and uninstall removes it. The checkbox is
+ticked on a new installation; an upgrade remembers the previous choice (stored as
+`Software\Deskwerk\<App>\Installer\DesktopShortcut` under HKLM or HKCU). `DESKTOPSHORTCUT=0`
+or `DESKTOPSHORTCUT=1` on the `msiexec` command line always wins. Deskwerk Docs 0.15.6 and
+earlier kept only a marker under `Software\DeskwerkDocs\Installer`; an upgrade from those
+reads it, so a removed shortcut stays removed.
+
+The Windows release job renders the wizard's pages from the built MSI
+(`preview-installer-dialogs.ps1`, artifact `installer-dialogs`) and installs fixture MSIs built
+from these sources on the disposable runner (`test-desktop-shortcut.ps1`: default, explicit
+choices, repair, upgrades including from the last release, uninstall by another account).
+
 ## Repeatable metadata tests
 
 On Windows with WiX 5.0.2 and its matching UI/Util extensions:

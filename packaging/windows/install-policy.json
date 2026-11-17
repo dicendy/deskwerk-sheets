@@ -8,7 +8,10 @@
   ],
   "icon": "assets/app-icon/deskwerk-sheets.ico",
   "localization": [],
-  "extensions": [],
+  "extensions": [
+    "UI",
+    "Util"
+  ],
   "payloads": [
     "deskwerk-sheets-cli.exe",
     "deskwerk-sheets.exe"

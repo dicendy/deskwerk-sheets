@@ -115,6 +115,7 @@ if ($env:CRAFT_FONTS_DIR) {
 $Msi = Join-Path $Dist "deskwerk-sheets-$Version-windows-$Arch.msi"
 Invoke-Native 'wix build' {
   wix build (Join-Path $PSScriptRoot 'deskwerk-sheets.wxs') -arch $Arch `
+    -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext `
     -d "Version=$MsiVersion" -d "BinDir=$Stage" -d "IconPath=$(Join-Path $Root 'assets\app-icon\deskwerk-sheets.ico')" `
     -d "DocsDir=$Docs" -d "HasCraftFontLicences=$HasCraftFontLicences" `
     -o $Msi
