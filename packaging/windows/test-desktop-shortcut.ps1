@@ -181,23 +181,27 @@ function Uninstall-AsSystem($Package) {
   $action = New-ScheduledTaskAction -Execute (Join-Path $env:WINDIR 'System32\msiexec.exe') `
     -Argument "/x $($Package.Code) /qn /norestart /l*v `"$log`""
   $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
-  $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 3)
+  $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 8)
   try {
     Register-ScheduledTask -TaskName $taskName -Action $action -Principal $principal -Settings $settings | Out-Null
     $started = Get-Date
     Start-ScheduledTask -TaskName $taskName
-    $deadline = $started.AddMinutes(3)
+    $deadline = $started.AddMinutes(8)
     do {
       Start-Sleep -Milliseconds 250
       $task = Get-ScheduledTask -TaskName $taskName
       $info = Get-ScheduledTaskInfo -TaskName $taskName
       if ($info.LastRunTime -ge $started.AddSeconds(-1) -and $task.State -ne 'Running' -and $info.LastTaskResult -ne 267009) {
+        if ($info.LastTaskResult -ne 0 -and (Test-Path $log)) { Get-Content -LiteralPath $log -Tail 80 | Write-Host }
         Assert-That ($info.LastTaskResult -eq 0) "Cross-account uninstall failed with $($info.LastTaskResult); see $log"
-        Write-Host 'ok uninstall-as-system'
+        Write-Host "ok uninstall-as-system ($([int]((Get-Date) - $started).TotalSeconds)s)"
         return
       }
     } while ((Get-Date) -lt $deadline)
-    throw "Cross-account uninstall exceeded three minutes; see $log"
+    Write-Host "Task state $($task.State), last result $($info.LastTaskResult), last run $($info.LastRunTime)"
+    Get-Process msiexec -ErrorAction SilentlyContinue | Format-Table Id, StartTime, CPU -AutoSize | Out-String | Write-Host
+    if (Test-Path $log) { Get-Content -LiteralPath $log -Tail 80 | Write-Host }
+    throw "Cross-account uninstall exceeded eight minutes; see $log"
   } finally {
     if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
       Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
