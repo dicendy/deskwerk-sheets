@@ -93,7 +93,7 @@ impl Page {
             Page::Print => Icon::Print,
             Page::Export => Icon::Share,
             Page::Options => Icon::Settings,
-            Page::Account => Icon::Info,
+            Page::Account => Icon::Person,
         }
     }
 }
@@ -527,7 +527,9 @@ fn action_row(ui: &mut Ui, icon: Icon, title: &str, detail: &str) -> egui::Respo
     let (rect, resp) = ui.allocate_exact_size(vec2(width, 56.0), Sense::click());
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, title));
     let p = ui.painter();
-    if resp.hovered() {
+    if resp.is_pointer_button_down_on() {
+        p.rect_filled(rect, 4.0, t.pressed);
+    } else if resp.hovered() {
         p.rect_filled(rect, 4.0, t.hover);
     }
     icons::paint(p, Rect::from_center_size(pos2(rect.left() + 24.0, rect.center().y), vec2(24.0, 24.0)), icon, t.text);
@@ -540,13 +542,23 @@ fn action_row(ui: &mut Ui, icon: Icon, title: &str, detail: &str) -> egui::Respo
 fn square_button(ui: &mut Ui, icon: Icon, label: &str) -> egui::Response {
     let t = Tokens::get(ui.ctx());
     let (rect, resp) = ui.allocate_exact_size(vec2(96.0, 88.0), Sense::click());
-    resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, label));
+    let enabled = ui.is_enabled();
+    resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, enabled, label));
+    let (hovered, pressed) = (enabled && resp.hovered(), enabled && resp.is_pointer_button_down_on());
+    let fade = |c: Color32| if enabled { c } else { c.gamma_multiply(0.4) };
     let p = ui.painter();
-    p.rect_filled(rect, 6.0, if resp.hovered() { t.hover } else { t.ribbon });
-    p.rect_stroke(rect, 6.0, Stroke::new(1.0, if resp.hovered() { t.accent } else { t.ribbon_border }), StrokeKind::Inside);
-    icons::paint(p, Rect::from_center_size(pos2(rect.center().x, rect.top() + 32.0), vec2(30.0, 30.0)), icon, t.text);
-    let galley = p.layout(label.to_string(), theme::ui_font(12.0), t.text, rect.width() - 8.0);
-    p.galley(pos2(rect.center().x - galley.size().x / 2.0, rect.top() + 56.0), galley, t.text);
+    let fill = if pressed {
+        t.pressed
+    } else if hovered {
+        t.hover
+    } else {
+        t.ribbon
+    };
+    p.rect_filled(rect, 6.0, fill);
+    p.rect_stroke(rect, 6.0, Stroke::new(1.0, if hovered || pressed { t.accent } else { t.ribbon_border }), StrokeKind::Inside);
+    icons::paint(p, Rect::from_center_size(pos2(rect.center().x, rect.top() + 32.0), vec2(30.0, 30.0)), icon, fade(t.text));
+    let galley = p.layout(label.to_string(), theme::ui_font(12.0), fade(t.text), rect.width() - 8.0);
+    p.galley(pos2(rect.center().x - galley.size().x / 2.0, rect.top() + 56.0), galley, fade(t.text));
     resp
 }
 
@@ -629,7 +641,7 @@ fn info(app: &mut SheetApp, ui: &mut Ui, bs: &mut Backstage) {
     });
     ui.add_space(18.0);
     ui.horizontal(|ui| {
-        if square_button(ui, Icon::Lock, lang.tr("Protect Workbook")).clicked() {
+        if square_button(ui, Icon::ProtectWorkbook, lang.tr("Protect Workbook")).clicked() {
             protect_workbook(app);
         }
         ui.add_space(12.0);
@@ -716,7 +728,7 @@ fn save_as(app: &mut SheetApp, ui: &mut Ui, bs: &mut Backstage, out: &mut Outcom
 
 fn export(app: &mut SheetApp, ui: &mut Ui, out: &mut Outcome) {
     let lang = app.ui.language;
-    if action_row(ui, Icon::Paper, lang.tr("Create PDF"), lang.tr("Save the sheet as a PDF document that keeps its page layout.")).clicked()
+    if action_row(ui, Icon::Pdf, lang.tr("Create PDF"), lang.tr("Save the sheet as a PDF document that keeps its page layout.")).clicked()
         && export_as(app, "pdf")
     {
         out.close = true;

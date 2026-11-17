@@ -1,6 +1,7 @@
 use super::ref_edit::{RefLabel, SHEET_DELETED, current_area_ref, end_pick, home_sheet_deleted, ref_edit};
 use super::show::{build_params, form_fields, ok_cancel};
 use super::{Dialog, Field, Json, Map, SheetApp, json, vec2};
+use crate::widgets::{ButtonKind, button_row, push_button};
 
 /// Data › What-If Analysis › Goal Seek. OK runs `data.goalSeek` here; Cancel clears `open`, as
 /// the shared buttons do, so cancelling is never taken for a confirmation.
@@ -230,12 +231,12 @@ pub(super) fn analysis_toolpak(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Di
     if d.values.get("askOverwrite").and_then(Json::as_bool) == Some(true) {
         ui.label("The output range already holds data. Replace it with the report?");
         ui.horizontal(|ui| {
-            if ui.button("Replace").clicked() {
+            if ui.add(push_button("Replace", ButtonKind::Primary)).clicked() {
                 d.values.remove("askOverwrite");
                 d.values.insert("overwrite".into(), json!(true));
                 *confirm = true;
             }
-            if ui.button("Cancel").clicked() {
+            if ui.add(push_button("Cancel", ButtonKind::Neutral)).clicked() {
                 d.values.remove("askOverwrite");
             }
         });
@@ -342,15 +343,13 @@ fn solver_options(ui: &mut egui::Ui, d: &mut Dialog, edit: impl Fn(&mut egui::Ui
     ui.add_space(8.0);
     // A row as tall as the buttons (see `ok_cancel`): a right-to-left layout straight in the
     // window takes all the height it is offered.
-    ui.horizontal(|ui| {
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ui.button(" Cancel ").clicked() {
-                cancel_solver_options(d);
-            }
-            if ui.button("  OK  ").clicked() {
-                done = true;
-            }
-        });
+    button_row(ui, |ui| {
+        if ui.add(push_button(" Cancel ", ButtonKind::Neutral)).clicked() {
+            cancel_solver_options(d);
+        }
+        if ui.add(push_button("  OK  ", ButtonKind::Primary)).clicked() {
+            done = true;
+        }
     });
     if done {
         close_solver_options(d);
@@ -505,7 +504,7 @@ pub(super) fn solver(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog, conf
         if !matches!(op.as_str(), "int" | "bin") {
             ref_edit(app, ui, d, "newRhs", RefLabel::Named("Constraint Value"), 130.0);
         }
-        if ui.button("Add").clicked() {
+        if ui.add(push_button("Add", ButtonKind::Neutral)).clicked() {
             let lhs = text(d, "newLhs");
             if !lhs.trim().is_empty() {
                 let rhs = if matches!(op.as_str(), "int" | "bin") { String::new() } else { format!(" {}", text(d, "newRhs").trim()) };
@@ -516,7 +515,7 @@ pub(super) fn solver(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog, conf
                 d.values.insert("newRhs".into(), json!(""));
             }
         }
-        if ui.add_enabled(d.list_index < list.len(), egui::Button::new("Delete")).clicked() {
+        if ui.add_enabled(d.list_index < list.len(), push_button("Delete", ButtonKind::Neutral)).clicked() {
             let mut list = list.clone();
             if d.list_index < list.len() {
                 list.remove(d.list_index);
@@ -558,7 +557,7 @@ pub(super) fn solver(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog, conf
     );
     ui.add_space(4.0);
     ui.horizontal(|ui| {
-        if ui.button("Reset All").clicked() && at_home(app, d) {
+        if ui.add(push_button("Reset All", ButtonKind::Neutral)).clicked() && at_home(app, d) {
             match app.run("data.solverReset", json!({})) {
                 Ok(_) => {
                     for (k, v) in [
@@ -589,7 +588,7 @@ pub(super) fn solver(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog, conf
         if ui.selectable_label(shown, "Load/Save").clicked() {
             d.values.insert("modelArea".into(), json!(!shown));
         }
-        if ui.button("Options").clicked() {
+        if ui.add(push_button("Options", ButtonKind::Neutral)).clicked() {
             open_solver_options(d);
         }
     });
@@ -599,7 +598,7 @@ pub(super) fn solver(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog, conf
             ref_edit(app, ui, d, "modelRange", RefLabel::By(l.id), 170.0);
             let range = text(d, "modelRange");
             let ready = !range.trim().is_empty();
-            if ui.add_enabled(ready, egui::Button::new("Load")).clicked() && at_home(app, d) {
+            if ui.add_enabled(ready, push_button("Load", ButtonKind::Neutral)).clicked() && at_home(app, d) {
                 d.values.remove("askModelOverwrite");
                 match app.run("data.solverLoadModel", json!({"from": range.trim()})) {
                     Ok(r) => {
@@ -617,7 +616,7 @@ pub(super) fn solver(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog, conf
                     }
                 }
             }
-            if ui.add_enabled(ready, egui::Button::new("Save")).clicked() && at_home(app, d) {
+            if ui.add_enabled(ready, push_button("Save", ButtonKind::Neutral)).clicked() && at_home(app, d) {
                 save_solver_model(app, d, &range, false);
             }
         });
@@ -630,10 +629,10 @@ pub(super) fn solver(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog, conf
         } else if let Some(asked) = asked {
             ui.horizontal_wrapped(|ui| {
                 ui.label(format!("{asked} already holds data. Replace it with the model?"));
-                if ui.button("Replace").clicked() && at_home(app, d) {
+                if ui.add(push_button("Replace", ButtonKind::Neutral)).clicked() && at_home(app, d) {
                     save_solver_model(app, d, &asked, true);
                 }
-                if ui.button("Don't Replace").clicked() {
+                if ui.add(push_button("Don't Replace", ButtonKind::Neutral)).clicked() {
                     d.values.remove("askModelOverwrite");
                     d.values.remove("modelNote");
                 }
@@ -648,17 +647,14 @@ pub(super) fn solver(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog, conf
     // A row as tall as the buttons (see `ok_cancel`): the Load/Save area and the notes can make
     // the form shorter, and a right-to-left layout straight in the window would fill what is
     // left.
-    ui.horizontal(|ui| {
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let t = crate::theme::Tokens::get(ui.ctx());
-            let solve = ui.add(egui::Button::new(egui::RichText::new("  Solve  ").color(t.on_accent)).fill(t.accent));
-            if solve.clicked() && !text(d, "objective").trim().is_empty() {
-                *confirm = true;
-            }
-            if ui.button(" Close ").clicked() {
-                *open = false;
-            }
-        });
+    button_row(ui, |ui| {
+        if ui.add(push_button(" Close ", ButtonKind::Neutral)).clicked() {
+            *open = false;
+        }
+        let solve = ui.add(push_button("  Solve  ", ButtonKind::Primary));
+        if solve.clicked() && !text(d, "objective").trim().is_empty() {
+            *confirm = true;
+        }
     });
 }
 

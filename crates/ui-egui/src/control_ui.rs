@@ -14,6 +14,7 @@ use crate::SheetApp;
 use crate::dialogs::Dialog;
 use crate::grid::Geo;
 use crate::theme::Tokens;
+use crate::widgets::{ButtonKind, button_row, push_button};
 
 /// The control `id` on the active sheet.
 pub fn control(app: &SheetApp, id: u32) -> Option<FormControl> {
@@ -199,12 +200,13 @@ pub fn question_dialog(app: &mut SheetApp, ui: &mut Ui, d: &mut Dialog, open: &m
         .map(|a| a.iter().filter_map(|c| Some((c.get(0)?.as_str()?.to_string(), c.get(1)?.clone()))).collect())
         .unwrap_or_default();
     let mut answer = None;
-    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-        if ui.button(" Cancel ").clicked() {
+    button_row(ui, |ui| {
+        if ui.add(push_button(" Cancel ", ButtonKind::Neutral)).clicked() {
             *open = false;
         }
-        for (label, extra) in choices.iter().rev() {
-            if ui.button(format!(" {label} ")).clicked() {
+        for (i, (label, extra)) in choices.iter().enumerate().rev() {
+            let kind = if i == 0 { ButtonKind::Primary } else { ButtonKind::Neutral };
+            if ui.add(push_button(format!(" {label} "), kind)).clicked() {
                 answer = Some(extra.clone());
             }
         }
@@ -412,10 +414,9 @@ pub fn assign_dialog(app: &mut SheetApp, ui: &mut Ui, d: &mut Dialog, open: &mut
 fn ok_cancel(ui: &mut Ui, enabled: bool) -> (bool, bool) {
     let (mut ok, mut cancel) = (false, false);
     ui.add_space(8.0);
-    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-        let t = Tokens::get(ui.ctx());
-        ok = ui.add_enabled(enabled, egui::Button::new(egui::RichText::new("   OK   ").color(t.on_accent)).fill(t.accent)).clicked();
-        cancel = ui.button(" Cancel ").clicked();
+    button_row(ui, |ui| {
+        cancel = ui.add(push_button(" Cancel ", ButtonKind::Neutral)).clicked();
+        ok = ui.add_enabled(enabled, push_button("   OK   ", ButtonKind::Primary)).clicked();
     });
     (ok, cancel)
 }

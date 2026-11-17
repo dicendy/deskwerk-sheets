@@ -10,6 +10,7 @@ use egui::{Align2, Color32, Key, Modifiers, RichText, Sense, Stroke, StrokeKind,
 use super::{Dialog, Json, SheetApp, json};
 use crate::icons::{self, Icon};
 use crate::theme::{self, Tokens};
+use crate::widgets::{ButtonKind, button_row, push_button, push_button_width};
 
 /// The dialog's name in `Dialog::open` and `app.dialog`.
 pub(crate) const NAME: &str = "saveFile";
@@ -196,15 +197,15 @@ pub(super) fn show(app: &mut SheetApp, ctx: &egui::Context, mut d: Dialog) {
             let question = lang.tr("A file named {name} already exists. Do you want to replace it?").replace("{name}", &file);
             ui.add(egui::Label::new(question).wrap());
             ui.add_space(16.0);
-            ui.horizontal(|ui| {
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if outlined(ui, lang.tr("Cancel"), t.input_border, t.text).clicked() {
-                        d.values.remove("replace");
-                    }
-                    if filled(ui, lang.tr("Save file|Replace"), &t, true).clicked() {
-                        action = Some(Action::Replace);
-                    }
-                });
+            let labels = [lang.tr("Save file|Replace"), lang.tr("Cancel")];
+            let w = push_button_width(ui, &labels);
+            button_row(ui, |ui| {
+                if ui.add(push_button(labels[1], ButtonKind::Neutral).min_width(w)).clicked() {
+                    d.values.remove("replace");
+                }
+                if ui.add(push_button(labels[0], ButtonKind::Primary).min_width(w)).clicked() {
+                    action = Some(Action::Replace);
+                }
             });
         });
     }
@@ -279,32 +280,18 @@ fn form(app: &SheetApp, ui: &mut egui::Ui, d: &mut Dialog, t: &Tokens) -> Option
         if more.clicked() {
             action = Some(Action::MoreOptions);
         }
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if outlined(ui, lang.tr("Cancel"), t.input_border, t.text).clicked() {
+        let labels = [lang.tr("Save"), lang.tr("Cancel")];
+        let w = push_button_width(ui, &labels);
+        button_row(ui, |ui| {
+            if ui.add(push_button(labels[1], ButtonKind::Neutral).min_width(w)).clicked() {
                 action = Some(Action::Cancel);
             }
-            if filled(ui, lang.tr("Save"), t, can_save).clicked() {
+            if ui.add_enabled(can_save, push_button(labels[0], ButtonKind::Primary).min_width(w)).clicked() {
                 action = Some(Action::Save);
             }
         });
     });
     action
-}
-
-/// A button filled with the accent colour, white text: the dialog's default answer.
-fn filled(ui: &mut egui::Ui, label: &str, t: &Tokens, enabled: bool) -> egui::Response {
-    let button = egui::Button::new(RichText::new(label).color(t.on_accent)).fill(t.accent).min_size(vec2(84.0, 30.0)).corner_radius(4.0);
-    ui.add_enabled(enabled, button)
-}
-
-/// A button with no fill and a 1 px border.
-fn outlined(ui: &mut egui::Ui, label: &str, border: Color32, text: Color32) -> egui::Response {
-    let button = egui::Button::new(RichText::new(label).color(text))
-        .fill(Color32::TRANSPARENT)
-        .stroke(Stroke::new(1.0, border))
-        .min_size(vec2(84.0, 30.0))
-        .corner_radius(4.0);
-    ui.add(button)
 }
 
 /// The name box: the name, selected when the dialog opens, with ".xlsx" greyed at its right end

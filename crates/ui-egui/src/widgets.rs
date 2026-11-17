@@ -294,6 +294,149 @@ pub fn small_split_button(ui: &mut Ui, icon: Icon, label: &str, tip: &str) -> (R
     (m.on_hover_text(tip.clone()), a.on_hover_text(tip))
 }
 
+/// The three looks of a dialog push button (shared with Deskwerk Docs, same numbers).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ButtonKind {
+    /// The default answer (Save, OK): filled with the accent colour, white text.
+    Primary,
+    /// A second answer (Don't Save): accent border and text, no fill.
+    Outline,
+    /// Everything else (Cancel, Close, Delete…): neutral grey border, normal text.
+    Neutral,
+}
+
+/// Height of a dialog push button, in points.
+pub const BUTTON_HEIGHT: f32 = 32.0;
+/// Narrowest a dialog push button gets, in points.
+pub const BUTTON_MIN_WIDTH: f32 = 96.0;
+/// Space between the label and the button's sides, in points.
+pub const BUTTON_PADDING: f32 = 16.0;
+/// Corner radius of a dialog push button, in points.
+pub const BUTTON_RADIUS: f32 = 4.0;
+/// Gap between two buttons of a row, in points.
+pub const BUTTON_GAP: f32 = 8.0;
+/// Label font size of a dialog push button (the normal UI font), in points.
+pub const BUTTON_FONT: f32 = 14.0;
+
+/// A dialog or backstage push button: 32 points tall, at least 96 wide, 16 points of padding,
+/// 4 points of corner radius, the 14-point UI font. Hover darkens it slightly and a press darkens
+/// it more, so it reads as a button; a keyboard focus ring (2 points of accent) shows only when
+/// focus came from the keyboard. Disabled buttons are drawn at 40% opacity and do not react to
+/// the pointer. The pointer stays the arrow, as in Windows.
+///
+/// The label is drawn trimmed; its accessible name is the label exactly as given.
+#[must_use = "add it with ui.add(...)"]
+pub struct PushButton {
+    label: String,
+    kind: ButtonKind,
+    min_width: f32,
+}
+
+/// A [`PushButton`] of `kind` labelled `label`.
+pub fn push_button(label: impl Into<String>, kind: ButtonKind) -> PushButton {
+    PushButton { label: label.into(), kind, min_width: BUTTON_MIN_WIDTH }
+}
+
+impl PushButton {
+    /// Makes the button at least `width` points wide (rows of buttons that share one width).
+    pub fn min_width(mut self, width: f32) -> PushButton {
+        self.min_width = self.min_width.max(width);
+        self
+    }
+}
+
+/// The width that fits the widest of `labels` in a push button: one width for a row of buttons
+/// that should match (Save / Don't Save / Cancel).
+pub fn push_button_width(ui: &Ui, labels: &[&str]) -> f32 {
+    labels.iter().map(|l| label_width(ui, l.trim()) + 2.0 * BUTTON_PADDING).fold(BUTTON_MIN_WIDTH, f32::max).ceil()
+}
+
+fn label_width(ui: &Ui, text: &str) -> f32 {
+    ui.painter().layout_no_wrap(text.to_string(), theme::ui_font(BUTTON_FONT), Color32::WHITE).size().x
+}
+
+/// `c` darkened by `amount` (0.1 = 10% darker), alpha kept.
+fn darken(c: Color32, amount: f32) -> Color32 {
+    let k = 1.0 - amount;
+    let ch = |v: u8| (v as f32 * k).round() as u8;
+    Color32::from_rgba_premultiplied(ch(c.r()), ch(c.g()), ch(c.b()), c.a())
+}
+
+/// A row of push buttons: right-aligned, [`BUTTON_GAP`] apart, as tall as one button. The
+/// layout runs right to left, so add the rightmost button (Cancel) first.
+pub fn button_row<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> R {
+    ui.allocate_ui_with_layout(vec2(ui.available_width(), BUTTON_HEIGHT), egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        ui.spacing_mut().item_spacing.x = BUTTON_GAP;
+        add(ui)
+    })
+    .inner
+}
+
+impl egui::Widget for PushButton {
+    fn ui(self, ui: &mut Ui) -> Response {
+        let t = Tokens::get(ui.ctx());
+        let text = self.label.trim();
+        let width = (label_width(ui, text) + 2.0 * BUTTON_PADDING).max(self.min_width).ceil();
+        let (rect, resp) = ui.allocate_exact_size(vec2(width, BUTTON_HEIGHT), Sense::click());
+        let enabled = ui.is_enabled();
+        resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, enabled, &self.label));
+        let pressed = enabled && resp.is_pointer_button_down_on();
+        let hovered = enabled && resp.hovered();
+        // Accent outlines and text: the accent in the light theme, the accent text colour (the
+        // light green that reads on the dark window) in the dark one.
+        let outline = if t.dark { t.accent_text } else { t.accent };
+        let (fill, border, ink) = match self.kind {
+            ButtonKind::Primary => {
+                let fill = if pressed {
+                    darken(t.accent, 0.2)
+                } else if hovered {
+                    darken(t.accent, 0.1)
+                } else {
+                    t.accent
+                };
+                (fill, None, t.on_accent)
+            }
+            ButtonKind::Outline => {
+                let fill = if pressed {
+                    outline.gamma_multiply(0.16)
+                } else if hovered {
+                    outline.gamma_multiply(0.08)
+                } else {
+                    Color32::TRANSPARENT
+                };
+                (fill, Some(if pressed { darken(outline, 0.1) } else { outline }), outline)
+            }
+            ButtonKind::Neutral => {
+                let fill = if pressed {
+                    t.text.gamma_multiply(0.12)
+                } else if hovered {
+                    t.text.gamma_multiply(0.06)
+                } else {
+                    Color32::TRANSPARENT
+                };
+                (fill, Some(t.input_border), t.text)
+            }
+        };
+        let fade = |c: Color32| if enabled { c } else { c.gamma_multiply(0.4) };
+        let painter = ui.painter();
+        painter.rect_filled(rect, BUTTON_RADIUS, fade(fill));
+        if let Some(b) = border {
+            painter.rect_stroke(rect, BUTTON_RADIUS, Stroke::new(1.0, fade(b)), StrokeKind::Inside);
+        }
+        painter.text(rect.center(), Align2::CENTER_CENTER, text, theme::ui_font(BUTTON_FONT), fade(ink));
+        // The focus ring shows only when the keyboard put focus here (Tab), not after a click.
+        let by_keyboard = egui::Id::new("push_button_keyboard_focus").with(resp.id);
+        if resp.gained_focus() {
+            let pointer = ui.input(|i| i.pointer.any_down() || i.pointer.any_pressed() || i.pointer.any_released());
+            ui.data_mut(|d| d.insert_temp(by_keyboard, !pointer));
+        }
+        if resp.has_focus() && ui.data(|d| d.get_temp::<bool>(by_keyboard).unwrap_or(false)) {
+            ui.painter().rect_stroke(rect.expand(1.0), BUTTON_RADIUS + 1.0, Stroke::new(2.0, t.accent), StrokeKind::Outside);
+        }
+        resp
+    }
+}
+
 /// A one-line text field for a value stored in the workbook, which callers reload every frame. The text being typed is
 /// kept in egui memory until the field loses focus, then returned to commit (`None` when Escape cancels the edit).
 pub fn committed_text(ui: &mut Ui, id: egui::Id, current: &str, width: Option<f32>) -> Option<String> {
@@ -556,7 +699,8 @@ fn palette(ui: &mut Ui, theme_colors: &[u32; 12], none_label: &str, more_colors:
             ui.label(egui::RichText::new("New").small());
         });
         ui.horizontal(|ui| {
-            if ui.button("  OK  ").clicked() {
+            ui.spacing_mut().item_spacing.x = BUTTON_GAP;
+            if ui.add(push_button("  OK  ", ButtonKind::Primary)).clicked() {
                 // A hex still being typed that is not a colour falls back to the picker's.
                 let c = parse_hex(&m.hex).unwrap_or_else(|| m.hsva.to_srgb());
                 let hex = hex_of(c);
@@ -564,7 +708,7 @@ fn palette(ui: &mut Ui, theme_colors: &[u32; 12], none_label: &str, more_colors:
                 picked = Some(hex);
                 done = true;
             }
-            if ui.button("Cancel").clicked() {
+            if ui.add(push_button("Cancel", ButtonKind::Neutral)).clicked() {
                 done = true;
             }
         });
@@ -597,8 +741,10 @@ pub fn message_box(app: &mut SheetApp, ctx: &egui::Context) {
             });
         });
         ui.add_space(8.0);
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ui.button("  OK  ").clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter) || i.key_pressed(egui::Key::Escape)) {
+        button_row(ui, |ui| {
+            if ui.add(push_button("  OK  ", ButtonKind::Primary)).clicked()
+                || ui.input(|i| i.key_pressed(egui::Key::Enter) || i.key_pressed(egui::Key::Escape))
+            {
                 close = true;
             }
         });

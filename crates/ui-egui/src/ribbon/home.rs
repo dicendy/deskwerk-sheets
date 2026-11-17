@@ -112,12 +112,12 @@ pub(super) fn home(app: &mut SheetApp, ui: &mut Ui) {
         ui.horizontal(|ui| {
             font_combo(app, ui, &st);
             size_combo(app, ui, &st);
-            let __k = icon_button(ui, Icon::Plus, t.text, "Increase Font Size", vec2(22.0, 23.0));
+            let __k = icon_button(ui, Icon::FontGrow, t.text, "Increase Font Size", vec2(22.0, 23.0));
             control_keytip(app, ui, &__k, "home.increaseFontSize");
             if __k.clicked() {
                 act(app, "home.increaseFontSize", json!({}));
             }
-            let __k = icon_button(ui, Icon::Minus, t.text, "Decrease Font Size", vec2(22.0, 23.0));
+            let __k = icon_button(ui, Icon::FontShrink, t.text, "Decrease Font Size", vec2(22.0, 23.0));
             control_keytip(app, ui, &__k, "home.decreaseFontSize");
             if __k.clicked() {
                 act(app, "home.decreaseFontSize", json!({}));

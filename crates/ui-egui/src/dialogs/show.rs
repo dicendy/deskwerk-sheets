@@ -271,7 +271,7 @@ pub fn show(app: &mut SheetApp, ctx: &egui::Context) {
                             d.values.insert("path".into(), json!(path));
                         }
                     }
-                    if (app.services.pick_picture.is_some() || app.services.pick_picture_async.is_some()) && ui.button("Browse…").clicked() {
+                    if (app.services.pick_picture.is_some() || app.services.pick_picture_async.is_some()) && ui.add(crate::widgets::push_button("Browse…", crate::widgets::ButtonKind::Neutral)).clicked() {
                         if let Some(start) = &app.services.pick_picture_async {
                             let inbox = crate::Inbox::default();
                             start(inbox.clone());
@@ -362,12 +362,12 @@ pub fn show(app: &mut SheetApp, ctx: &egui::Context) {
                 "start" => {
                     ui.heading("Start a new workbook");
                     ui.horizontal_wrapped(|ui| {
-                        if ui.button("Blank workbook").clicked() {
+                        if ui.add(crate::widgets::push_button("Blank workbook", crate::widgets::ButtonKind::Neutral)).clicked() {
                             app.run_or_alert("file.new", json!({}));
                             open = false;
                         }
                         for (n, t) in deskwerk_sheets_engine::sample::SAMPLES {
-                            if ui.button(*t).clicked() {
+                            if ui.add(crate::widgets::push_button(*t, crate::widgets::ButtonKind::Neutral)).clicked() {
                                 app.run_or_alert("file.new", json!({"sample": n}));
                                 open = false;
                             }
@@ -381,7 +381,7 @@ pub fn show(app: &mut SheetApp, ctx: &egui::Context) {
                             open = false;
                         }
                     }
-                    if ui.button("Open…").clicked() {
+                    if ui.add(crate::widgets::push_button("Open…", crate::widgets::ButtonKind::Neutral)).clicked() {
                         app.open_dialog("open", json!({}));
                         open = false;
                     }
@@ -532,53 +532,44 @@ pub(super) fn open_confirmed_link(app: &mut SheetApp, d: &Dialog) -> Result<(), 
 }
 
 /// Save Changes' answers, as in Excel: Save filled with the accent colour, Don't Save outlined in
-/// it, Cancel with a neutral outline; right-aligned, in that order.
+/// it, Cancel with a neutral outline; right-aligned, in that order, all three as wide as the
+/// widest label.
 fn save_changes_buttons(ui: &mut egui::Ui) -> Option<crate::SaveAnswer> {
+    use crate::widgets::{ButtonKind, button_row, push_button, push_button_width};
     let lang = crate::i18n::current(ui.ctx());
-    let t = crate::theme::Tokens::get(ui.ctx());
-    let size = vec2(96.0, 30.0);
+    let labels = [lang.tr("Save"), lang.tr("Don't Save"), lang.tr("Cancel")];
+    let w = push_button_width(ui, &labels);
     let mut answer = None;
-    ui.horizontal(|ui| {
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let cancel = egui::Button::new(egui::RichText::new(lang.tr("Cancel")).color(t.text))
-                .fill(egui::Color32::TRANSPARENT)
-                .stroke(egui::Stroke::new(1.0, t.input_border))
-                .min_size(size);
-            if ui.add(cancel).clicked() {
-                answer = Some(crate::SaveAnswer::Cancel);
-            }
-            let dont_save = egui::Button::new(egui::RichText::new(lang.tr("Don't Save")).color(t.accent_dark))
-                .fill(egui::Color32::TRANSPARENT)
-                .stroke(egui::Stroke::new(1.0, t.accent))
-                .min_size(size);
-            if ui.add(dont_save).clicked() {
-                answer = Some(crate::SaveAnswer::DontSave);
-            }
-            let save = egui::Button::new(egui::RichText::new(lang.tr("Save")).color(t.on_accent)).fill(t.accent).min_size(size);
-            if ui.add(save).clicked() {
-                answer = Some(crate::SaveAnswer::Save);
-            }
-        })
+    button_row(ui, |ui| {
+        if ui.add(push_button(labels[2], ButtonKind::Neutral).min_width(w)).clicked() {
+            answer = Some(crate::SaveAnswer::Cancel);
+        }
+        if ui.add(push_button(labels[1], ButtonKind::Outline).min_width(w)).clicked() {
+            answer = Some(crate::SaveAnswer::DontSave);
+        }
+        if ui.add(push_button(labels[0], ButtonKind::Primary).min_width(w)).clicked() {
+            answer = Some(crate::SaveAnswer::Save);
+        }
     });
     answer
 }
 
+/// The OK and Cancel row under a form dialog. The labels keep their padding ("   OK   ",
+/// " Cancel ") as accessible names, which scripts and tests click by.
 pub(super) fn ok_cancel(ui: &mut egui::Ui, confirm: &mut bool, open: &mut bool) {
+    use crate::widgets::{ButtonKind, button_row, push_button};
     ui.add_space(8.0);
     // A row as tall as the buttons: a right-to-left layout straight in the window takes all the
     // height it is offered, which stretched every form dialog to the screen's height.
-    ui.horizontal(|ui| {
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let lang = crate::i18n::current(ui.ctx());
-            let t = crate::theme::Tokens::get(ui.ctx());
-            let ok = ui.add(egui::Button::new(egui::RichText::new(format!("   {}   ", lang.tr("OK"))).color(t.on_accent)).fill(t.accent));
-            if ok.clicked() || ui.input(|i| i.key_pressed(Key::Enter)) {
-                *confirm = true;
-            }
-            if ui.button(format!(" {} ", lang.tr("Cancel"))).clicked() {
-                *open = false;
-            }
-        })
+    let lang = crate::i18n::current(ui.ctx());
+    button_row(ui, |ui| {
+        if ui.add(push_button(format!(" {} ", lang.tr("Cancel")), ButtonKind::Neutral)).clicked() {
+            *open = false;
+        }
+        let ok = ui.add(push_button(format!("   {}   ", lang.tr("OK")), ButtonKind::Primary));
+        if ok.clicked() || ui.input(|i| i.key_pressed(Key::Enter)) {
+            *confirm = true;
+        }
     });
 }
 

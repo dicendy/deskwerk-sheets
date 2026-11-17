@@ -1,4 +1,5 @@
 use super::{Dialog, Json, SheetApp, json};
+use crate::widgets::{ButtonKind, push_button};
 
 pub(super) fn spelling(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog, open: &mut bool) {
     let r = d.result.clone().unwrap_or(Json::Null);
@@ -9,7 +10,7 @@ pub(super) fn spelling(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog, op
     let issues = r["issues"].as_array().cloned().unwrap_or_default();
     let Some(it) = issues.get(d.list_index) else {
         ui.label("The spelling check is complete for the entire sheet.");
-        if ui.button("OK").clicked() {
+        if ui.add(push_button("OK", ButtonKind::Primary)).clicked() {
             *open = false;
         }
         return;
@@ -33,19 +34,19 @@ pub(super) fn spelling(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog, op
     d.values.insert("pick".into(), json!(pick.clone()));
     let _ = app.session.run("selection.set", json!({"cell": cell}));
     ui.horizontal(|ui| {
-        if ui.button("Ignore Once").clicked() {
+        if ui.add(push_button("Ignore Once", ButtonKind::Neutral)).clicked() {
             d.list_index += 1;
         }
-        if ui.button("Add to Dictionary").clicked() {
+        if ui.add(push_button("Add to Dictionary", ButtonKind::Neutral)).clicked() {
             let _ = app.session.run("review.addToDictionary", json!({"word": word}));
             d.list_index += 1;
         }
         if !pick.is_empty() {
-            if ui.button("Change").clicked() {
+            if ui.add(push_button("Change", ButtonKind::Neutral)).clicked() {
                 app.run_or_alert("review.changeSpelling", json!({"cell": cell, "word": word, "to": pick}));
                 d.list_index += 1;
             }
-            if ui.button("Change All").clicked() {
+            if ui.add(push_button("Change All", ButtonKind::Neutral)).clicked() {
                 app.run_or_alert("review.changeSpelling", json!({"word": word, "to": pick, "all": true}));
                 d.list_index += 1;
             }

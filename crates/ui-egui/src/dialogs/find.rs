@@ -1,5 +1,6 @@
 use super::show::ok_cancel;
 use super::{Dialog, Json, Key, SheetApp, json};
+use crate::widgets::{ButtonKind, push_button};
 
 /// Draws the Find/Replace form with case, whole-cell and workbook options, requests field focus once, and runs find/replace with the current parameters.
 pub(super) fn find(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog) {
@@ -57,7 +58,7 @@ pub(super) fn find(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog) {
     let base = json!({"what": what, "matchCase": case, "wholeCell": whole, "within": within});
     ui.horizontal(|ui| {
         if d.tab == "Replace" {
-            if ui.button("Replace All").clicked() {
+            if ui.add(push_button("Replace All", ButtonKind::Neutral)).clicked() {
                 let mut p = base.clone();
                 p["with"] = json!(with);
                 p["all"] = json!(true);
@@ -66,7 +67,7 @@ pub(super) fn find(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog) {
                     Err(e) => app.message = Some(("Find and Replace".into(), crate::clean_error(&e))),
                 }
             }
-            if ui.button("Replace").clicked() {
+            if ui.add(push_button("Replace", ButtonKind::Neutral)).clicked() {
                 let mut p = base.clone();
                 p["with"] = json!(with);
                 p["all"] = json!(false);
@@ -74,12 +75,12 @@ pub(super) fn find(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog) {
                 let _ = app.run("edit.find", base.clone());
             }
         }
-        if ui.button("Find All").clicked() {
+        if ui.add(push_button("Find All", ButtonKind::Neutral)).clicked() {
             let mut p = base.clone();
             p["all"] = json!(true);
             d.result = app.run("edit.find", p).ok();
         }
-        if ui.button("Find Next").clicked() || ui.input(|i| i.key_pressed(Key::Enter)) {
+        if ui.add(push_button("Find Next", ButtonKind::Primary)).clicked() || ui.input(|i| i.key_pressed(Key::Enter)) {
             if let Err(e) = app.run("edit.find", base.clone()) {
                 app.message = Some(("Find and Replace".into(), crate::clean_error(&e)));
             }
@@ -149,7 +150,7 @@ pub(super) fn go_to(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog, confi
         ui.text_edit_singleline(&mut r).labelled_by(label.id).request_focus();
     });
     d.values.insert("reference".into(), json!(r.clone()));
-    if ui.button("Special…").clicked() {
+    if ui.add(push_button("Special…", ButtonKind::Neutral)).clicked() {
         app.open_dialog("goToSpecial", json!({}));
         return;
     }

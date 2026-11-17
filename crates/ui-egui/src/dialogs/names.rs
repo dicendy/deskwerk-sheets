@@ -1,5 +1,6 @@
 use super::show::ok_cancel;
 use super::{Dialog, Json, Key, SheetApp, json};
+use crate::widgets::{ButtonKind, button_row, push_button};
 
 pub(super) fn name_manager(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog, open: &mut bool) {
     let list = app.session.run("formulas.nameManager", json!({})).unwrap_or(Json::Null);
@@ -7,10 +8,10 @@ pub(super) fn name_manager(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog
     let selected = names.get(d.list_index).cloned();
     let field = |n: &Json, k: &str| n.get(k).and_then(Json::as_str).unwrap_or("").to_string();
     ui.horizontal(|ui| {
-        if ui.button("New…").clicked() {
+        if ui.add(push_button("New…", ButtonKind::Neutral)).clicked() {
             app.open_dialog("defineName", json!({}));
         }
-        if ui.add_enabled(selected.is_some(), egui::Button::new("Edit…")).clicked()
+        if ui.add_enabled(selected.is_some(), push_button("Edit…", ButtonKind::Neutral)).clicked()
             && let Some(n) = &selected
         {
             app.open_dialog(
@@ -21,7 +22,7 @@ pub(super) fn name_manager(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog
                 }),
             );
         }
-        if ui.add_enabled(selected.is_some(), egui::Button::new("Delete")).clicked()
+        if ui.add_enabled(selected.is_some(), push_button("Delete", ButtonKind::Neutral)).clicked()
             && let Some(n) = &selected
         {
             app.run_or_alert("formulas.deleteName", json!({"name": field(n, "name"), "scope": field(n, "scope")}));
@@ -51,8 +52,8 @@ pub(super) fn name_manager(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog
         });
     });
     ui.add_space(8.0);
-    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-        if ui.button(" Close ").clicked() {
+    button_row(ui, |ui| {
+        if ui.add(push_button(" Close ", ButtonKind::Neutral)).clicked() {
             *open = false;
         }
     });
@@ -122,7 +123,7 @@ pub(super) fn paste_name(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog, 
     });
     ui.add_space(4.0);
     // Paste List is disabled while a cell is being edited.
-    if ui.add_enabled(!names.is_empty() && app.editor.is_none(), egui::Button::new(app.ui.language.tr("Paste List"))).clicked() {
+    if ui.add_enabled(!names.is_empty() && app.editor.is_none(), push_button(app.ui.language.tr("Paste List"), ButtonKind::Neutral)).clicked() {
         app.run_or_alert("formulas.pasteName", json!({"list": true}));
         *open = false;
         return;

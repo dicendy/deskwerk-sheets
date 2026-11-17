@@ -44,7 +44,7 @@ pub(super) fn insert(app: &mut SheetApp, ui: &mut Ui) {
             }
         }
     });
-    let icn = big_button(ui, Icon::Theme, "Icons", "Insert an icon", true);
+    let icn = big_button(ui, Icon::IconsGallery, "Icons", "Insert an icon", true);
     anchor_keytip(app, ui, &icn, &["insert.icons"]);
     egui::Popup::menu(&icn).show(|ui| {
         ui.set_width(260.0);
@@ -66,7 +66,7 @@ pub(super) fn insert(app: &mut SheetApp, ui: &mut Ui) {
         });
     });
     sep(ui);
-    let __k = big_button(ui, Icon::Chart, "Recommended\nCharts", "Recommended Charts", false);
+    let __k = big_button(ui, Icon::ChartRecommended, "Recommended\nCharts", "Recommended Charts", false);
     control_keytip(app, ui, &__k, "insert.recommendedCharts");
     if __k.clicked() {
         // Menu-style: with no chart type, run_or_alert opens the Insert Chart dialog.
@@ -123,9 +123,14 @@ pub(super) fn insert(app: &mut SheetApp, ui: &mut Ui) {
                     "insert.chart.scatter",
                     vec![("Scatter", "scatter", ""), ("Scatter with Lines", "scatter", "lines"), ("Bubble", "bubble", "")],
                 ),
-                (Icon::Chart, "Statistic", "insert.chart.statistic", vec![("Histogram", "histogram", ""), ("Box & Whisker", "boxWhisker", "")]),
                 (
-                    Icon::Theme,
+                    Icon::ChartHistogram,
+                    "Statistic",
+                    "insert.chart.statistic",
+                    vec![("Histogram", "histogram", ""), ("Box & Whisker", "boxWhisker", "")],
+                ),
+                (
+                    Icon::ChartTreemap,
                     "Hierarchy & more",
                     "insert.chart.hierarchy",
                     vec![
@@ -153,7 +158,7 @@ pub(super) fn insert(app: &mut SheetApp, ui: &mut Ui) {
         });
     });
     sep(ui);
-    if big_button(ui, Icon::Filter, "Slicer", "Insert a slicer to filter a table", false).clicked() {
+    if big_button(ui, Icon::Slicer, "Slicer", "Insert a slicer to filter a table", false).clicked() {
         act(app, "insert.slicer", json!({}));
     }
     sep(ui);
@@ -197,7 +202,7 @@ pub(super) fn insert(app: &mut SheetApp, ui: &mut Ui) {
     if __k.clicked() {
         app.open_dialog("insertLink", json!({}));
     }
-    let __k = big_button(ui, Icon::Comment, "Comment", "New Comment", false);
+    let __k = big_button(ui, Icon::NewComment, "Comment", "New Comment", false);
     control_keytip(app, ui, &__k, "dialog:comment");
     if __k.clicked() {
         app.open_dialog("comment", json!({"threaded": true}));
@@ -208,7 +213,7 @@ pub(super) fn insert(app: &mut SheetApp, ui: &mut Ui) {
     if __k.clicked() {
         act(app, "insert.textBox", json!({}));
     }
-    let __k = big_button(ui, Icon::PageLayout, "Header &\nFooter", "Header & Footer", false);
+    let __k = big_button(ui, Icon::Header, "Header &\nFooter", "Header & Footer", false);
     control_keytip(app, ui, &__k, "dialog:headerFooter");
     if __k.clicked() {
         // As in Excel: Page Layout view, editing the header in place (the dialog is under Page Setup).
@@ -255,15 +260,20 @@ pub(super) fn insert(app: &mut SheetApp, ui: &mut Ui) {
 
 pub(super) fn draw(app: &mut SheetApp, ui: &mut Ui) {
     let tool = app.session.draw_tool.clone();
-    let __k = big_button(ui, Icon::Shapes, "Select\nObjects", "Select and move ink and shapes", false);
+    let __k = big_button(ui, Icon::SelectObjects, "Select\nObjects", "Select and move ink and shapes", false);
     control_keytip(app, ui, &__k, "draw.lasso");
     if __k.clicked() {
         act(app, "draw.lasso", json!({}));
     }
     sep(ui);
-    for (label, color) in [("Pen\nBlue", "#1F5FC9"), ("Pen\nBlack", "#000000"), ("Pen\nRed", "#D13B2F"), ("Highlighter", "#F2E33A")] {
+    for (label, color, pen_icon) in [
+        ("Pen\nBlue", "#1F5FC9", Icon::Pen),
+        ("Pen\nBlack", "#000000", Icon::PenBlack),
+        ("Pen\nRed", "#D13B2F", Icon::PenRed),
+        ("Highlighter", "#F2E33A", Icon::Highlighter),
+    ] {
         let on = tool == "pen" && app.session.draw_color.eq_ignore_ascii_case(color);
-        let r = big_button(ui, Icon::Pen, label, "Draw with ink", false);
+        let r = big_button(ui, pen_icon, label, "Draw with ink", false);
         if on {
             ui.painter().rect_stroke(r.rect, 5.0, Stroke::new(2.0, Tokens::get(ui.ctx()).accent), StrokeKind::Inside);
         }
@@ -272,7 +282,7 @@ pub(super) fn draw(app: &mut SheetApp, ui: &mut Ui) {
             act(app, "draw.pen", json!({"on": !on, "color": color, "width": width}));
         }
     }
-    let er = big_button(ui, Icon::Eraser, "Eraser", "Erase ink strokes", false);
+    let er = big_button(ui, Icon::InkEraser, "Eraser", "Erase ink strokes", false);
     if tool == "eraser" {
         ui.painter().rect_stroke(er.rect, 5.0, Stroke::new(2.0, Tokens::get(ui.ctx()).accent), StrokeKind::Inside);
     }
@@ -280,7 +290,7 @@ pub(super) fn draw(app: &mut SheetApp, ui: &mut Ui) {
         act(app, "draw.eraser", json!({}));
     }
     sep(ui);
-    let __k = big_button(ui, Icon::Shapes, "Ink to\nShape", "Convert the last ink stroke to a shape", false);
+    let __k = big_button(ui, Icon::InkToShape, "Ink to\nShape", "Convert the last ink stroke to a shape", false);
     control_keytip(app, ui, &__k, "draw.inkToShape");
     if __k.clicked() {
         act(app, "draw.inkToShape", json!({}));

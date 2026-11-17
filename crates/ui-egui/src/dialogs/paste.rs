@@ -1,4 +1,5 @@
 use super::{Dialog, Field, Json, Key, SheetApp, Stroke, json, theme, vec2};
+use crate::widgets::{ButtonKind, push_button};
 
 /// Paste Special as Excel lays it out: Paste and Operation each in two columns of options, Skip
 /// blanks and Transpose side by side, and Paste Link as a button that pastes at once. The options
@@ -58,19 +59,25 @@ pub(super) fn paste_special(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialo
     ui.separator();
     ui.horizontal(|ui| {
         // Excel's Paste Link pastes references to the copied cells straight away.
-        if ui.button(lang.tr("Paste Link")).on_hover_text(lang.tr("Paste formulas that refer to the copied cells")).clicked() || link_now {
+        ui.spacing_mut().item_spacing.x = crate::widgets::BUTTON_GAP;
+        if ui
+            .add(push_button(lang.tr("Paste Link"), ButtonKind::Neutral))
+            .on_hover_text(lang.tr("Paste formulas that refer to the copied cells"))
+            .clicked()
+            || link_now
+        {
             d.values.insert("what".into(), json!("all"));
             d.values.insert("operation".into(), json!("none"));
             d.values.insert("link".into(), json!(true));
             *confirm = true;
         }
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let ok = ui.add(egui::Button::new(egui::RichText::new(format!("   {}   ", lang.tr("OK"))).color(t.on_accent)).fill(t.accent));
+            if ui.add(push_button(format!(" {} ", lang.tr("Cancel")), ButtonKind::Neutral)).clicked() {
+                *open = false;
+            }
+            let ok = ui.add(push_button(format!("   {}   ", lang.tr("OK")), ButtonKind::Primary));
             if ok.clicked() || ui.input(|i| i.key_pressed(Key::Enter)) {
                 *confirm = true;
-            }
-            if ui.button(format!(" {} ", lang.tr("Cancel"))).clicked() {
-                *open = false;
             }
         });
     });

@@ -28,7 +28,7 @@ use serde_json::{Map, Value as Json, json};
 use crate::dialogs::Dialog;
 use crate::icons::{self, Icon};
 use crate::theme::{self, Cat, Tokens};
-use crate::widgets::small_button;
+use crate::widgets::{ButtonKind, button_row, push_button, push_button_width, small_button};
 use crate::{SheetApp, dnd, macro_ui};
 
 /// The inspector's tabs.
@@ -1109,14 +1109,14 @@ fn prompts(app: &mut SheetApp, ctx: &egui::Context, ed: &mut Editor, open: &mut 
             ui.label(egui::RichText::new("Stop debugging").strong());
             ui.label("Keep the changes the macro has made so far? They are one undo step either way.");
             ui.add_space(8.0);
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.button("Cancel").clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+            button_row(ui, |ui| {
+                if ui.add(push_button("Cancel", ButtonKind::Neutral)).clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape)) {
                     answer = Some(None);
                 }
-                if ui.button("Undo Changes").clicked() {
+                if ui.add(push_button("Undo Changes", ButtonKind::Neutral)).clicked() {
                     answer = Some(Some(false));
                 }
-                if ui.button("Keep Changes").clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                if ui.add(push_button("Keep Changes", ButtonKind::Primary)).clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                     answer = Some(Some(true));
                 }
             });
@@ -1146,14 +1146,15 @@ fn prompts(app: &mut SheetApp, ctx: &egui::Context, ed: &mut Editor, open: &mut 
             ui.set_width(360.0);
             ui.label(egui::RichText::new(format!("Save changes to macro “{}”?", ed.draft.name)).strong());
             ui.add_space(8.0);
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.button("Cancel").clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+            let w = push_button_width(ui, &["Save", "Don't Save", "Cancel"]);
+            button_row(ui, |ui| {
+                if ui.add(push_button("Cancel", ButtonKind::Neutral).min_width(w)).clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape)) {
                     answer = Some(None);
                 }
-                if ui.button("Don't Save").clicked() {
+                if ui.add(push_button("Don't Save", ButtonKind::Outline).min_width(w)).clicked() {
                     answer = Some(Some(false));
                 }
-                if ui.button("Save").clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                if ui.add(push_button("Save", ButtonKind::Primary).min_width(w)).clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                     answer = Some(Some(true));
                 }
             });

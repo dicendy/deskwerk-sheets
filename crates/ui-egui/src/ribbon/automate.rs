@@ -25,7 +25,7 @@ pub(super) fn automate(app: &mut SheetApp, ui: &mut Ui) {
         if r.clicked() && !recording {
             app.macros.relative = !rel;
         }
-        if small_button(ui, Icon::Macro, "New Macro", "Write a macro step by step", false).clicked() {
+        if small_button(ui, Icon::MacroNew, "New Macro", "Write a macro step by step", false).clicked() {
             app.open_dialog("macroEditor", json!({}));
         }
     });
@@ -70,27 +70,27 @@ pub(super) fn automate(app: &mut SheetApp, ui: &mut Ui) {
         }
     });
     sep(ui);
-    let __k = big_button(ui, Icon::Script, "Command\nPalette", "Search and run any command", false);
+    let __k = big_button(ui, Icon::CommandPalette, "Command\nPalette", "Search and run any command", false);
     control_keytip(app, ui, &__k, "commandSearch");
     if __k.clicked() {
         app.open_dialog("commandSearch", json!({}));
     }
-    let __k = big_button(ui, Icon::Script, "Agent\nControl", "How agents drive Deskwerk Sheets (MCP / control channel)", false);
+    let __k = big_button(ui, Icon::AgentControl, "Agent\nControl", "How agents drive Deskwerk Sheets (MCP / control channel)", false);
     control_keytip(app, ui, &__k, "agents");
     if __k.clicked() {
         app.open_dialog("agents", json!({}));
     }
-    let __k = big_button(ui, Icon::Script, "Action\nJournal", "Every command run in this session (replayable)", false);
+    let __k = big_button(ui, Icon::ActionJournal, "Action\nJournal", "Every command run in this session (replayable)", false);
     control_keytip(app, ui, &__k, "journal");
     if __k.clicked() {
         app.open_dialog("journal", json!({}));
     }
-    let __k = big_button(ui, Icon::Script, "Check for\nUpdates…", "Look for a newer Deskwerk Sheets release", false);
+    let __k = big_button(ui, Icon::CheckUpdates, "Check for\nUpdates…", "Look for a newer Deskwerk Sheets release", false);
     control_keytip(app, ui, &__k, "checkForUpdates");
     if __k.clicked() {
         app.run_or_alert("app.checkForUpdates", json!({}));
     }
-    let __k = big_button(ui, Icon::Script, "About\nDeskwerk Sheets", "About Deskwerk Sheets", false);
+    let __k = big_button(ui, Icon::Info, "About\nDeskwerk Sheets", "About Deskwerk Sheets", false);
     control_keytip(app, ui, &__k, "about");
     if __k.clicked() {
         app.open_dialog("about", json!({}));

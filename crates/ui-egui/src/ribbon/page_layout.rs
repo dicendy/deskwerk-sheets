@@ -101,7 +101,7 @@ pub(super) fn page_layout(app: &mut SheetApp, ui: &mut Ui) {
             ],
         );
     });
-    let __k = big_button(ui, Icon::Sheet, "Print\nTitles", "Print Titles", false);
+    let __k = big_button(ui, Icon::PrintTitles, "Print\nTitles", "Print Titles", false);
     control_keytip(app, ui, &__k, "pageLayout.printTitles");
     if __k.clicked() {
         app.open_dialog("pageSetup", json!({"tab": "Sheet"}));

@@ -466,7 +466,7 @@ pub fn status_bar(app: &mut SheetApp, ui: &mut Ui) {
                     }
                     ui.add_space(10.0);
                     for (icon, tip, mode, cmd) in [
-                        (Icon::PageBreak, "Page Break Preview", "pageBreakPreview", "view.pageBreakPreview"),
+                        (Icon::PageBreakPreview, "Page Break Preview", "pageBreakPreview", "view.pageBreakPreview"),
                         (Icon::PageLayout, "Page Layout", "pageLayout", "view.pageLayout"),
                         (Icon::Normal, "Normal", "normal", "view.normal"),
                     ] {

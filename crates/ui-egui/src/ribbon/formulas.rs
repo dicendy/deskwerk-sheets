@@ -106,12 +106,12 @@ pub(super) fn formulas(app: &mut SheetApp, ui: &mut Ui) {
         app.open_dialog("nameManager", json!({}));
     }
     ui.vertical(|ui| {
-        let __k = small_button(ui, Icon::Name, "Define Name", "Define Name", false);
+        let __k = small_button(ui, Icon::DefineName, "Define Name", "Define Name", false);
         control_keytip(app, ui, &__k, "dialog:defineName");
         if __k.clicked() {
             app.open_dialog("defineName", json!({}));
         }
-        let use_in = small_button(ui, Icon::Function, "Use in Formula", "Use in Formula", true);
+        let use_in = small_button(ui, Icon::UseInFormula, "Use in Formula", "Use in Formula", true);
         anchor_keytip(app, ui, &use_in, &["dialog:pasteName"]);
         egui::Popup::menu(&use_in).show(|ui| {
             // The menu lists the names Paste Names lists; clicking one runs `formulas.useInFormula`, which puts it at the caret.
@@ -144,7 +144,7 @@ pub(super) fn formulas(app: &mut SheetApp, ui: &mut Ui) {
                 app.open_dialog("pasteName", json!({}));
             }
         });
-        let __k = small_button(ui, Icon::Table, "Create from Selection", "Create from Selection", false);
+        let __k = small_button(ui, Icon::CreateFromSelection, "Create from Selection", "Create from Selection", false);
         control_keytip(app, ui, &__k, "formulas.createFromSelection");
         if __k.clicked() {
             act(app, "formulas.createFromSelection", json!({}));
@@ -152,27 +152,27 @@ pub(super) fn formulas(app: &mut SheetApp, ui: &mut Ui) {
     });
     sep(ui);
     ui.vertical(|ui| {
-        if small_button(ui, Icon::Trace, "Trace Precedents", "Trace Precedents", false).clicked()
+        if small_button(ui, Icon::TracePrecedents, "Trace Precedents", "Trace Precedents", false).clicked()
             && let Ok(r) = app.run("formulas.tracePrecedents", json!({}))
         {
             app.grid.trace = crate::grid::Trace::new(app, r);
         }
-        if small_button(ui, Icon::Trace, "Trace Dependents", "Trace Dependents", false).clicked()
+        if small_button(ui, Icon::TraceDependents, "Trace Dependents", "Trace Dependents", false).clicked()
             && let Ok(r) = app.run("formulas.traceDependents", json!({}))
         {
             app.grid.trace = crate::grid::Trace::new(app, r);
         }
-        if small_button(ui, Icon::Close, "Remove Arrows", "Remove Arrows", false).clicked() {
+        if small_button(ui, Icon::RemoveArrows, "Remove Arrows", "Remove Arrows", false).clicked() {
             app.grid.trace = None;
         }
     });
     ui.vertical(|ui| {
-        let __k = small_button(ui, Icon::Fx, "Show Formulas", "Show Formulas", false);
+        let __k = small_button(ui, Icon::ShowFormulas, "Show Formulas", "Show Formulas", false);
         control_keytip(app, ui, &__k, "formulas.showFormulas");
         if __k.clicked() {
             act(app, "formulas.showFormulas", json!({}));
         }
-        let (ec, ec_arrow) = small_split_button(ui, Icon::Validation, "Error Checking", "Error Checking");
+        let (ec, ec_arrow) = small_split_button(ui, Icon::ErrorCheck, "Error Checking", "Error Checking");
         control_keytip(app, ui, &ec, "dialog:errorChecking");
         if ec.clicked() {
             app.open_dialog("errorChecking", json!({}));
@@ -204,13 +204,13 @@ pub(super) fn formulas(app: &mut SheetApp, ui: &mut Ui) {
                 });
             });
         });
-        let __k = small_button(ui, Icon::Calc, "Evaluate Formula", "Evaluate Formula", false);
+        let __k = small_button(ui, Icon::EvaluateFormula, "Evaluate Formula", "Evaluate Formula", false);
         control_keytip(app, ui, &__k, "dialog:evaluateFormula");
         if __k.clicked() {
             app.open_dialog("evaluateFormula", json!({}));
         }
     });
-    if big_button(ui, Icon::Search, "Watch\nWindow", "Watch Window", false).clicked() {
+    if big_button(ui, Icon::WatchWindow, "Watch\nWindow", "Watch Window", false).clicked() {
         app.grid.pane = Some("watch".into());
     }
     sep(ui);
@@ -230,12 +230,12 @@ pub(super) fn formulas(app: &mut SheetApp, ui: &mut Ui) {
         );
     });
     ui.vertical(|ui| {
-        let __k = small_button(ui, Icon::Calc, "Calculate Now", "Calculate Now (F9)", false);
+        let __k = small_button(ui, Icon::CalcNow, "Calculate Now", "Calculate Now (F9)", false);
         control_keytip(app, ui, &__k, "formulas.calculateNow");
         if __k.clicked() {
             act(app, "formulas.calculateNow", json!({}));
         }
-        let __k = small_button(ui, Icon::Sheet, "Calculate Sheet", "Calculate Sheet (⇧F9)", false);
+        let __k = small_button(ui, Icon::CalcSheet, "Calculate Sheet", "Calculate Sheet (⇧F9)", false);
         control_keytip(app, ui, &__k, "formulas.calculateSheet");
         if __k.clicked() {
             act(app, "formulas.calculateSheet", json!({}));

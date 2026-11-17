@@ -7,7 +7,7 @@ pub(super) fn view(app: &mut SheetApp, ui: &mut Ui) {
     let _ = t;
     for (icon, label, cmd) in [
         (Icon::Normal, "Normal", "view.normal"),
-        (Icon::PageBreak, "Page Break\nPreview", "view.pageBreakPreview"),
+        (Icon::PageBreakPreview, "Page Break\nPreview", "view.pageBreakPreview"),
         (Icon::PageLayout, "Page\nLayout", "view.pageLayout"),
     ] {
         let __k = big_button(ui, icon, label, label, false);
@@ -58,24 +58,24 @@ pub(super) fn view(app: &mut SheetApp, ui: &mut Ui) {
     if __k.clicked() {
         app.open_dialog("zoom", json!({}));
     }
-    let __k = big_button(ui, Icon::Search, "100%", "Zoom to 100%", false);
+    let __k = big_button(ui, Icon::Zoom100, "100%", "Zoom to 100%", false);
     control_keytip(app, ui, &__k, "view.zoom");
     if __k.clicked() || invoke(app, "view.zoom") {
         act(app, "view.zoom", json!({"percent": 100}));
     }
-    let __k = big_button(ui, Icon::Zoom, "Zoom to\nSelection", "Zoom to Selection", false);
+    let __k = big_button(ui, Icon::ZoomSelection, "Zoom to\nSelection", "Zoom to Selection", false);
     control_keytip(app, ui, &__k, "view.zoomToSelection");
     if __k.clicked() {
         let r = app.grid.cells_rect.unwrap_or(Rect::from_min_size(pos2(0.0, 0.0), vec2(1200.0, 700.0)));
         act(app, "view.zoomToSelection", json!({"viewWidth": r.width(), "viewHeight": r.height()}));
     }
     sep(ui);
-    let __k = big_button(ui, Icon::NewFile, "New\nWindow", "New Window", false);
+    let __k = big_button(ui, Icon::NewWindow, "New\nWindow", "New Window", false);
     control_keytip(app, ui, &__k, "view.newWindow");
     if __k.clicked() {
         act(app, "view.newWindow", json!({}));
     }
-    let __k = big_button(ui, Icon::Table, "Arrange\nAll", "Arrange All", false);
+    let __k = big_button(ui, Icon::ArrangeAll, "Arrange\nAll", "Arrange All", false);
     control_keytip(app, ui, &__k, "view.arrangeAll");
     if __k.clicked() {
         app.open_dialog("arrangeAll", json!({}));
@@ -166,7 +166,7 @@ pub(super) fn view(app: &mut SheetApp, ui: &mut Ui) {
 /// View › Switch Windows: the open workbooks, the active one checked and unsaved ones marked;
 /// choosing one brings it forward.
 fn switch_windows(app: &mut SheetApp, ui: &mut Ui) {
-    let anchor = big_button(ui, Icon::Book, "Switch\nWindows", "Switch Windows", true);
+    let anchor = big_button(ui, Icon::SwitchWindows, "Switch\nWindows", "Switch Windows", true);
     anchor.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), "Switch Windows"));
     control_keytip(app, ui, &anchor, "view.switchWindows");
     let forced = std::mem::take(&mut app.open_switch_windows) | invoke(app, "view.switchWindows");
