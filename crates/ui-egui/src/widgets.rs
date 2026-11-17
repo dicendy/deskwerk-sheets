@@ -425,7 +425,7 @@ impl egui::Widget for PushButton {
         }
         painter.text(rect.center(), Align2::CENTER_CENTER, text, theme::ui_font(BUTTON_FONT), fade(ink));
         // The focus ring shows only when the keyboard put focus here (Tab), not after a click.
-        let by_keyboard = egui::Id::new("push_button_keyboard_focus").with(resp.id);
+        let by_keyboard = resp.id.with("push_button_keyboard_focus");
         if resp.gained_focus() {
             let pointer = ui.input(|i| i.pointer.any_down() || i.pointer.any_pressed() || i.pointer.any_released());
             ui.data_mut(|d| d.insert_temp(by_keyboard, !pointer));
